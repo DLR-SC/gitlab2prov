@@ -1,0 +1,19 @@
+# Residue from diagrams
+*.dot
+*.pdf
+
+# Config files
+*.ini
+
+# Legacy file
+legacy/
+
+# Virtual environment
+env/
+
+# Python
+__pycache__
+*.pyc
+*.log
+.eggs/
+**.egg-info/
