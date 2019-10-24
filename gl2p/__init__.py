@@ -1,0 +1,3 @@
+"""
+Mein eigenes package!
+"""
