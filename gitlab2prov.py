@@ -1,42 +1,46 @@
 #!/usr/bin/env python
-
 import argparse
-import configparser
-import os
-
 from gl2p.pipes import CommitPipeline
 from gl2p.utils import url_validator
-from gl2p.commons import ConfigurationException, URLException
+from gl2p.commons import URLException
+from gl2p.config import CONFIG
 
-from prov.dot import prov_to_dot
+from provdbconnector import ProvDb
+from provdbconnector.db_adapters.neo4j.neo4jadapter import Neo4jAdapter
 
 
-def drain_pipelines(config):
-    pipelines = [CommitPipeline(config)]
+def drain_pipelines():
+    pipelines = [CommitPipeline()]
     for pipe in pipelines:
         pipe.request_data()
+        pipe.process_data()
         pipe.translate_data()
         prov = pipe.commit_data()
-        # create dotfile
-        dot = open("prov.dot", "w")
-        print(prov_to_dot(prov), file=dot)
+    return prov
+
+
+def to_neo4j(prov):
+    # TODO: fix provdbconnector error
+    # provdbconnector.exceptions.database.MergeException:
+    # The attributes [<QualifiedName: prov:role>, 'meta:prov_type', 'meta:identifier', 'meta:namespaces', 'meta:type_map']
+    # could not merged into the existing node
+    auth_info = {
+            "user_name": CONFIG["NEO4J"]["user"],
+            "user_password": CONFIG["NEO4J"]["password"],
+            "host": CONFIG["NEO4J"]["host"]
+            }
+    prov_api = ProvDb(adapter=Neo4jAdapter, auth_info=auth_info)
+    prov_api.save_document(prov)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GitLab repo to prov doc")
-    config = configparser.ConfigParser()
     parser.add_argument("url", help="url to gilab repository")
-    parser.add_argument("config", help="path to config file")
     args = parser.parse_args()
-
-    if not os.path.exists(args.config):
-        raise ConfigurationException("Config file path invalid.")
-    config.read(args.config)
 
     if not url_validator(args.url):
         raise URLException("URL invalid.")
-    config["GITLAB"]["project"] = args.url
+    CONFIG["GITLAB"]["project"] = args.url
 
-    # TODO: maybe another way to pass the config
-    # also ... serious names
-    drain_pipelines(config)
+    prov = drain_pipelines()
+    # to_neo4j(prov)
