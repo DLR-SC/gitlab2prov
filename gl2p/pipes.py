@@ -1,14 +1,18 @@
 from copy import deepcopy
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
+import asyncio
 from gitlab import Gitlab
+
 from gl2p.translators import CommitTranslator
 from gl2p.commons import FileAction
+from gl2p.ratelimiter import RateLimiter
+from gl2p.config import CONFIG
 
 
 class Pipeline:
-    def __init__(self, config):
-        self._config = config
+    def __init__(self):
         self.gitlab_api = None
+        self.path = None
         self.project = None
         self.translator = None
 
@@ -17,18 +21,22 @@ class Pipeline:
 
     def _init_gitlab_api(self):
         self.gitlab_api = Gitlab(
-                url=self._config["GITLAB"]["url"], 
-                private_token=self._config["GITLAB"]["token"])
+                url=CONFIG["GITLAB"]["url"],
+                private_token=CONFIG["GITLAB"]["token"])
 
     def _init_project(self):
-        project_path = self._pathify(self._config["GITLAB"]["project"])
-        self.project = self.gitlab_api.projects.get(project_path)
+        self.path = self._pathify(CONFIG["GITLAB"]["project"])
+        self.project = self.gitlab_api.projects.get(self.path)
+        self.path = self.path.replace("/", "%2F")  # url encoded path
 
     def _pathify(self, url):
         # NOTE: remove leading slash
         return urlparse(url).path.replace("/", "", 1)
-    
+
     def request_data(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def process_data(self, *args, **kwargs):
         raise NotImplementedError()
 
     def translate_data(self, *args, **kwargs):
@@ -40,43 +48,34 @@ class Pipeline:
 
 class CommitPipeline(Pipeline):
 
-    def __init__(self, config, *args, **kwargs):
-        super().__init__(config, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.translator = CommitTranslator()
         self.commits = None
+        self.diffs = None
 
     def request_data(self):
         # NOTE: reverse order to sort ascending by date
         self.commits = list(reversed(self.project.commits.list(all=True)))
+        self.diffs = self._get_diffs()
 
-        # TODO: asynchronous fetching of diffs
-        # Synchronous is time consuming for large repositories.
-        # Also, linear growth of waiting time is not fun.
-        # Example:
-        # Repository of 20,000 commits
-        # - request the diff for each commit: 20,000 requests
-        # - waiting time: 20,000 * 0,3sec = 6000sec = 100min
-        # Assuming avg response in 0,3sec and synchronous execution
-
-        for n, commit in enumerate(self.commits):
-            diff = commit.diff()
-            updated = []
+    def process_data(self):
+        updated = []
+        for commit, diff in zip(self.commits, self.diffs):
             for entry in diff:
                 copy = deepcopy(commit)
                 copy.file_path_used = entry["old_path"]
                 copy.file_path_generated = entry["new_path"]
                 copy.file_action = self._get_file_action(entry)
                 updated.append(copy)
-            self.commits[n] = updated
-        self.commits = [c for clist in self.commits for c in clist]
+        self.commits = updated
 
     def translate_data(self, *args, **kwargs):
         self.translator.translate(self.commits)
 
     def commit_data(self, *args, **kwargs):
         self.translator.clean()
-        translation = self.translator.prov
-        return translation
+        return self.translator.prov
 
     def _get_file_action(self, entry):
         if entry["new_file"]:
@@ -84,3 +83,31 @@ class CommitPipeline(Pipeline):
         elif entry["deleted_file"]:
             return FileAction.DELETED
         return FileAction.MODIFIED
+
+    def _get_diffs(self):
+        urls = self._get_urls()
+        return asyncio.run(self._fetch(urls))
+
+    def _get_urls(self):
+        parsed = urlparse(CONFIG["GITLAB"]["url"])._asdict()
+        urls = []
+        for commit in self.commits:
+            path = "/api/v4/projects/{}/repository/commits/{}/diff"
+            parsed["path"] = path.format(self.path, commit.id)
+            urls.append(urlunparse(tuple(parsed.values())))
+        return urls
+
+    async def _fetch(self, urls):
+        # NOTE: Send authentification header with each request
+        auth = {"Private-Token": CONFIG["GITLAB"]["token"]}
+        async with RateLimiter(headers=auth) as client:
+            tasks = [
+                    asyncio.ensure_future(self._fetch_one(client, url))
+                    for url in urls
+                    ]
+            return await asyncio.gather(*tasks)
+
+    async def _fetch_one(self, client, url):
+        async with await client.get(url) as resp:
+            resp = await resp.json()
+            return resp
