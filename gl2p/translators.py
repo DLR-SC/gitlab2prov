@@ -1,6 +1,6 @@
-from collections import defaultdict, namedtuple
+from collections import defaultdict, deque, namedtuple
 import prov.model as prov
-from prov.constants import PROV_LABEL, PROV_TYPE, PROV_ROLE
+from prov.constants import PROV_LABEL, PROV_ROLE
 from gl2p.commons import FileAction
 
 
@@ -25,35 +25,33 @@ class CommitTranslator(Translator):
 
     def __init__(self):
         super().__init__()
-        self.__file_track = defaultdict(set)
         # TODO: correct namespace definition for project
         self.prov.set_default_namespace("https://example.org")
 
-    def translate(self, data, *args, **kwargs):
-        for commit in data:
+    def translate(self, commits, *args, **kwargs):
+        # compute stem file lookup
+        alias_lookup = self._compute_alias_lookup(commits)
+
+        for commit in commits:
             names = self._format_names(commit)
 
-            # keep track of file aliases over time
-            self._track_file(commit)
-
-            # NOTE: comment out times for clarity in diagrams
-            # NOTE: this can also be done by assigning start and end time attributes for the respective activities.
             self.prov.wasStartedBy(names.commit, time=commit.authored_date)
             self.prov.wasEndedBy(names.commit, time=commit.committed_date)
             self.prov.activity(identifier=names.commit, other_attributes={PROV_LABEL: commit.message})
             
-            # NOTE: wasInformedBy relation documents the chain of commits, much like a commit graph
+            # NOTE: wasInformedBy relation documents the chain of commits
+            # much like a commit graph
             for parent in names.parents:
                 self.prov.wasInformedBy(names.commit, parent, identifier=names.commit+parent)
             
             # NOTE: stem file tracking allows mapping of a file alias to its original file entity
-            stem_file = self._compute_stem_file(commit.file_path_used)
+            stem_file = alias_lookup[commit.file_path_used]
             self.prov.agent(names.author)
             self.prov.agent(names.committer)
             self.prov.wasAssociatedWith(names.commit, names.author, other_attributes={PROV_ROLE: "author"})
             self.prov.wasAssociatedWith(names.commit, names.committer, other_attributes={PROV_ROLE: "committer"})
             
-            # NOTE: depending on the file action, decide which prov vocabulary to add
+            # NOTE: depending on the file action, decide what prov vocabulary to add
             if commit.file_action == FileAction.ADDED:
                 self.prov.entity(names.file, other_attributes={PROV_LABEL: commit.file_path_used})
             if commit.file_action == FileAction.MODIFIED:
@@ -71,19 +69,6 @@ class CommitTranslator(Translator):
                 self.prov.wasGeneratedBy(names.generated_file, names.commit, time=commit.authored_date)
                 self.prov.entity(identifier=names.generated_file)
                 self.prov.wasAttributedTo(names.generated_file, names.author)
-
-    def _track_file(self, commit):
-        if commit.file_path_used != commit.file_path_generated:
-            self.__file_track[commit.file_path_used].add(commit.file_path_generated)
-
-    def _compute_stem_file(self, alias):
-        lookup = dict()
-        for key, vset in self.__file_track.items():
-            for value in vset:
-                lookup[value] = key
-        while lookup.get(alias):
-            alias = lookup[alias]
-        return alias
 
     def _namify(self, string):
         replacements = {"-": ["/", ".", " "]}
@@ -103,3 +88,33 @@ class CommitTranslator(Translator):
             f"file-{self._namify(commit.file_path_used)}",
             f"file-{self._namify(commit.file_path_generated)}_commit-{commit.id}",
             [f"file-{self._namify(commit.file_path_used)}_commit-{pid}" for pid in commit.parent_ids]])
+
+    def _compute_alias_lookup(self, commits):
+        track = defaultdict(set)  # file alias records
+        files = set()  # list of filenames
+        for commit in commits:
+            files |= set([commit.file_path_used, commit.file_path_generated])
+            track[commit.file_path_used].add(commit.file_path_generated)
+
+        # explore file records by bfs to compute file tracks
+        roots = []
+        for f in files:
+            queue, visited = deque([f]), list()
+            while queue:
+                active = queue.popleft()
+                visited.append(active)
+                for node in track.get(active, []):
+                    if node in visited:
+                        continue
+                    queue.append(node)
+            roots.append(visited)
+
+        # compute lookup for root file names
+        lookup = dict()
+        for f in files:
+            track = sorted(filter(lambda l: f in l, roots), key=len)[-1]
+            root, *n = track
+            lookup[root] = root
+            for child in n:
+                lookup[child] = root
+        return lookup
