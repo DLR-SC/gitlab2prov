@@ -55,17 +55,20 @@ class CommitPipeline(Pipeline):
         self.diffs = None
 
     def request_data(self):
-        # NOTE: reverse order to sort ascending by date
-        self.commits = list(reversed(self.project.commits.list(all=True)))
+        import time
+        self.commits = self.project.commits.list(all=True)
+        print(f"Estimated time to fetch diffs: {len(self.commits)/10} seconds")
+        t = time.time()
         self.diffs = self._get_diffs()
+        print(f"Got {len(self.diffs)} diffs in {time.time() - t}")
 
     def process_data(self):
         updated = []
         for commit, diff in zip(self.commits, self.diffs):
             for entry in diff:
                 copy = deepcopy(commit)
-                copy.file_path_used = entry["old_path"]
-                copy.file_path_generated = entry["new_path"]
+                copy.used = entry["old_path"]
+                copy.generated = entry["new_path"]
                 copy.file_action = self._get_file_action(entry)
                 updated.append(copy)
         self.commits = updated
@@ -111,3 +114,23 @@ class CommitPipeline(Pipeline):
         async with await client.get(url) as resp:
             resp = await resp.json()
             return resp
+
+
+class IssuePipeline(Pipeline):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.translator = None  # IssueTranslator
+        self.issues = None
+
+    def request_data(self):
+        pass
+
+    def process_data(self):
+        pass
+
+    def translate_data(self):
+        pass
+
+    def commit_data(self):
+        pass
