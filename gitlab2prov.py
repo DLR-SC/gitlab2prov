@@ -7,6 +7,7 @@ from gl2p.config import CONFIG
 
 from provdbconnector import ProvDb
 from provdbconnector.db_adapters.neo4j.neo4jadapter import Neo4jAdapter
+from prov.dot import prov_to_dot
 
 
 def drain_pipelines():
@@ -43,4 +44,7 @@ if __name__ == "__main__":
     CONFIG["GITLAB"]["project"] = args.url
 
     prov = drain_pipelines()
+    dotfile = open("prov.dot", "w")
+    print(prov_to_dot(prov), file=dotfile)
+    print(prov)
     # to_neo4j(prov)
