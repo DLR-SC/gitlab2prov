@@ -3,11 +3,9 @@
 
 ## Setup :rocket:
 ### Installation
-```shell
+```bash
 # Clone repository via SSH (recommended)
 git clone git@github.com:DLR-SC/gitlab2prov.git
-# or HTTPS
-git clone https://github.com/DLR-SC/gitlab2prov.git
 
 # Change into directory
 cd gitlab2prov
@@ -35,7 +33,7 @@ Keep in mind, the project status is very much **WIP** - this section will change
 At the moment, PROV generation is only viable for **small repositories** (50 commits or less). 
 This will hopefully change in the near future.
 ```
-python gitlab2prov.py :repositoryurl: :configfile:
+python gitlab2prov.py :repositoryurl:
 ```
 Will generate a `.dot` file containing a diagram of the generated PROV records.
 Use the following command to generate a PDF.
