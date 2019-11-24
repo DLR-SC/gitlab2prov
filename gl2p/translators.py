@@ -106,7 +106,9 @@ class CommitTranslator(Translator):
         prov_obj.agent(identifier=committer)
 
     def _add_file_action_deleted(self, commit, prov_obj):
-        for version_id in self._search_used_versions(commit):
+        for version_id in self._used_versions(commit):
+            if not self.commit_lookup.get(version_id):
+                continue
             file_name = self._namify(self.commit_lookup[version_id].generated)
             entity_identifier = "file-{}_commit-{}".format(file_name, version_id)
             prov_obj.wasInvalidatedBy(
@@ -150,7 +152,9 @@ class CommitTranslator(Translator):
 
     def _add_file_action_modified(self, commit, prov_obj):
         gen = "file-{}_commit-{}".format(self._namify(commit.generated), commit.id)
-        for version_id in self._search_used_versions(commit):
+        for version_id in self._used_versions(commit):
+            if not self.commit_lookup.get(version_id):
+                continue
             file_name = self._namify(self.commit_lookup[version_id].generated)
             file_version = "file-{}_commit-{}".format(file_name, version_id)
             prov_obj.used(
