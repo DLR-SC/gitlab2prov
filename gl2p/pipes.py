@@ -50,7 +50,7 @@ class CommitPipeline(Pipeline):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.translator = CommitTranslator()
+        self.translator = None
         self.commits = None
         self.diffs = None
 
@@ -74,7 +74,9 @@ class CommitPipeline(Pipeline):
         self.commits = updated
 
     def translate_data(self, *args, **kwargs):
-        self.translator.translate(self.commits)
+        # init Translator
+        self.translator = CommitTranslator(self.commits)
+        self.translator.translate()
 
     def commit_data(self, *args, **kwargs):
         self.translator.clean()
