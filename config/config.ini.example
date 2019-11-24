@@ -1,0 +1,10 @@
+[GITLAB]
+token = YourTokenHere
+url = GitLabInstanceURL
+project = RepositoryURL
+
+[NEO4J]
+host = Neo4jURL
+user = YourUsername
+password = YourPassword
+boltport = BOLTPort
