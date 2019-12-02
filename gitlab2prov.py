@@ -9,7 +9,6 @@ from provdbconnector import ProvDb
 from provdbconnector import Neo4jAdapter
 from prov.dot import prov_to_dot
 # local imports
-from gl2p.pipes import CommitPipeline
 from gl2p.helpers import url_validator
 from gl2p.commons import URLException
 from gl2p.config import CONFIG
