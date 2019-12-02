@@ -56,9 +56,9 @@ def main():
     print("-- Created document.")
 
     # -- print to file --
-    # provdoc = open("provdoc", "w")
-    # print("-- Printing doc.")
-    # print(document.get_provn(), file=provdoc)
+    provdoc = open("provdoc", "w")
+    print("-- Printing doc.")
+    print(document.get_provn(), file=provdoc)
     
     # -- create dot file --
     # dotfile = open("prov.dot", "w")
