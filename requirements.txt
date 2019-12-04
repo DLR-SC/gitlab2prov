@@ -4,3 +4,4 @@ pydot
 aiohttp
 prov-db-connector
 neo4j-driver==1.6.2
+neo4j
