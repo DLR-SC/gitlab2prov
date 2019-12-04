@@ -43,11 +43,17 @@ class RateLimitedClientSession(ClientSession):
 class RateLimitedAsyncRequestHandler:
 
     def get_batch(self, urls):
-        # Implement request handling for a batch of urls
-        return asyncio.run(self._fetch(urls))
+        # Split batch into chunks, perform requests for all chunks
+        # Avoids answer-request mapping slowdown for big batch size
+        res = []
+        chunk_size = 250  # chunk size
+        for batch in (urls[i:i + chunk_size] for i in range(0, len(urls), chunk_size)):
+            res.extend(asyncio.run(self._fetch(batch)))
+        return res
 
     async def _fetch(self, urls):
         # NOTE: Send authentification header with each request
+        # TODO: header as call parameter
         auth = {"Private-Token": CONFIG["GITLAB"]["token"]}
         async with RateLimitedClientSession(headers=auth) as client:
             tasks = [
