@@ -114,6 +114,7 @@ class Translator:
         names = defaultdict(set)
         tracks = []
         lookup = dict()
+        files = set(files)
 
         # -- build name lookup --
         for f in files:

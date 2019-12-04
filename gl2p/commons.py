@@ -46,6 +46,14 @@ class File:
     new_path: str
     status: FileStatus
 
+    def __eq__(self, other):
+        if not isinstance(other, File):
+            return False
+        return (self.commit_sha, self.old_path, self.new_path) == (self.commit_sha, other.old_path, other.new_path)
+
+    def __hash__(self):
+        return hash((self.old_path, self.new_path))
+
 
 @dataclass
 class Commit:
