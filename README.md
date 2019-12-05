@@ -43,7 +43,7 @@ dot -Tdpf prov.dot -o prov.pdf
 **NOTE**: This can take a while - especially for bigger diagrams - as `dot` will spend some time computing the layout.
 
 ## About GitLab2PROV
-GitLab2PROV is based on GitLab2Graph by Martin Stoffers:
+GitLab2PROV is based on GitLab2Graph by Martin Stoffers:  
 Martin Stoffers: "Gitlab2Graph", v1.0.0, October 13. 2019, [GitHub Link](https://github.com/DLR-SC/Gitlab2Graph), DOI 10.5281/zenodo.3469385
 
 The PROV model used in GitLab2PROV is based on the following papers:
