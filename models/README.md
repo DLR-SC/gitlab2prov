@@ -3,22 +3,37 @@
 ## Commit Model
 #### Commit Model - Add File
 A commit adding a new file.  
-![Adding Files](./pngs/commit_model_add.png)
+![Adding Files](./pngs/commit_model_add_file.png)
 
 #### Commit Model - Modify File
 A commit modifying an existing file.  
-![Commit modifying a file](./pngs/commit_model_modify.png)
+![Commit modifying a file](./pngs/commit_model_modify_file.png)
 
 #### Commit Model - Delete File
 A commit deleting an existing file.  
-![Commit deleting a file](./pngs/commit_model_delete.png)
+![Commit deleting a file](./pngs/commit_model_delete_file.png)
 
-#### Commit Model - Create Event
-For each commit, create a commit entity to keep track of events that occur on commits.  
-![Commit entity creation](./pngs/commit_model_event_create.png)
+#### Commit Model - New Commit
+A commit entity and its creation relations.
+![Commit entity creation](./pngs/commit_model_new_commit.png)
 
-#### Commit Model - Update Event
-Model for an event occuring on a commit entity.  
+#### Commit Model - New Commit Event
+A commit event occuring on a commit entity.
 Events can be comments, reactions (AwardEmojis), label events, discussions, merge requests, etc.  
 A list of events with their respective description will be added soon.
-![Event on commit entity](./pngs/commit_model_event_update.png)
+![Event on commit entity](./pngs/commit_model_new_commit_event.png)
+
+
+## Issue Model
+#### Issue Model - New Issue
+A new Issue.
+![A new Issue](./pngs/issue_model_new_issue.png)
+
+#### Issue Model - New Issue Event
+An issue event occuring on an issue entity.
+![A new Issue Event](./pngs/issue_model_new_issue_event.png)
+
+#### Issue Model - Issue Marked as Duplicate
+An issue that got marked as a duplicate. 
+Combined Model from New Issue Event and Issue Marked as Duplicate.
+![Issue that got marked as a duplicate](./pngs/issue_model_marked_as_duplicate.png)
