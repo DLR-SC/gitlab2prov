@@ -22,4 +22,4 @@ document.wasAssociatedWith("gitlab_commit", "committer")
 document.specializationOf("file_version", "file")
 document.wasInformedBy("gitlab_commit", "parent_commit")
 
-COMMIT_MODEL_ADD = document
+COMMIT_MODEL_ADD_FILE = document

@@ -20,4 +20,4 @@ document.wasAssociatedWith("gitlab_commit", "committer")
 document.wasAttributedTo("commit", "committer")
 document.wasAttributedTo("commit_version", "committer")
 
-COMMIT_MODEL_EVENT_CREATE = document
+COMMIT_MODEL_NEW_COMMIT = document

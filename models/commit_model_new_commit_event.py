@@ -22,4 +22,4 @@ document.wasInformedBy("commit_event", "previous_event")
 document.wasAssociatedWith("commit_event", "eventee")
 document.wasAttributedTo("commit_v", "eventee")
 
-COMMIT_MODEL_EVENT_UPDATE = document
+COMMIT_MODEL_NEW_COMMIT_EVENT = document

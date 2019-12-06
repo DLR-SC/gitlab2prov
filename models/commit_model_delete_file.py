@@ -23,4 +23,4 @@ document.wasAssociatedWith("gitlab_commit", "author")
 document.wasAssociatedWith("gitlab_commit", "committer")
 document.wasAttributedTo("file_v", "author")
 
-COMMIT_MODEL_DELETE = document
+COMMIT_MODEL_DELETE_FILE = document

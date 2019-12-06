@@ -24,4 +24,4 @@ document.wasAttributedTo("file_v", "author")
 document.wasAssociatedWith("gitlab_commit", "author")
 document.wasAssociatedWith("gitlab_commit", "committer")
 
-COMMIT_MODEL_MODIFY = document
+COMMIT_MODEL_MODIFY_FILE = document
