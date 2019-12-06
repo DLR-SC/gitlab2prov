@@ -3,19 +3,26 @@ import tempfile
 import os
 import subprocess
 
-from commit_model_add import COMMIT_MODEL_ADD
-from commit_model_delete import COMMIT_MODEL_DELETE
-from commit_model_modify import COMMIT_MODEL_MODIFY
-from commit_model_event_create import COMMIT_MODEL_EVENT_CREATE
-from commit_model_event_update import COMMIT_MODEL_EVENT_UPDATE
+from commit_model_add_file import COMMIT_MODEL_ADD_FILE
+from commit_model_delete_file import COMMIT_MODEL_DELETE_FILE
+from commit_model_modify_file import COMMIT_MODEL_MODIFY_FILE
+from commit_model_new_commit import COMMIT_MODEL_NEW_COMMIT
+from commit_model_new_commit_event import COMMIT_MODEL_NEW_COMMIT_EVENT
+
+from issue_model_new_issue import ISSUE_MODEL_NEW_ISSUE
+from issue_model_new_issue_event import ISSUE_MODEL_NEW_ISSUE_EVENT
+from issue_model_marked_as_duplicate import ISSUE_MODEL_MARKED_AS_DUPLICATE
 
 
 models = {
-        "commit_model_add": COMMIT_MODEL_ADD, 
-        "commit_model_modify": COMMIT_MODEL_MODIFY,
-        "commit_model_delete": COMMIT_MODEL_DELETE,
-        "commit_model_event_create": COMMIT_MODEL_EVENT_CREATE,
-        "commit_model_event_update": COMMIT_MODEL_EVENT_UPDATE
+        "commit_model_add_file": COMMIT_MODEL_ADD_FILE, 
+        "commit_model_modify_file": COMMIT_MODEL_MODIFY_FILE,
+        "commit_model_delete_file": COMMIT_MODEL_DELETE_FILE,
+        "commit_model_new_commit": COMMIT_MODEL_NEW_COMMIT,
+        "commit_model_new_commit_event": COMMIT_MODEL_NEW_COMMIT_EVENT,
+        "issue_model_new_issue": ISSUE_MODEL_NEW_ISSUE,
+        "issue_model_new_issue_event": ISSUE_MODEL_NEW_ISSUE_EVENT,
+        "issue_model_marked_as_duplicate": ISSUE_MODEL_MARKED_AS_DUPLICATE
         }
 
 layouts = {}
