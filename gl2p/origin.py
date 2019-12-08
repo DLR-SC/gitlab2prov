@@ -15,14 +15,13 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
-# standard lib imports
-from collections import namedtuple
+from collections import namedtuple, defaultdict, deque
 from urllib.parse import urlparse, urlunparse
-# third party imports
+from functools import reduce
+from time import time
 from gitlab import Gitlab
-# local imports
 from gl2p.config import CONFIG
-from gl2p.commons import Commit, File, Actor, Time, FileStatus, Container
+from gl2p.commons import Repository, File, NameTable, FileStatus
 from gl2p.helpers import pathify
 from gl2p.network import RateLimitedAsyncRequestHandler
 
@@ -59,12 +58,8 @@ class GitLabOrigin(Origin):
     def fetch(self):
         purl = CONFIG["GITLAB"]["project"]
         project = self.client.projects.get(pathify(purl))
-
-        # -- commits --
         commits = project.commits.list(all=True)
 
-        # -- diffs --
-        # build urls that have to be requested.
         urls = []
         parsed = urlparse(CONFIG["GITLAB"]["url"])._asdict()
         for commit in commits:
@@ -72,40 +67,81 @@ class GitLabOrigin(Origin):
             parsed["path"] = path.format(pathify(purl), commit.id)
             urls.append(urlunparse(tuple(parsed.values())))
 
-        # pass urls to async client
         async_client = RateLimitedAsyncRequestHandler()
         diffs = async_client.get_batch(urls)
 
-        # store retrieved data
-        data = namedtuple("data", "commits diffs")
-        self.data = data(commits, diffs)
+        disc = {commit.id: commit.discussions.list(all=True) for commit in commits}
+        for sha, discussion in disc.items():
+            print(sha, " -- ", discussion)
+            for d in discussion:
+                for note in d.attributes.get("notes"):
+                    if note.get("system"):
+                        print(note)
+
+        data = namedtuple("data", "path commits diffs issues")
+        path = urlparse(purl).path
+        issues = []
+        self.data = data(path, commits, diffs, issues)
 
     def process(self):
+        nametables = {}
+        commits = {c.id: c for c in self.data.commits}
+        diffs = {c.id: d for c, d in zip(self.data.commits, self.data.diffs)}
+        
+        children = defaultdict(set)
+        for commit in commits.values():
+            for sha in commit.parent_ids:
+                children[sha].add(commit.id)
+
+        root = self.data.commits[-1].attributes.get("id")
+        queue = deque([root])
+        visited = set()
+        
+        t = time()
+        while queue:
+            sha = queue.popleft()
+            commit = commits.get(sha)
+            if sha in visited:
+                continue
+            if all([(pid in nametables) for pid in commit.parent_ids]):
+                # all previous nametables cached
+                if sha == root:
+                    # NT(0) = δ({})
+                    # diff applied on empty nametable
+                    nametables[sha] = NameTable().delta(diffs.get(sha))
+                    visited.add(sha)
+                    queue.extend(children.get(sha, []))
+                    continue
+                # combination of previous nametables, apply diff before union
+                # NT(n) = δ(NT(n-1)) + δ(NT(n-2)) + ... δ(NT(0))
+                nts = []
+                for pid in commit.parent_ids:
+                    nts.append(nametables.get(pid).delta(diffs.get(sha)))
+                nametables[sha] = reduce(lambda nt1, nt2: nt1+nt2, nts)
+                visited.add(sha)
+            else:
+                # not all cached, wait in queue
+                queue.append(sha)
+                continue
+            for child in children.get(sha, []):
+                if child not in visited:
+                    queue.append(child)
+        print(f"Created nametables in : {time()-t}")
+        
+        # add files to commits
         commits = []
         for commit, diff in zip(self.data.commits, self.data.diffs):
-
-            # -- files --
             files = []
             for entry in diff:
-                status = None
                 if entry["new_file"]: 
                     status = FileStatus.ADDED
                 elif entry["deleted_file"]:
                     status = FileStatus.DELETED
                 else:
                     status = FileStatus.MODIFIED
-                f = File(commit_sha=commit.id,
-                        old_path=entry["old_path"],
-                        new_path=entry["new_path"],
-                        status=status)
+                f = File(commit.id, entry["old_path"], entry["new_path"], status)
                 files.append(f)
+            commit._update_attrs({"files": files})
+            commits.append(commit)
 
-            # -- commits --
-            author = Actor(commit.author_name, commit.author_email)
-            committer = Actor(commit.committer_name, commit.committer_email)
-            time = Time(commit.authored_date, commit.committed_date)
-            parents = [cid for cid in commit.parent_ids]
-            commits.append(Commit(commit.id, commit.message, time, author, committer, parents, files))
-
-        # store accumulated data in Container
-        return Container(commits)
+        return Repository(self.data.path, commits, self.data.issues, nametables)
