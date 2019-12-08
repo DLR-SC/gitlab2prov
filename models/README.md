@@ -11,6 +11,8 @@ A commit modifying an existing file.
 
 #### Commit Model - Delete File
 A commit deleting an existing file.  
+The commit only marks an existing file version entity as Invalidated.
+It does not add an own file version entity.
 ![Commit deleting a file](./pngs/commit_model_delete_file.png)
 
 #### Commit Model - New Commit
