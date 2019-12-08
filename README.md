@@ -38,7 +38,7 @@ python gitlab2prov.py :repositoryurl:
 Will generate a `.dot` file containing a diagram of the generated PROV records.
 Use the following command to generate a PDF.
 ```
-dot -Tdpf prov.dot -o prov.pdf
+dot -Tpdf prov.dot -o prov.pdf
 ```
 **NOTE**: This can take a while - especially for bigger diagrams - as `dot` will spend some time computing the layout.
 
