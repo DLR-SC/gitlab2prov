@@ -14,23 +14,20 @@
 #
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
-
-# standard lib imports
-from dataclasses import dataclass
-from typing import List, NamedTuple
+from copy import deepcopy
+from dataclasses import dataclass, field
+from collections.abc import MutableMapping
+from typing import List, NamedTuple, Dict
 from enum import Enum
-# third party imports
-# local imports
+from gitlab.v4.objects import ProjectCommit, ProjectIssue
 
 
-class Actor(NamedTuple):
-    name: str
-    email: str
+def URLException(Exception):
+    pass
 
 
-class Time(NamedTuple):
-    committed: str
-    authored: str
+def ConfigurationException(Exception):
+    pass
 
 
 class FileStatus(Enum):
@@ -46,69 +43,76 @@ class File:
     new_path: str
     status: FileStatus
 
-    def __eq__(self, other):
-        if not isinstance(other, File):
-            return False
-        return (self.commit_sha, self.old_path, self.new_path) == (self.commit_sha, other.old_path, other.new_path)
 
-    def __hash__(self):
-        return hash((self.old_path, self.new_path))
+class RepositoryInfo(NamedTuple):
+    path: str
+       
 
+class NameTable(MutableMapping):
 
-@dataclass
-class Commit:
-    sha: str
-    msg: str
-    time: Time
-    author: Actor
-    committer: Actor
-    parents: List[str] # list of parent shas
-    files: List[File] # list of files touched in diff
+    def __init__(self, *args, **kwargs):
+        self.store = dict()
+        self.update(dict(*args, **kwargs))
 
+    def __getitem__(self, key):
+        return self.store[key]
 
-@dataclass
-class Container:
+    def __setitem__(self, key, value):
+        self.store[key] = value
 
-    def __init__(self, commits:List[Commit]):
-        
-        # init
-        self._commits = dict()
-        self.files = list()
-        
-        # fill
-        for commit in commits:
-            self._commits[commit.sha] = commit
-        self.files = self._extract_files()
+    def __delitem__(self, key):
+        del self.store[key]
+
+    def __iter__(self):
+        return iter(self.store)
+
+    def __len__(self):
+        return len(self.store)
 
     def __repr__(self):
-        return "Container([Commit()])"
+        return str(self.store)
 
     def __str__(self):
-        return "COMMITS --» {} \n\nFILES --» {} \n\nISSUES --» None".format(self.commits, self.files)
+        return "Nametable: {}".format(self.__repr__())
 
-    def _extract_files(self):
-        if not self._commits: 
-            return list()
-        files = list()
-        for commit in self._commits.values():
-            for f in commit.files:
-                files.append(f)
-        return files
+    def __add__(self, other):
+        store = deepcopy(self.store)
+        store.update(other)
+        return NameTable(store)
 
-    def commits(self):
-        return self._commits.values()
+    def delta(self, diff):
+        # replay changes from diff on a nametable
+        store = deepcopy(self.store)
+        for entry in diff:
+            new, old = entry.get("new_path"), entry.get("old_path")
+            if new != old:
+                # file moved or renamed
+                if old in store:
+                    # update existing
+                    root = store.get(old)
+                    store[new] = root
+                else:
+                    # update/add
+                    store[new] = old
+            if entry.get("new_file"):
+                store[new] = old
+            elif entry.get("deleted_file"):
+                pass
+            else:
+                # modified file
+                if new not in store:
+                    store[new] = old
 
-    def get_commit(self, sha):
-        return self._commits.get(sha, None)
-
-    def get_files(self, sha):
-        if sha in self._commits:
-            return self.commits[sha].files
+        return NameTable(store)             
 
 
-def URLException(Exception):
-    pass
+@dataclass
+class Repository:
 
+    info: RepositoryInfo 
+    commits: List
+    issues: List
+    nametables: Dict[str, NameTable]
 
-def ConfigurationException(Exception):
-    pass
+    def __str__(self):
+        return f"{self.info}\n{self.commits}\n{self.issues}\n{self.nametables}"
