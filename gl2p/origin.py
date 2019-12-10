@@ -21,7 +21,7 @@ from functools import reduce
 from time import time
 from gitlab import Gitlab
 from gl2p.config import CONFIG
-from gl2p.commons import Repository, File, NameTable, FileStatus
+from gl2p.commons import Repository, File, NameTable, FileStatus, CommitEvent
 from gl2p.helpers import pathify
 from gl2p.network import RateLimitedAsyncRequestHandler
 
@@ -69,19 +69,13 @@ class GitLabOrigin(Origin):
 
         async_client = RateLimitedAsyncRequestHandler()
         diffs = async_client.get_batch(urls)
+        
+        discussions = {commit.id: commit.discussions.list(all=True) for commit in commits}
 
-        disc = {commit.id: commit.discussions.list(all=True) for commit in commits}
-        for sha, discussion in disc.items():
-            print(sha, " -- ", discussion)
-            for d in discussion:
-                for note in d.attributes.get("notes"):
-                    if note.get("system"):
-                        print(note)
-
-        data = namedtuple("data", "path commits diffs issues")
+        data = namedtuple("data", "path commits discussions diffs issues")
         path = urlparse(purl).path
         issues = []
-        self.data = data(path, commits, diffs, issues)
+        self.data = data(path, commits, discussions, diffs, issues)
 
     def process(self):
         nametables = {}
@@ -143,5 +137,15 @@ class GitLabOrigin(Origin):
                 files.append(f)
             commit._update_attrs({"files": files})
             commits.append(commit)
+
+        # add events to commits
+        # events are already sorted ascending by date
+        for commit, discussion in zip(commits, self.data.discussions.values()):
+            events = []
+            for entry in discussion:
+                for note in entry.attributes.get("notes"):
+                    events.append(CommitEvent(note))
+
+            commit._update_attrs({"events": events})
 
         return Repository(self.data.path, commits, self.data.issues, nametables)
