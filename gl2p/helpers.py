@@ -34,11 +34,9 @@ def url_validator(url):
     except:
         return False
 
-def unique_id(*strings):
-    # probabilistic unique hash
-    # based on uuid5 (sha1)
+def unique_id(strings=[], prefix="ID"):
+    # probabilistic-unique hash based on uuid5 (SHA1)
+    # add prefix to distinguish namespaces
     strings = map(str, sorted(strings))
     string = "".join(strings)
-    # avoid collision with commit shas by prepending "ID-"
-    return "ID-" + uuid.uuid5(uuid.NAMESPACE_DNS, string).hex
-
+    return prefix + "-" + uuid.uuid5(uuid.NAMESPACE_DNS, string).hex
