@@ -14,6 +14,7 @@
 #
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
+import re
 from copy import deepcopy
 from dataclasses import dataclass, field
 from collections.abc import MutableMapping
@@ -106,6 +107,30 @@ class NameTable(MutableMapping):
         return NameTable(store)             
 
 
+
+class CommitEvent:
+
+    def __init__(self, note):
+        self.id = note.get("id")
+        self.body = note.get("body", "")
+        self.initiator = note.get("author").get("name")
+        self.reference = None
+        self.target = self.conclude_target(note)
+        self.date = note.get("created_at")
+
+    def conclude_target(self, note):
+        if not note.get("system"):
+            return ""
+        if "commit" in self.body:
+            self.reference = "COMMIT"
+            return self.body.split(" ")[-1]
+        elif "issue" in self.body:
+            self.reference = "ISSUE"
+        elif "merge request" in self.body:
+            self.reference = "MERGE_REQUEST"
+        return re.findall(r'\d+', self.body)[0]
+
+        
 @dataclass
 class Repository:
 
