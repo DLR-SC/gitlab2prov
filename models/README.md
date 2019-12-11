@@ -27,6 +27,35 @@ A list of events with their respective description will be added soon.
 
 
 ## Issue Model
+
+### GitLab Issue Events
+The GitLab API does not define Issue Events as fine grained as the GitHub API.  
+Still, a lot of actions that occur on Issues can be found in other ressources provided by the API.  
+The following list describes an extended amount of Issue Events pieced together from multiple API ressources.  
+
+| Event                 | Description                                                  | API Resources                                       |
+|-----------------------|--------------------------------------------------------------|-----------------------------------------------------|
+| opened                | Issue opened.                                                | Issue Events or System Note from Issue Discussions. |
+| closed                | Issue closed.                                                | Issue Events or System Note from Issue Discussions. |
+| reopened              | Issue reopened.                                              | Issue Events or System Note from Issue Discussions. |
+| locked                | Issue has been locked.                                       | System Note from Issue Discussions.                 |
+| assigned              | Assignee assigned to Issue.                                  | System Note from Issue Discussions.                 |
+| unassigned            | Assignee unassigned from Issue.                              | System Note from Issue Discussions.                 |
+| mentioned             | Issue mentioned in Commit, Issue, Merge Request.             | System Note from Issue Discussions.                 |
+| changed_due_date      | Due date changed.                                            | System Note from Issue Discussions.                 |
+| removed_due_date      | Due date removed.                                            | System Note from Issue Discussions.                 |
+| changed_description   | Issue description changed.                                   | System Note from Issue Discussions.                 |
+| changed_title         | Issue title changed.                                         | System Note from Issue Discussions.                 |
+| changed_milestone     | Issue milestone changed.                                     | System Note from Issue Discussions.                 |
+| removed_milestone     | Issue milestone removed.                                     | System Note from Issue Discussions.                 |
+| added_time_spent      | Added amount of time to time spent tracker.                  | System Note from Issue Discussions.                 |
+| subtracted_time_spent | Subtracted amount of time from time spent tracker.           | System Note from Issue Discussions.                 |
+| removed_time_spent    | Removed time spent from tracker. Set value to no time spent. | System Note from Issue Discussions.                 |
+| changed_time_estimate | Changed time estimate.                                       | System Note from Issue Discussions.                 |
+| removed_time_estimate | Removed time estimate.                                       | System Note from Issue Discussions.                 |
+| awarded_emoji         | Emoji has been awarded to Issue, Note.                       | AwardEmojis on Issues, Notes.                       |
+
+
 #### Issue Model - New Issue
 A new Issue.
 ![A new Issue](./pngs/issue_model_new_issue.png)
