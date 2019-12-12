@@ -43,9 +43,10 @@ The following list describes an extended amount of Issue Events pieced together 
 | opened                | Issue opened.                                                | Issue Events or System Note from Issue Notes.       |
 | closed                | Issue closed.                                                | Issue Events or System Note from Issue Notes.       |
 | reopened              | Issue reopened.                                              | Issue Events or System Note from Issue Notes.       |
-| added_label           | Label added to Issue.                                        | Issue Label Event or System Note from Issue Notes.  |
-| removed_label         | Label removed from Issue.                                    | Issue Label Event or System Note from Issue Notes.  |
-| commented             | Added comment to Issue.                                      | Notes on Issues, Non-System Notes from Issue Notes. |
+| added_label           | Label added to Issue.                                        | Issue Label Event                                   |
+| removed_label         | Label removed from Issue.                                    | Issue Label Event                                   |
+| awarded_emoji         | Emoji awarded to Issue, Note.                                | AwardEmojis on Issues, Notes.                       |
+| commented             | Added comment to Issue.                                      | Non-System Notes of Issue Notes.                    |
 | assigned              | Assignee assigned to Issue.                                  | System Note from Issue Notes.                       |
 | unassigned            | Assignee unassigned from Issue.                              | System Note from Issue Notes.                       |
 | mentioned             | Issue mentioned in Commit, Issue, Merge Request.             | System Note from Issue Notes.                       |
@@ -62,7 +63,8 @@ The following list describes an extended amount of Issue Events pieced together 
 | removed_time_estimate | Removed time estimate.                                       | System Note from Issue Notes.                       |
 | locked                | Issue locked.                                                | System Note from Issue Notes.                       |
 | unlocked              | Issue unlocked.                                              | System Note from Issue Notes.                       |
-| awarded_emoji         | Emoji awarded to Issue, Note.                                | AwardEmojis on Issues, Notes.                       |
+| moved_to              | Issue was moved to other project.                            | System Note from Issue Notes.                       |
+| moved_from            | Issue was moved from other project to this project.          | System Note from Issue Notes.                       |
 
 #### Issue Model - New Issue
 A new Issue.
@@ -71,8 +73,3 @@ A new Issue.
 #### Issue Model - New Issue Event
 An issue event occuring on an issue entity.
 ![A new Issue Event](./pngs/issue_model_new_issue_event.png)
-
-#### Issue Model - Issue Marked as Duplicate
-An issue that got marked as a duplicate. 
-Combined Model from New Issue Event and Issue Marked as Duplicate.
-![Issue that got marked as a duplicate](./pngs/issue_model_marked_as_duplicate.png)
