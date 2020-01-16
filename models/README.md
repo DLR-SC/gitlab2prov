@@ -1,75 +1,110 @@
-# PROV Models
+# :art: Provenance Model
 
-## Commit Model
-#### Commit Model - Add File
-A commit adding a new file.  
-![Adding Files](./pngs/commit_model_add_file.png)
+### Brew your own plots.
 
-#### Commit Model - Modify File
-A commit modifying an existing file.  
-![Commit modifying a file](./pngs/commit_model_modify_file.png)
+```bash
+❯ python plot.py -h
+usage: plot.py [-h] [--format FORMAT] directory
 
-#### Commit Model - Delete File
-A commit deleting an existing file.  
-The commit only marks an existing file version entity as Invalidated.
-It does not add an own file version entity.
-![Commit deleting a file](./pngs/commit_model_delete_file.png)
+Plot PROV models.
 
-#### Commit Model - New Commit
-A commit entity and its creation relations.
-![Commit entity creation](./pngs/commit_model_new_commit.png)
+positional arguments:
+  directory        output file directory
 
-#### Commit Model - New Commit Event
-A commit event occuring on a commit entity.
-Events can be comments, reactions (AwardEmojis), label events, discussions, merge requests, etc.  
+optional arguments:
+  -h, --help       show this help message and exit
+  --format FORMAT  output format (default .svg)
+```
 
-| Event     | Description                                       | API Resources                             |
-|-----------|---------------------------------------------------|-------------------------------------------|
-| commented | Added comment to Commit.                          | Non-System Notes from Commit Discussions. |
-| mentioned | Commit mentioned in Commit, Issue, Merge Request. | System Notes from Commit Discussions.     |
+**Example**
 
-![Event on commit entity](./pngs/commit_model_new_commit_event.png)
+```bash
+❯ python plot.py --format=pdf pdfs/
+Plotting: pdfs/commit-add-file.pdf
+Plotting: pdfs/commit-modify-file.pdf
+Plotting: pdfs/commit-delete-file.pdf
+Plotting: pdfs/resource-creation-commit.pdf
+Plotting: pdfs/resource-event.pdf
+Plotting: pdfs/resource-creation.pdf
+Done.
+```
 
+## `git` Commit Model
 
-## Issue Model
+#### Adding a file
+![Adding a file.](./svgs/commit-add-file.svg)
 
-### GitLab Issue Events
-The GitLab API does not define Issue Events as fine grained as the GitHub API.  
-Still, a lot of actions that occur on Issues can be found in other ressources provided by the API.  
-The following list describes an extended amount of Issue Events pieced together from multiple API ressources.  
+---
 
-| Event                 | Description                                                  | API Resources                                       |
-|-----------------------|--------------------------------------------------------------|-----------------------------------------------------|
-| opened                | Issue opened.                                                | Issue Events or System Note from Issue Notes.       |
-| closed                | Issue closed.                                                | Issue Events or System Note from Issue Notes.       |
-| reopened              | Issue reopened.                                              | Issue Events or System Note from Issue Notes.       |
-| added_label           | Label added to Issue.                                        | Issue Label Event                                   |
-| removed_label         | Label removed from Issue.                                    | Issue Label Event                                   |
-| awarded_emoji         | Emoji awarded to Issue, Note.                                | AwardEmojis on Issues, Notes.                       |
-| commented             | Added comment to Issue.                                      | Non-System Notes of Issue Notes.                    |
-| assigned              | Assignee assigned to Issue.                                  | System Note from Issue Notes.                       |
-| unassigned            | Assignee unassigned from Issue.                              | System Note from Issue Notes.                       |
-| mentioned             | Issue mentioned in Commit, Issue, Merge Request.             | System Note from Issue Notes.                       |
-| changed_due_date      | Due date changed.                                            | System Note from Issue Notes.                       |
-| removed_due_date      | Due date removed.                                            | System Note from Issue Notes.                       |
-| changed_description   | Issue description changed.                                   | System Note from Issue Notes.                       |
-| changed_title         | Issue title changed.                                         | System Note from Issue Notes.                       |
-| changed_milestone     | Issue milestone changed.                                     | System Note from Issue Notes.                       |
-| removed_milestone     | Issue milestone removed.                                     | System Note from Issue Notes.                       |
-| added_time_spent      | Added amount of time to time spent tracker.                  | System Note from Issue Notes.                       |
-| subtracted_time_spent | Subtracted amount of time from time spent tracker.           | System Note from Issue Notes.                       |
-| removed_time_spent    | Removed time spent from tracker. Set value to no time spent. | System Note from Issue Notes.                       |
-| changed_time_estimate | Changed time estimate.                                       | System Note from Issue Notes.                       |
-| removed_time_estimate | Removed time estimate.                                       | System Note from Issue Notes.                       |
-| locked                | Issue locked.                                                | System Note from Issue Notes.                       |
-| unlocked              | Issue unlocked.                                              | System Note from Issue Notes.                       |
-| moved_to              | Issue was moved to other project.                            | System Note from Issue Notes.                       |
-| moved_from            | Issue was moved from other project to this project.          | System Note from Issue Notes.                       |
+#### Modifying a file
+![Modifying a file.](./svgs/commit-modify-file.svg)
 
-#### Issue Model - New Issue
-A new Issue.
-![A new Issue](./pngs/issue_model_new_issue.png)
+---
 
-#### Issue Model - New Issue Event
-An issue event occuring on an issue entity.
-![A new Issue Event](./pngs/issue_model_new_issue_event.png)
+#### Deleting a file
+![Deleting a file.](./svgs/commit-delete-file.svg)
+
+## The GitLab Resource Model
+
+Most `git`-hosting platforms provide not only a `git` server but also platform specific features.  
+
+For example, GitLab has an issue tracking system, allows discussions for each recorded `git` commit and provides the ability to post, discuss and review merge requests, etc.  
+
+We model these features as event-driven resources.
+
+#### Resource Creation
+![The creation of a resource.](./svgs/resource-creation.svg)
+
+---
+
+#### Commit Resource Creation - Special Case of Resource Creation
+![The creation of a commit resource.](./svgs/resource-creation-commit.svg)
+
+---
+
+#### Resource Events
+![An event occuring on a resource.](./svgs/resource-event.svg)
+
+---
+
+### List of Resource Events
+
+| Event                   | Issue Resource |  Merge Request Resource | Commit Resource |
+|:-----------------------:|:--------------:|:-----------------------:|:---------------:|
+| comment                 | x              | x                       | x               |
+| mention                 | x              | x                       | x               |
+| award\_emoji            | x              | x                       | x               |
+| award\_note\_emoji      | x              | x                       |                 |
+| close                   | x              | x                       |                 |
+| open                    | x              | x                       |                 |
+| reopen                  | x              | x                       |                 |
+| assign                  | x              | x                       |                 |
+| unassign                | x              | x                       |                 |
+| reassign                | x              | x                       |                 |
+| change\_milestone       | x              | x                       |                 |
+| remove\_milestone       | x              | x                       |                 |
+| add\_spent\_time        | x              | x                       |                 |
+| subtract\_spent\_time   | x              | x                       |                 |
+| remove\_spent\_time     | x              | x                       |                 |
+| lock                    | x              | x                       |                 |
+| unlock                  | x              | x                       |                 |
+| label                   | x              | x                       |                 |
+| unlabel                 | x              | x                       |                 |
+| change\_time\_estimate  | x              | x                       |                 |
+| remove\_time\_estimate  | x              | x                       |                 |
+| move\_to                | x              | x                       |                 |
+| move\_from              | x              | x                       |                 |
+| target\_branch          |                | x                       |                 |
+| wip                     |                | x                       |                 |
+| approve                 |                | x                       |                 |
+| submit\_review          |                | x                       |                 |
+| merge                   |                | x                       |                 |
+| due\_date               | x              |                         |                 |
+| remove\_due\_date       | x              |                         |                 |
+| weight                  | x              |                         |                 |
+| clear\_weight           | x              |                         |                 |
+| confidential            | x              |                         |                 |
+| duplicate               | x              |                         |                 |
+| create\_merge\_request? | x              |                         |                 |
+| relate?                 | x              |                         |                 |
+| move?                   | x              |                         |                 |
