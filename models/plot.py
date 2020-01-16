@@ -30,9 +30,9 @@ commit_add_file = document
 document = prov.model.ProvDocument()
 document.set_default_namespace("gl2p:")
 bundle = document.bundle("repository")
-bundle.entity("file")
 bundle.entity("file_v-1")
 bundle.entity("file_v")
+bundle.entity("file")
 bundle.activity("commit")
 bundle.activity("parent_commit")
 bundle.agent("author")
@@ -145,11 +145,8 @@ def style(dot):
             edge.set_label(abbreviate.get(label, label))
     return dot
 
-
 def plot(title, document, directory, fmt):
 
-    if not fmt:
-        fmt = "svg"
     if not os.path.isdir(directory):
         raise Exception("Not a directory")
     if not directory.endswith("/"):
@@ -160,10 +157,9 @@ def plot(title, document, directory, fmt):
     print(f"Plotting: {directory}{title}.{fmt}")
     dot.write(path=f"{directory}{title}.{fmt}", format=fmt)
 
-
 argparser = argparse.ArgumentParser(description="Plot PROV models.")
-argparser.add_argument("--format", type=str, help="output format.")
-argparser.add_argument("directory", type=str, help="output file directory.")
+argparser.add_argument("--format", type=str, help="output format (defaults to svg)")
+argparser.add_argument("directory", type=str, help="output file directory")
 args = argparser.parse_args()
 directory = args.directory
 fmt = args.format
@@ -219,6 +215,9 @@ supported_formats = [
         "xdot_json",
         "xlib",
 ]
+
+if not fmt:
+    fmt = "svg"
 
 if fmt not in supported_formats:
     raise Exception("Unsupported Format")
