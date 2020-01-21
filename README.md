@@ -1,9 +1,40 @@
 # GitLab2PROV
+
 > GitLab2PROV is a tool to extract provenance information (W3C PROV) from GitLab repositories.
+
+### Usage
+```
+usage: gitlab2prov.py [-h] [--provn PROVN] [--neo4j]
+
+Extract provenance information from a GitLab repository.
+
+optional arguments:
+  -h, --help     show this help message and exit
+  --provn PROVN  output file
+  --neo4j        save to neo4j
+```
+
+### Configuration
+`gitlab2prov` is configured by its config file at `config/config.ini`.
+
+Excerpt from `config/config.ini.example`
+
+```ini
+[GITLAB]
+token = YourTokenHere
+project = RepositoryURL
+rate = RateLimitOfGitLabClient
+
+[NEO4J]
+host = Neo4jURL
+user = YourUsername
+password = YourPassword
+boltport = BOLTPort
+```
 
 ## Setup :rocket:
 ### Installation
-```bash
+```
 # Clone repository via SSH (recommended)
 git clone git@github.com:DLR-SC/gitlab2prov.git
 
@@ -19,33 +50,14 @@ source env/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 ```
-### Configuration
-Excerpt from `config/example.ini`
-```ini
-[GITLAB]
-token= YourTokenHere
-url = GitLabInstanceURL
-project = RepositoryURL
-```
-## Basic Usage
-Keep in mind, the project status is very much **WIP** - this section will change! :wrench: 
+## Credits
+**Software that has provided the foundations for GitLab2PROV**  
+> Martin Stoffers: "Gitlab2Graph", v1.0.0, October 13. 2019, [GitHub Link](https://github.com/DLR-SC/Gitlab2Graph), DOI 10.5281/zenodo.3469385  
 
-At the moment, PROV generation is only viable for **small repositories** (50 commits or less). 
-This will hopefully change in the near future.
-```
-python gitlab2prov.py :repositoryurl:
-```
-Will generate a `.dot` file containing a diagram of the generated PROV records.
-Use the following command to generate a PDF.
-```
-dot -Tpdf prov.dot -o prov.pdf
-```
-**NOTE**: This can take a while - especially for bigger diagrams - as `dot` will spend some time computing the layout.
+> Quentin Pradet: "How do you rate limit calls with aiohttp?", [GitHub Gist](https://gist.github.com/pquentin/5d8f5408cdad73e589d85ba509091741), MIT LICENSE
 
-## About GitLab2PROV
-GitLab2PROV is based on GitLab2Graph by Martin Stoffers:  
-Martin Stoffers: "Gitlab2Graph", v1.0.0, October 13. 2019, [GitHub Link](https://github.com/DLR-SC/Gitlab2Graph), DOI 10.5281/zenodo.3469385
 
-The PROV model used in GitLab2PROV is based on the following papers:
-- GitHub2PROV: Provenance for Supporting Software Project Management
-- Git2PROV: Exposing Version Control System Content as W3C PROV
+**Papers that GitLab2PROV is based on**:
+> GitHub2PROV: Provenance for Supporting Software Project Management 
+
+> Git2PROV: Exposing Version Control System Content as W3C PROV
