@@ -183,7 +183,7 @@ class CommitResourceProcessor:
                 initiator = PROVNode(f"user-{parsed_event.initiator}", labels=initiator_label)
 
                 event_label = {PROV_TYPE: "commit_event", "event_type": parsed_event.type}
-                event = PROVActivity(f"commit-resource-event-{parsed_event.identifier}", labels={PROV_TYPE: "resource_event", "type": parsed_event.type}, start=parsed_event.created_at, end=parsed_event.created_at)
+                event = PROVActivity(f"commit-resource-event-{parsed_event.identifier}", labels={PROV_TYPE: "commit_event", "type": parsed_event.type}, start=parsed_event.created_at, end=parsed_event.created_at)
 
                 resource_v_label = {PROV_TYPE: "commit_resource_version"}
                 resource_v = PROVNode(f"{resource.identifier}-version-{parsed_event.identifier}", labels=resource_v_label)
