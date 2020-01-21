@@ -1,5 +1,7 @@
 # GitLab2PROV
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 > GitLab2PROV is a tool to extract provenance information (W3C PROV) from GitLab repositories.
 
 ### Usage
