@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2019 German Aerospace Center (DLR/SC).
+# Copyright (c) 2019-2020 German Aerospace Center (DLR/SC).
 # All rights reserved.
 #
 # This file is part of gitlab2prov.
@@ -16,79 +16,60 @@
 #
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
-# stdlib imports
-from urllib.parse import urlparse
 import argparse
-import subprocess
-# third party imports
-from provdbconnector import ProvDb
-from provdbconnector import Neo4jAdapter
-from prov.dot import prov_to_dot
-# local imports
-from gl2p.helpers import url_validator
-from gl2p.commons import URLException
-from gl2p.config import CONFIG
-from gl2p.origin import GitLabOrigin
-from gl2p.translator import Translator
+import asyncio
+
+from provdbconnector import Neo4jAdapter, ProvDb
+
+from gl2p.config import CONFIG, PROJECT, TOKEN, RATE_LIMIT
+from gl2p.gitlab import ProjectWrapper
+from gl2p.pipelines import CommitPipeline, CommitResourcePipeline
 
 
-class Workflow:
+def main(provn, neo4j):
+    c = ProjectWrapper(PROJECT, TOKEN, RATE_LIMIT)
 
-    def __init__(self):
-        self.data = None
+    print(f"Generating PROV document for {PROJECT} at {RATE_LIMIT} req/sec")
+    
+    pipelines = [
+        CommitPipeline(c),
+        CommitResourcePipeline(c)
+    ]
 
-        self.source = None
-        self.translator = Translator()
-        self.connection_handler = None
+    docs = []
+    for pipe in pipelines:
+        data = asyncio.run(pipe.fetch())
+        processed = pipe.process(*data)
+        document = pipe.create_model(processed)
+        docs.append(document)
 
-    def drain(self):
-        self.source.fetch()
-        self.data = self.source.process()
+    document, *remaining = docs
+    for doc in remaining:
+        document.update(doc)
 
-    def translate(self):
-        return self.translator.run(self.data)
+    document = document.unified()
+    
+    provn = provn if provn else "out.provn"
 
-    def commit(self):
-        raise NotImplementedError()
-
-
-def main():
-    # -- flow definition --
-    workflow = Workflow()
-
-    # -- choose correct source --
-    parsed = urlparse(args.url)
-    if "gitlab" in parsed.netloc:
-        workflow.source = GitLabOrigin()
-    else:
+    with open(f"{provn}", "w") as f:
+        print(document.get_provn(), file=f) 
+    
+    if not neo4j:
         return
 
-    # -- work the source --
-    workflow.drain()
-    print("--» SOURCE DRAINED!")
+    auth_info = {
+        "user_name": CONFIG["NEO4J"]["user"],
+        "user_password": CONFIG["NEO4J"]["password"],
+        "host": "localhost:7687"
+        }
 
-    # -- translate raw data --
-    document = workflow.translate()
-    print("-- Created document.")
+    prov_api = ProvDb(adapter=Neo4jAdapter, auth_info=auth_info)
+    prov_api.save_document(document)
 
-    # -- print to file --
-    provdoc = open("provdoc", "w")
-    print("-- Printing doc.")
-    print(document.get_provn(), file=provdoc)
-    
-    # -- create dot file --
-    # dotfile = open("prov.dot", "w")
-    # print(prov_to_dot(document), file=dotfile)
-
-    # -- compute layout as pdf --
-    # subprocess.run(["dot","-Tpdf", "prov.dot", "-o", "prov.pdf"])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GitLab repo to prov doc")
-    parser.add_argument("url", help="url to gilab repository")
+    parser.add_argument("--provn", help="output file in provn format")
+    parser.add_argument("--neo4j", help="set flag to save to neo4j db", action="store_true")
     args = parser.parse_args()
-
-    if not url_validator(args.url):
-        raise URLException("URL invalid.")
-    CONFIG["GITLAB"]["project"] = args.url
-    main()
+    main(args.provn, args.neo4j)
