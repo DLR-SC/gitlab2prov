@@ -15,20 +15,17 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
-# standard lib imports
 import os
 from configparser import ConfigParser
-# third party imports
-# local imports
-from gl2p.commons import ConfigurationException
 
 
-CONFIG_PATH = "config/config.ini"
+CONFIG_PATH = "./config/config.ini"
+
 VALID_CONFIG = {
         "GITLAB":
         [
             "token",
-            "url",
+            "rate",
             "project"
         ],
         "NEO4J":
@@ -39,11 +36,23 @@ VALID_CONFIG = {
         ]
     }
 
+class ConfigurationException(Exception):
+    pass
+
 if not os.path.exists(CONFIG_PATH):
     raise ConfigurationException(f"Missing CONFIG file: {CONFIG_PATH}")
 
-CONFIG = ConfigParser()
-CONFIG.read(CONFIG_PATH)
+config = ConfigParser()
+config.read(CONFIG_PATH)
+
+CONFIG = config
+TOKEN = config.get("GITLAB", "token")
+PROJECT = config.get("GITLAB", "project")
+RATE_LIMIT = int(config.get("GITLAB", "rate"))
+NEO4J_HOST = config.get("NEO4J", "host")
+NEO4J_USER = config.get("NEO4J", "user")
+NEO4J_PASSWORD = config.get("NEO4J", "password")
+NEO4J_BOLT_PORT = config.get("NEO4J", "bolt port")
 
 for section in VALID_CONFIG.keys():
     if section not in CONFIG.sections():
@@ -51,4 +60,3 @@ for section in VALID_CONFIG.keys():
     for param in VALID_CONFIG[section]:
         if param not in CONFIG[section]:
             raise ConfigurationException(f"Parameter {param} in section {section} is missing!")
-# TODO: also check types of content ?
