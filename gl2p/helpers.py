@@ -14,29 +14,47 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
-from urllib.parse import urlparse
+import urllib
 import uuid
+import datetime
+from typing import Dict, List, Any, Iterator
 
-def pathify(url):
-    return urlparse(url).path.replace("/", "", 1).replace("/", "%2F")
 
-def namify(string):   
-    replacements = {"-": ["/", ".", " ", ";", ":", "%"]}
-    for rep, sublist in replacements.items():
-        for sub in sublist:
-            string = string.replace(sub, rep)
-    return string
+def parse_time(s):
 
-def url_validator(url):
-    try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc, result.path])
-    except:
-        return False
+    if not isinstance(s, str):
+        return s
 
-def unique_id(strings=[], prefix="ID"):
-    # probabilistic-unique hash based on uuid5 (SHA1)
-    # add prefix to distinguish namespaces
-    strings = map(str, sorted(strings))
-    string = "".join(strings)
-    return prefix + "-" + uuid.uuid5(uuid.NAMESPACE_DNS, string).hex
+    fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
+    date = datetime.datetime.strptime(s, fmt)
+
+    return date
+
+def date(resource):
+    fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
+    creation = datetime.datetime.strptime(resource["created_at"], fmt)
+    return creation
+
+def by_date(resource):
+    fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
+    creation = datetime.datetime.strptime(resource["created_at"], fmt)
+    return creation
+
+
+def chunks(l: List[Any], n: int) -> Iterator[List[Any]]:
+    """Generator for n-sized chunks of list l."""
+
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
+
+def url_encoded_path(url: str) -> str:
+    """Extract project path from url and replace "/" by "%2F"."""
+
+    return urllib.parse.urlparse(url).path[1:].replace("/", "%2F")
+
+
+def qname(string):
+    """Return uuid5 of *string*."""
+
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, string))
