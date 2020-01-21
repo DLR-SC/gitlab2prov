@@ -60,7 +60,7 @@ def main(provn, neo4j):
     auth_info = {
         "user_name": CONFIG["NEO4J"]["user"],
         "user_password": CONFIG["NEO4J"]["password"],
-        "host": "localhost:7687"
+        "host": f"{CONFIG['NEO4J']['host']}:{CONFIG['NEO4J']['boltport']}"
         }
 
     prov_api = ProvDb(adapter=Neo4jAdapter, auth_info=auth_info)
@@ -68,8 +68,8 @@ def main(provn, neo4j):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="GitLab repo to prov doc")
-    parser.add_argument("--provn", help="output file in provn format")
-    parser.add_argument("--neo4j", help="set flag to save to neo4j db", action="store_true")
+    parser = argparse.ArgumentParser(description="Extract provenance information from a GitLab repository.")
+    parser.add_argument("--provn", help="output file")
+    parser.add_argument("--neo4j", help="save to neo4j", action="store_true")
     args = parser.parse_args()
     main(args.provn, args.neo4j)

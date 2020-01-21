@@ -1,7 +1,7 @@
 [GITLAB]
 token = YourTokenHere
-url = GitLabInstanceURL
 project = RepositoryURL
+rate = RateLimitOfGitLabClient
 
 [NEO4J]
 host = Neo4jURL

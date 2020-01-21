@@ -52,7 +52,7 @@ RATE_LIMIT = int(config.get("GITLAB", "rate"))
 NEO4J_HOST = config.get("NEO4J", "host")
 NEO4J_USER = config.get("NEO4J", "user")
 NEO4J_PASSWORD = config.get("NEO4J", "password")
-NEO4J_BOLT_PORT = config.get("NEO4J", "bolt port")
+NEO4J_BOLT_PORT = config.get("NEO4J", "boltport")
 
 for section in VALID_CONFIG.keys():
     if section not in CONFIG.sections():
