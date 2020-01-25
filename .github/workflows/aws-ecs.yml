@@ -25,7 +25,7 @@
 #    and best practices on handling the access key credentials.
 
 on:
-  push:
+  release:
     branches:
       - master
 
