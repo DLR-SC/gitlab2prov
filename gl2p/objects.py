@@ -17,73 +17,71 @@
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, NamedTuple, Optional, Union
-
-from gl2p.helpers import qname
+from typing import List, Dict, Union, NamedTuple
 
 
-@dataclass
-class PROVNode:
+
+class PROVNode(NamedTuple):
     """
-    A node ready to insert into a prov document.
+    Represents a node in a provenance graph.
     """
-    
-    identifier: str
-    labels: Dict[str, str] = field(default_factory=dict)
-
-    def __post_init__(self):
-        """
-        Convert string identifier to uuid5 representation.
-        """
-        self.identifier = qname(str(self.identifier))
-
-@dataclass
-class PROVActivity(PROVNode):
-
-    start: Optional[datetime.datetime] = None
-    end: Optional[datetime.datetime] = None
+    id: str
+    label: Dict[str, str] = {}
 
 
-@dataclass
-class Addition:
+class PROVActivity(NamedTuple):
+    """
+    Represents an activity node in a provenance graph.
+    """
+    id: str
+    start: datetime.datetime
+    end: datetime.datetime
+    label: Dict[str, str] = {}
 
+
+class Addition(NamedTuple):
+    """
+    Represents a file addition for a commit activity.
+    """
     file: PROVNode
     file_v: PROVNode
 
 
-@dataclass
-class Modification:
-
+class Modification(NamedTuple):
+    """
+    Represents a file modification for a commit activity.
+    """
     file: PROVNode
     file_v: PROVNode
     file_v_1: List[PROVNode]
 
 
-@dataclass
-class Deletion:
-
+class Deletion(NamedTuple):
+    """
+    Represents a file deletion for a commit activity.
+    """
     file: PROVNode
     file_v: PROVNode
 
 
-@dataclass
-class Commit:
-
+class Commit(NamedTuple):
+    """
+    Represents a commit.
+    """
     author: PROVNode
-    parent_commits: PROVNode
     committer: PROVNode
     commit: PROVNode
+    parents: PROVNode
     files: List[Union[Addition, Modification, Deletion]]
 
-@dataclass
-class CommitResourceCreation:
+
+class CommitResourceCreation(NamedTuple):
     """
-    Container for everything commit resource creation related.
+    Represents the creation of a commit resource.
 
     Special case of resource creation. 
-    Linkage of commit model and commit resource model.
+    Link of commit model and commit resource model.
     """
-
     committer: PROVNode
     commit: PROVNode
     resource_creation: PROVNode
@@ -91,12 +89,10 @@ class CommitResourceCreation:
     resource_v: PROVNode
 
 
-@dataclass
-class Event:
+class Event(NamedTuple):
     """
-    A resource event.
+    Represents a resource event.
     """
-
     initiator: PROVNode
     event: PROVNode
     previous_event: PROVNode
@@ -105,11 +101,9 @@ class Event:
     resource_v_1: PROVNode
 
 
-@dataclass
-class Resource:
+class Resource(NamedTuple):
     """
-    A resource.
+    Represents a resource.
     """
-
     creation: CommitResourceCreation
     events: List[Event]

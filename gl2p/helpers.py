@@ -20,41 +20,39 @@ import uuid
 from typing import Any, Dict, Iterator, List
 
 
-def parse_time(s):
-
-    if not isinstance(s, str):
-        return s
-
+def ptime(s: str) -> datetime.datetime:
+    """
+    Parse datetimestring to datetime object.
+    """
     fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
     date = datetime.datetime.strptime(s, fmt)
-
     return date
 
-def date(resource):
-    fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
-    creation = datetime.datetime.strptime(resource["created_at"], fmt)
-    return creation
 
-def by_date(resource):
-    fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
-    creation = datetime.datetime.strptime(resource["created_at"], fmt)
-    return creation
+def by_date(resource: Dict[str, Any]) -> datetime.datetime:
+    """
+    Parse value of key 'created_at' of resource to datetime object.
+    """
+    return ptime(resource["created_at"])
 
 
 def chunks(l: List[Any], n: int) -> Iterator[List[Any]]:
-    """Generator for n-sized chunks of list l."""
-
+    """
+    Generator for n-sized chunks of list l.
+    """
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
 
 def url_encoded_path(url: str) -> str:
-    """Extract project path from url and replace "/" by "%2F"."""
-
+    """
+    Extract project path from url and replace "/" by "%2F".
+    """
     return urllib.parse.urlparse(url).path[1:].replace("/", "%2F")
 
 
-def qname(string):
-    """Return uuid5 of *string*."""
-
-    return str(uuid.uuid5(uuid.NAMESPACE_DNS, string))
+def qname(s: str):
+    """
+    Return uuid5 of *string*. Used to create unique identifiers.
+    """
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, s))

@@ -18,15 +18,21 @@
 
 import argparse
 import asyncio
-
 from provdbconnector import Neo4jAdapter, ProvDb
-
 from gl2p.config import CONFIG, PROJECT, TOKEN, RATE_LIMIT
 from gl2p.gitlab import ProjectWrapper
 from gl2p.pipelines import CommitPipeline, CommitResourcePipeline
 
 
-def main(provn, neo4j):
+def main():
+    parser = argparse.ArgumentParser(description="Extract provenance information from a GitLab repository.")
+    parser.add_argument("--provn", help="output file")
+    parser.add_argument("--config", help="specify config file path")
+    parser.add_argument("--neo4j", help="save to neo4j", action="store_true")
+    args = parser.parse_args()
+
+    provn, neo4j = args.provn, args.neo4j
+
     c = ProjectWrapper(PROJECT, TOKEN, RATE_LIMIT)
 
     print(f"Generating PROV document for {PROJECT} at {RATE_LIMIT} req/sec")
@@ -53,7 +59,7 @@ def main(provn, neo4j):
 
     with open(f"{provn}", "w") as f:
         print(document.get_provn(), file=f) 
-    
+
     if not neo4j:
         return
 
@@ -68,8 +74,4 @@ def main(provn, neo4j):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract provenance information from a GitLab repository.")
-    parser.add_argument("--provn", help="output file")
-    parser.add_argument("--neo4j", help="save to neo4j", action="store_true")
-    args = parser.parse_args()
-    main(args.provn, args.neo4j)
+    main()
