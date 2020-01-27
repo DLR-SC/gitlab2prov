@@ -18,7 +18,6 @@
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
 from datetime import datetime
-from gl2p.helpers import qname, date
 
 @dataclass
 class GitLabResourceEvent:
@@ -46,7 +45,7 @@ class EventParser:
         initiator = sysnote.get("author").get("name")  # TODO: match this with real user accounts
         type_ = "system note"
         labels = {"body": sysnote.get("body")} 
-        created_at = date(sysnote)
+        created_at = sysnote.get("created_at")
         return GitLabResourceEvent(identifier, initiator, type_, labels, created_at)
 
     @staticmethod
@@ -56,5 +55,5 @@ class EventParser:
         initiator = note["author"]["name"]
         type_ = "note"
         labels = {"body": note["body"]}
-        created_at = date(note)
+        created_at = note.get("created_at")
         return GitLabResourceEvent(identifier, initiator, type_, labels, created_at)
