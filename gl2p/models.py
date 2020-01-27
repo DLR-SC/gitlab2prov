@@ -16,7 +16,7 @@
 
 
 from dataclasses import dataclass, InitVar, field
-from typing import Set, Optional
+from typing import Set, Optional, Any
 from prov.model import ProvDocument, ProvBundle
 
 from gl2p.objects import *
