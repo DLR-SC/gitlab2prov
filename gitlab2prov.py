@@ -18,10 +18,11 @@
 
 import argparse
 import asyncio
-from provdbconnector import Neo4jAdapter, ProvDb
-from gl2p.config import CONFIG, PROJECT, TOKEN, RATE_LIMIT
+
+from gl2p.config import CONFIG, PROJECT, RATE_LIMIT, TOKEN
 from gl2p.gitlab import ProjectWrapper
 from gl2p.pipelines import CommitPipeline, CommitResourcePipeline
+from provdbconnector import Neo4jAdapter, ProvDb
 
 
 def main():

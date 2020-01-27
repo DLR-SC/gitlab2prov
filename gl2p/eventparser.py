@@ -17,13 +17,10 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-<<<<<<< HEAD
 from typing import Any, Dict, Optional
 
-from gl2p.helpers import date, qname
+from gl2p.helpers import qname
 
-=======
->>>>>>> c719a3197b6a6b3cfa24ec51e62373303167dc5b
 
 @dataclass
 class GitLabResourceEvent:

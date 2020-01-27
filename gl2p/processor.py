@@ -15,23 +15,14 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
-<<<<<<< HEAD
+
 from copy import deepcopy
 from dataclasses import InitVar, asdict, dataclass, field
-from typing import Any, Dict, Iterable, List, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from gl2p.commons import File, FileStatus
 from gl2p.eventparser import EventParser
-from gl2p.helpers import by_date, parse_time, qname
-=======
-from dataclasses import dataclass
-from typing import Optional, Dict, List, Any, Tuple
-from prov.constants import PROV_TYPE, PROV_ROLE
-from gl2p.eventparser import EventParser
-from gl2p.register import FileNameRegister
-from gl2p.commons import File, FileStatus
-from gl2p.helpers import qname, by_date, ptime
->>>>>>> c719a3197b6a6b3cfa24ec51e62373303167dc5b
+from gl2p.helpers import by_date, ptime, qname
 from gl2p.objects import *
 from gl2p.register import FileNameRegister
 from prov.constants import PROV_LABEL, PROV_ROLE, PROV_TYPE
@@ -304,4 +295,3 @@ class CommitResourceProcessor:
             rv_1 = rv
 
         return events
-

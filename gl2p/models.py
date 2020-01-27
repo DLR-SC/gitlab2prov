@@ -16,17 +16,15 @@
 
 
 from dataclasses import InitVar, dataclass, field
-from typing import Set, Optional, Any
+from typing import Any, Optional, Set
 
 from gl2p.commons import FileStatus
-from gl2p.helpers import parse_time as date
+#from gl2p.helpers import parse_time as date
 from gl2p.helpers import qname
+from gl2p.objects import *
 from gl2p.objects import (Addition, CommitResourceCreation, Deletion, Event,
                           Modification, PROVNode, Resource)
-from prov.model import ProvDocument, ProvBundle
-
-
-from gl2p.objects import *
+from prov.model import ProvBundle, ProvDocument
 
 
 @dataclass
