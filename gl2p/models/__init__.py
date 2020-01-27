@@ -18,12 +18,8 @@
 from dataclasses import InitVar, dataclass, field
 from typing import Any, Optional, Set
 
-from gl2p.commons import FileStatus
-#from gl2p.helpers import parse_time as date
-from gl2p.helpers import qname
-from gl2p.objects import *
-from gl2p.objects import (Addition, CommitResourceCreation, Deletion, Event,
-                          Modification, PROVNode, Resource)
+from gl2p.objects import (Addition, Deletion,
+                          Modification, Resource, Commit)
 from prov.model import ProvBundle, ProvDocument
 
 
@@ -135,7 +131,7 @@ class CommitResource(Model):
         """
         bundle = self.bundle
 
-        # creation 
+        # creation
         creation, _ = resource
 
         committer, commit, rcreation, r, rv = creation
@@ -154,7 +150,7 @@ class CommitResource(Model):
         bundle.wasGeneratedBy(r.id, rcreation.id)
         bundle.wasGeneratedBy(rv.id, rcreation.id)
         bundle.specializationOf(rv.id, r.id)
-        
+
         # event chain
         _, events = resource
 
