@@ -21,7 +21,7 @@ from collections import UserDict, defaultdict, deque
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from functools import reduce
-from typing import Any, Dict, Generator, Iterator, List, Optional, Set
+from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Union
 
 
 @dataclass
