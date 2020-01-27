@@ -24,14 +24,14 @@ Excerpt from `config/config.ini.example`
 
 ```ini
 [GITLAB]
-token = YourTokenHere
-project = RepositoryURL
-rate = RateLimitOfGitLabClient
+token = GitLabAPIToken
+project = ProjectUrl
+rate = RateLimit
 
 [NEO4J]
-host = Neo4jURL
-user = YourUsername
-password = YourPassword
+host = Neo4jHost
+user = Username
+password = Password
 boltport = BOLTPort
 ```
 
