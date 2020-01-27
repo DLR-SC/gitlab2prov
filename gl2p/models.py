@@ -15,210 +15,159 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
-from prov.model import ProvDocument
 from dataclasses import dataclass, InitVar, field
-from typing import Set
-from gl2p.helpers import qname
-from gl2p.helpers import parse_time as date
-from gl2p.commons import FileStatus
-from gl2p.objects import PROVNode, Event, CommitResourceCreation, Addition, Modification, Deletion, Resource
+from typing import Set, Optional
+from prov.model import ProvDocument, ProvBundle
+
+from gl2p.objects import *
 
 
-@dataclass 
+@dataclass
 class Model:
-
+    """
+    Model implementation base class for models in ../models.
+    """
     project_id: InitVar[str]
-    doc: ProvDocument = ProvDocument()
+    doc: Optional[ProvDocument] = None
+    bundle: Optional[ProvBundle] = None
 
-    def __post_init__(self, project_id):
-        
+    def __post_init__(self, project_id: str):
+        self.project_id = project_id.replace("%2F", "-")
         self.doc = ProvDocument()
         self.doc.set_default_namespace("gl2p:")
-        self.pb = self.doc.bundle(project_id.replace("%2F", "-"))
+        self.bundle = self.doc.bundle(self.project_id)
 
-    def document(self):
-        """Return self.doc."""
+    def push(self, resource: Any):
+        raise NotImplementedError
 
+    def document(self) -> ProvDocument:
         return self.doc
 
 
 @dataclass
 class Commit(Model):
+    """
+    Model implementation for commit model.
+    """
+    relation_store: Set = field(default_factory=set)
 
-    unique_check: Set = field(default_factory=set)
+    def push(self, resource: Commit) -> None:
+        """
+        Push resource into model document.
+        """
+        bundle = self.bundle
+        author, committer, commit, parents, files = resource
 
-    def push(self, commit):
-        """Populate git commit model."""
+        bundle.agent(*author)
+        bundle.agent(*committer)
+        bundle.activity(*commit)
+        bundle.wasAssociatedWith(commit.id, author.id)
+        bundle.wasAssociatedWith(commit.id, committer.id)
 
-        author = commit.author
-        committer = commit.committer
-        parents = commit.parent_commits
-        files = commit.files
-        commit = commit.commit
-
-        self.pb.agent(author.identifier, other_attributes=author.labels)
-        self.pb.agent(committer.identifier, other_attributes=committer.labels)
-        self.pb.activity(commit.identifier, commit.start, commit.end, other_attributes=commit.labels)
-
-        self.pb.wasAssociatedWith(commit.identifier, committer.identifier)
-        self.pb.wasAssociatedWith(commit.identifier, author.identifier)
-    
-        for parent_commit in parents:
-            self.pb.activity(parent_commit.identifier, parent_commit.start, parent_commit.end, other_attributes=parent_commit.labels)
-            self.pb.wasInformedBy(commit.identifier, parent_commit.identifier)
+        for parent in parents:
+            bundle.activity(*parent)
+            bundle.wasInformedBy(commit.id, parent.id)
 
         for f in files:
-
             if isinstance(f, Addition):
-                self.pb.entity(f.file.identifier, other_attributes=f.file.labels)
-                self.pb.entity(f.file_v.identifier, other_attributes=f.file_v.labels)
-                self.pb.wasGeneratedBy(f.file.identifier, commit.identifier)
-                self.pb.wasGeneratedBy(f.file_v.identifier, commit.identifier)
-                self.pb.wasAttributedTo(f.file.identifier, author.identifier)
-                self.pb.wasAttributedTo(f.file_v.identifier, author.identifier)
-                self.specializationOf(f.file_v.identifier, f.file.identifier)
+                f, fv = f
+                bundle.entity(*f)
+                bundle.entity(*fv)
+                bundle.wasGeneratedBy(f.id, commit.id)
+                bundle.wasGeneratedBy(fv.id, commit.id)
+                bundle.wasAttributedTo(f.id, author.id)
+                bundle.wasAttributedTo(fv.id, author.id)
+                if self.unique_specialization_of(fv.id, f.id):
+                    bundle.specializationOf(fv.id, f.id)
 
-            elif isinstance(f, Modification):
-                self.pb.entity(f.file.identifier, other_attributes=f.file.labels)
-                self.pb.entity(f.file_v.identifier, other_attributes=f.file_v.labels)
-                self.pb.wasAttributedTo(f.file_v.identifier, author.identifier)
-                self.pb.wasGeneratedBy(f.file_v.identifier, commit.identifier)
-                self.specializationOf(f.file_v.identifier, f.file.identifier)
+            if isinstance(f, Modification):
+                f, fv, fv_1s = f
+                bundle.entity(*f)
+                bundle.entity(*fv)
+                bundle.wasAttributedTo(fv.id, commit.id)
+                bundle.wasGeneratedBy(fv.id, commit.id)
+                if self.unique_specialization_of(fv.id, f.id):
+                    bundle.specializationOf(fv.id, f.id)
+                for fv_1 in fv_1s:
+                    bundle.entity(*fv_1)
+                    bundle.used(commit.id, fv_1.id)
+                    bundle.wasDerivedFrom(fv.id, fv_1.id)
+                    if self.unique_specialization_of(fv_1.id, f.id):
+                        bundle.specializationOf(fv_1.id, f.id)
 
-                for f_v_1 in f.file_v_1:
-                    self.pb.entity(f_v_1.identifier, other_attributes=f_v_1.labels)
-                    self.pb.used(commit.identifier, f_v_1.identifier)
-                    self.pb.wasDerivedFrom(f.file_v.identifier, f_v_1.identifier)
-                    self.specializationOf(f_v_1.identifier, f.file.identifier)
+            if isinstance(f, Deletion):
+                f, fv = f
+                bundle.entity(*f)
+                bundle.entity(*fv)
 
-            elif isinstance(f, Deletion):
-                self.pb.entity(f.file.identifier, other_attributes=f.file.labels)
-                self.pb.entity(f.file_v.identifier, other_attributes=f.file_v.labels)
-                self.specializationOf(f.file_v.identifier, f.file.identifier)
-                self.pb.wasInvalidatedBy(f.file_v.identifier, commit.identifier)
+                if self.unique_specialization_of(fv.id, f.id):
+                    bundle.specializationOf(fv.id, f.id)
+                bundle.wasInvalidatedBy(fv.id, commit.id)
+        return
 
-        return 
+    def unique_specialization_of(self, start: str, target: str) -> bool:
+        """
+        Return whether nodes *start* and *target* are already related by a specializationOf relation.
 
-    def specializationOf(self, entity, general_entity):
-        """Only allow one specializationOf relation per entity."""
-
-        if (entity, general_entity) in self.unique_check:
-            return
-
-        self.pb.specializationOf(entity, general_entity)
-        self.unique_check.add((entity, general_entity))
+        *start* and *target* are id strings representing a node.
+        """
+        tp = (start, target)
+        if tp not in self.relation_store:
+            self.relation_store.add(tp)
+            return True
+        return False
 
 
 @dataclass
 class CommitResource(Model):
+    """
+    Model implementation for commit resource model.
+    """
 
-    def push(self, resource: PROVNode):
+    def push(self, resource: Resource) -> None:
+        """
+        Push resource into model document.
+        """
+        bundle = self.bundle
 
-        creation = resource.creation # type: CommitResourceCreation
-        events = resource.events  # type: List[ResourceEvent]
+        # creation 
+        creation, _ = resource
 
-        committer = self.pb.agent(creation.committer.identifier, other_attributes=creation.committer.labels)
-        commit = self.pb.activity(creation.commit.identifier, creation.commit.start, creation.commit.end, other_attributes=creation.commit.labels)
-        resource_creation = self.pb.activity(creation.resource_creation.identifier, creation.resource_creation.start, creation.resource_creation.end, other_attributes=creation.resource_creation.labels)
-        resource = self.pb.entity(creation.resource.identifier, other_attributes=creation.resource.labels)
-        resource_v = self.pb.entity(creation.resource_v.identifier, other_attributes=creation.resource_v.labels)
+        committer, commit, rcreation, r, rv = creation
 
-        self.pb.wasAssociatedWith(commit, committer)
-        self.pb.wasAssociatedWith(resource_creation, committer)
-        self.pb.wasAttributedTo(resource, committer)
-        self.pb.wasInformedBy(resource_creation, commit)
-        self.pb.wasAttributedTo(resource_v, committer)
-        self.pb.wasGeneratedBy(resource, resource_creation)
-        self.pb.wasGeneratedBy(resource_v, resource_creation)
-        self.pb.specializationOf(resource_v, resource)
+        bundle.activity(*commit)
+        bundle.activity(*rcreation)
+        bundle.agent(*committer)
+        bundle.entity(*r)
+        bundle.entity(*rv)
 
-        for e in events:
-            resource = self.pb.entity(e.resource.identifier, other_attributes=e.resource.labels)
-            resource_v_1 = self.pb.entity(e.resource_v_1.identifier, other_attributes=e.resource_v_1.labels)
-            previous_event = self.pb.activity(e.previous_event.identifier, other_attributes=e.previous_event.labels)
-            initiator = self.pb.agent(e.initiator.identifier, other_attributes=e.initiator.labels)
-            event = self.pb.activity(e.event.identifier, e.event.start, e.event.end, other_attributes=e.event.labels)
-            resource_v = self.pb.entity(e.resource_v.identifier, other_attributes=e.resource_v.labels)
+        bundle.wasAssociatedWith(commit.id, committer.id)
+        bundle.wasAssociatedWith(rcreation.id, committer.id)
+        bundle.wasAttributedTo(r.id, committer.id)
+        bundle.wasInformedBy(rcreation.id, commit.id)
+        bundle.wasAttributedTo(rv.id, committer.id)
+        bundle.wasGeneratedBy(r.id, rcreation.id)
+        bundle.wasGeneratedBy(rv.id, rcreation.id)
+        bundle.specializationOf(rv.id, r.id)
+        
+        # event chain
+        _, events = resource
 
-            self.pb.specializationOf(resource_v, resource)
-            self.pb.used(event, resource_v_1)
-            self.pb.wasInformedBy(event, previous_event)
-            self.pb.wasAssociatedWith(event, initiator)
-            self.pb.wasDerivedFrom(resource_v, resource_v_1)
-            self.pb.wasAttributedTo(resource_v, initiator)
-            self.pb.wasGeneratedBy(resource_v, event)
+        for event in events:
+            user, e, eprev, r, rv, rv_1 = event
 
+            bundle.entity(*r)
+            bundle.entity(*rv)
+            bundle.entity(*rv_1)
+            bundle.activity(*e)
+            bundle.activity(*eprev)
+            bundle.agent(*user)
 
-@dataclass
-class IssueResource(Model):
-
-    def push(self, resource: Resource):
-
-        creation = resource.creation
-        events = resource.events
-
-        creator = self.pb.agent(creation.creator.identifier, other_attributes=creation.creator.labels)
-        resource_creation = self.pb.activity(creation.resource_creation.identifier, creation.resource_creation.start, creation.resource_creation.end, other_attributes=creation.resource_creation.labels)
-        resource = self.pb.entity(creation.resource.identifier, other_attributes=creation.resource.labels)
-        resource_v = self.pb.entity(creation.resource_v.identifier, other_attributes=creation.resource_v.labels)
-
-
-        self.pb.wasAssociatedWith(resource_creation, creator)
-        self.pb.wasAttributedTo(resource, creator)
-        self.pb.wasAttributedTo(resource_v, creator)
-        self.pb.wasGeneratedBy(resource, resource_creation)
-        self.pb.wasGeneratedBy(resource_v, resource_creation)
-        self.pb.specializationOf(resource_v, resource)
-
-        for e in events:
-            resource = self.pb.entity(e.resource.identifier, other_attributes=e.resource.labels)
-            resource_v = self.pb.entity(e.resource_v.identifier, other_attributes=e.resource_v.labels)
-            resource_v_1 = self.pb.entity(e.resource_v_1.identifier, other_attributes=e.resource_v_1.labels)
-            previous_event = self.pb.activity(e.previous_event.identifier, other_attributes=e.previous_event.labels)
-            event = self.pb.activity(e.event.identifier, e.event.start, e.event.end, other_attributes=e.event.labels)
-            initiator = self.pb.agent(e.initiator.identifier, other_attributes=e.initiator.labels)
-
-            self.pb.specializationOf(resource_v, resource)
-            self.pb.used(event, resource_v_1)
-            self.pb.wasDerivedFrom(resource_v, resource_v_1)
-            self.pb.wasGeneratedBy(resource_v, event)
-            self.pb.wasInformedBy(event, previous_event)
-            self.pb.wasAssociatedWith(event, initiator)
-            self.pb.wasAttributedTo(resource_v, initiator)
-
-
-@dataclass
-class MergeRequestResource(Model):
-
-    def push(self, resource: Resource):
-
-        creation = resource.creation
-        events = resource.events
-
-        creator = self.pb.agent(creation.creator.identifier, other_attributes=creation.creator.labels)
-        resource_creation = self.pb.activity(creation.resource_creation.identifier, creation.resource_creation.start, creation.resource_creation.end, other_attributes=creation.resource_creation.labels)
-        resource = self.pb.entity(creation.resource.identifier, other_attributes=creation.resource.labels)
-        resource_v = self.pb.entity(creation.resource_v.identifier, other_attributes=creation.resource_v.labels)
-
-        self.pb.wasAssociatedWith(resource_creation, creator)
-        self.pb.wasAttributedTo(resource, creator)
-        self.pb.wasAttributedTo(resource_v, creator)
-        self.pb.wasGeneratedBy(resource, resource_creation)
-        self.pb.wasGeneratedBy(resource_v, resource_creation)
-        self.pb.specializationOf(resource_v, resource)
-
-        for e in events:
-            resource = self.pb.entity(e.resource.identifier, other_attributes=e.resource.labels)
-            resource_v = self.pb.entity(e.resource_v.identifier, other_attributes=e.resource_v.labels)
-            resource_v_1 = self.pb.entity(e.resource_v_1.identifier, other_attributes=e.resource_v_1.labels)
-            previous_event = self.pb.activity(e.previous_event.identifier, other_attributes=e.previous_event.labels)
-            event = self.pb.activity(e.event.identifier, e.event.start, e.event.end, other_attributes=e.event.labels)
-            initiator = self.pb.agent(e.initiator.identifier, other_attributes=e.initiator.labels)
-
-            self.pb.specializationOf(resource_v, resource)
-            self.pb.used(event, resource_v_1)
-            self.pb.wasDerivedFrom(resource_v, resource_v_1)
-            self.pb.wasGeneratedBy(resource_v, event)
-            self.pb.wasInformedBy(event, previous_event)
-            self.pb.wasAssociatedWith(event, initiator)
-            self.pb.wasAttributedTo(resource_v, initiator)
+            bundle.specializationOf(rv.id, r.id)
+            bundle.used(e.id, rv_1.id)
+            bundle.wasInformedBy(e.id, eprev.id)
+            bundle.wasAssociatedWith(e.id, user.id)
+            bundle.wasDerivedFrom(rv.id, rv_1.id)
+            bundle.wasAttributedTo(rv.id, user.id)
+            bundle.wasGeneratedBy(rv.id, e.id)
+        return
