@@ -1,7 +1,8 @@
-import prov.dot
-import prov.model
 import argparse
 import os
+
+import prov.dot
+import prov.model
 
 # Git Commit Model
 # ---
