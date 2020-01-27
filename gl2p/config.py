@@ -35,8 +35,10 @@ VALID_CONFIG = {
         ]
     }
 
+
 class ConfigurationException(Exception):
     pass
+
 
 if not os.path.exists(CONFIG_PATH):
     raise ConfigurationException(f"Missing CONFIG file: {CONFIG_PATH}")

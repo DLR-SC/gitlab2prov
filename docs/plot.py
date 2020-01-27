@@ -146,6 +146,7 @@ def style(dot):
             edge.set_label(abbreviate.get(label, label))
     return dot
 
+
 def plot(title, document, directory, fmt):
 
     if not os.path.isdir(directory):
@@ -157,6 +158,7 @@ def plot(title, document, directory, fmt):
 
     print(f"Plotting: {directory}{title}.{fmt}")
     dot.write(path=f"{directory}{title}.{fmt}", format=fmt)
+
 
 argparser = argparse.ArgumentParser(description="Plot PROV models.")
 argparser.add_argument("--format", type=str, help="output format (defaults to svg)")
