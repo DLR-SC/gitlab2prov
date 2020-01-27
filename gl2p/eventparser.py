@@ -16,9 +16,11 @@
 
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
 from datetime import datetime
-from gl2p.helpers import qname, date
+from typing import Any, Dict, Optional
+
+from gl2p.helpers import date, qname
+
 
 @dataclass
 class GitLabResourceEvent:

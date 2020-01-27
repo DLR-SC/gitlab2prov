@@ -18,7 +18,6 @@
 import os
 from configparser import ConfigParser
 
-
 CONFIG_PATH = "./config/config.ini"
 
 VALID_CONFIG = {

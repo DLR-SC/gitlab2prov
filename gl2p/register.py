@@ -17,11 +17,11 @@
 
 from __future__ import annotations
 
-from collections import deque, defaultdict, UserDict
-from dataclasses import dataclass, field, InitVar
-from functools import reduce
-from typing import List, Dict, Any, Set, Generator, Iterator, Optional
+from collections import UserDict, defaultdict, deque
 from copy import deepcopy
+from dataclasses import InitVar, dataclass, field
+from functools import reduce
+from typing import Any, Dict, Generator, Iterator, List, Optional, Set
 
 
 @dataclass

@@ -15,13 +15,15 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
-from prov.model import ProvDocument
-from dataclasses import dataclass, InitVar, field
+from dataclasses import InitVar, dataclass, field
 from typing import Set
-from gl2p.helpers import qname
-from gl2p.helpers import parse_time as date
+
 from gl2p.commons import FileStatus
-from gl2p.objects import PROVNode, Event, CommitResourceCreation, Addition, Modification, Deletion, Resource
+from gl2p.helpers import parse_time as date
+from gl2p.helpers import qname
+from gl2p.objects import (Addition, CommitResourceCreation, Deletion, Event,
+                          Modification, PROVNode, Resource)
+from prov.model import ProvDocument
 
 
 @dataclass 

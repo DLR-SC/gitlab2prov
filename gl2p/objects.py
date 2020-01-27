@@ -15,9 +15,9 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Union, NamedTuple
 import datetime
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 from gl2p.helpers import qname
 

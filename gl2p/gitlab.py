@@ -18,14 +18,13 @@
 from __future__ import annotations
 
 import asyncio
-import urllib.parse
 import collections
-from dataclasses import dataclass, InitVar, field
-from typing import Dict, List, Tuple, Any, Generator, Callable, Coroutine
+import urllib.parse
+from dataclasses import InitVar, dataclass, field
+from typing import Any, Callable, Coroutine, Dict, Generator, List, Tuple
 
 import gl2p.ratelimiter as ratelimiter
 from gl2p.helpers import chunks, url_encoded_path
-
 
 BATCH_SIZE = 2000
 PAGE_SIZE = 50

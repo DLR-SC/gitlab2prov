@@ -15,16 +15,17 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
-from dataclasses import dataclass, InitVar
-from prov.model import ProvDocument
-from prov.dot import prov_to_dot
-from typing import Tuple, Any
+from dataclasses import InitVar, dataclass
+from typing import Any, Tuple
 
 import gl2p.models as models
-from gl2p.helpers import qname
-from gl2p.gitlab import ProjectWrapper
 from gl2p.commons import FileStatus
+from gl2p.gitlab import ProjectWrapper
+from gl2p.helpers import qname
 from gl2p.processor import CommitProcessor, CommitResourceProcessor
+from prov.dot import prov_to_dot
+from prov.model import ProvDocument
+
 
 @dataclass
 class Pipeline:

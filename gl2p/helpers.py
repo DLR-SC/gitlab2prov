@@ -14,10 +14,10 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
+import datetime
 import urllib
 import uuid
-import datetime
-from typing import Dict, List, Any, Iterator
+from typing import Any, Dict, Iterator, List
 
 
 def parse_time(s):

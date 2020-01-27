@@ -15,14 +15,14 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 import re
+from collections import namedtuple
+from collections.abc import MutableMapping
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
-from collections.abc import MutableMapping
-from collections import namedtuple
-from functools import total_ordering
-from typing import List, NamedTuple, Dict, Any
 from enum import Enum
+from functools import total_ordering
+from typing import Any, Dict, List, NamedTuple
 
 
 class FileStatus(Enum):

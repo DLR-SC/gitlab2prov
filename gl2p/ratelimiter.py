@@ -3,10 +3,10 @@
 #
 # github-gist: https://gist.github.com/pquentin/5d8f5408cdad73e589d85ba509091741
 
-import time
 import asyncio
-from aiohttp import ClientSession
+import time
 
+from aiohttp import ClientSession
 
 # Token bucket rate limited aiohttp.ClientSession
 # https://en.wikipedia.org/wiki/Token_bucket

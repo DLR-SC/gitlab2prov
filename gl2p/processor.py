@@ -15,16 +15,16 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
-from dataclasses import dataclass, field, InitVar, asdict
-from typing import List, Any, Dict, Iterable, Union
 from copy import deepcopy
-from prov.constants import PROV_TYPE, PROV_ROLE, PROV_LABEL
+from dataclasses import InitVar, asdict, dataclass, field
+from typing import Any, Dict, Iterable, List, Union
 
-from gl2p.eventparser import EventParser
-from gl2p.register import FileNameRegister
 from gl2p.commons import File, FileStatus
-from gl2p.helpers import qname, by_date, parse_time
+from gl2p.eventparser import EventParser
+from gl2p.helpers import by_date, parse_time, qname
 from gl2p.objects import *
+from gl2p.register import FileNameRegister
+from prov.constants import PROV_LABEL, PROV_ROLE, PROV_TYPE
 
 
 @dataclass
