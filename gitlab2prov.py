@@ -37,7 +37,7 @@ def main():
     c = ProjectWrapper(PROJECT, TOKEN, RATE_LIMIT)
 
     print(f"Generating PROV document for {PROJECT} at {RATE_LIMIT} req/sec")
-    
+
     pipelines = [
         CommitPipeline(c),
         CommitResourcePipeline(c)
@@ -55,11 +55,11 @@ def main():
         document.update(doc)
 
     document = document.unified()
-    
+
     provn = provn if provn else "out.provn"
 
     with open(f"{provn}", "w") as f:
-        print(document.get_provn(), file=f) 
+        print(document.get_provn(), file=f)
 
     if not neo4j:
         return
