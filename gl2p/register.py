@@ -172,7 +172,7 @@ class NameTable(UserDict):
         """
         return cls().apply(diff)
 
-    def apply(self, diff: List[Dict[str:Any]]) -> NameTable:
+    def apply(self, diff: List[Dict[str, Any]]) -> NameTable:
         """
         Apply a diff to the current NameTable.
         """
