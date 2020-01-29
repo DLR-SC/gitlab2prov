@@ -15,16 +15,12 @@
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
 
-from dataclasses import InitVar, dataclass
-from typing import Any, Tuple
+from dataclasses import dataclass
+from typing import Any
 
 import gl2p.models as models
-from gl2p.commons import FileStatus
 from gl2p.gitlab import ProjectWrapper
-from gl2p.helpers import qname
 from gl2p.processor import CommitProcessor, CommitResourceProcessor
-from prov.dot import prov_to_dot
-from prov.model import ProvDocument
 
 
 @dataclass
@@ -40,7 +36,6 @@ class CommitPipeline(Pipeline):
         """
         Get commits and commit diffs asynchronously.
         """
-
         async with self.client as client:
             commits = await client.commits()
             diffs = await client.commit_diffs()
@@ -57,13 +52,13 @@ class CommitPipeline(Pipeline):
         """
         Create Model from commit objects.
         """
-
         model = models.Commit(self.client.project_id)
 
         for commit in resources:
             model.push(commit)
 
         return model.document()
+
 
 @dataclass
 class CommitResourcePipeline:
@@ -74,7 +69,6 @@ class CommitResourcePipeline:
         """
         Fetch commits and commit notes from gitlab client.
         """
-
         async with self.client as client:
 
             commits = await client.commits()
@@ -86,14 +80,12 @@ class CommitResourcePipeline:
         """
         Process commits and notes into commitable PROVNodes.
         """
-        
         return CommitResourceProcessor(self.client.project_id).run(commits, notes)
 
     def create_model(self, resources):
         """
         Create commit resource model from commitable PROVNodes.
         """
-
         model = models.CommitResource(self.client.project_id)
 
         for commit in resources:
