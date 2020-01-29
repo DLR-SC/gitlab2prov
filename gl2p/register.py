@@ -19,9 +19,9 @@ from __future__ import annotations
 
 from collections import UserDict, defaultdict, deque
 from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 from functools import reduce
-from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Union
+from typing import Any, Dict, Iterator, List, Set, Union
 
 
 @dataclass
@@ -31,10 +31,8 @@ class FileNameRegister:
 
     Builds a mappings of file names tot their original names for each commit in the commit tree.
     """
-
     commits: Union[Dict[str, Any], List[Any]]
     diffs: Union[Dict[str, Any], List[Any]]
-
     __register: Dict[str, NameTable] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -52,13 +50,12 @@ class FileNameRegister:
 
     def get(self, sha: str, file_name: str) -> str:
         """
-        Given a file name and a commit sha, return the original 
+        Given a file name and a commit sha, return the original
         name of the file according to the computed mapping of commit sha.
 
         Returns:
             str: The original file name of *file_name* if found else file_name
         """
-
         if sha in self.__register:
             nt = self.__register.get(sha, NameTable())
             name = nt.get(file_name, file_name)
@@ -71,10 +68,9 @@ class FileNameRegister:
         # TODO: better description of what actually happens here.
         """
         Compute mapping for each point in the commit tree.
-        
+
         Walk commit tree by BFS.
         """
-        
         tree = self.commit_tree()
         queue = deque(self.orphans())
 
@@ -114,7 +110,6 @@ class FileNameRegister:
         Returns:
             Dict[str, set]: Mapping from commit sha's to sets of children sha's.
         """
-
         tree = defaultdict(set)  # type: Dict[str, Set]
 
         for commit in self.commits.values():
@@ -128,11 +123,10 @@ class FileNameRegister:
     def orphans(self) -> Iterator[str]:
         """
         Generator for commits that don't have parents.
-        
+
         Yields:
             str: The sha of a commit
         """
-
         for commit in self.commits.values():
             if not commit.get("parent_ids"):
                 yield commit.get("id")
@@ -143,10 +137,9 @@ class FileNameRegister:
 
         Parameters:
             commit: Commit for which to check whether parents have a nametable.
-        Yields: 
+        Yields:
             bool: Whether parent has an entry in nametable cache.
         """
-
         for parent in commit.get("parent_ids", []):
             yield (parent in register)
 
@@ -154,7 +147,7 @@ class FileNameRegister:
 class NameTable(UserDict):
     """
     A mapping of file names to their original names for a single commit.
-    
+
     Generate NameTable for commit x by applying diff of x to NameTable of commit x-1.
     """
 
@@ -164,10 +157,9 @@ class NameTable(UserDict):
         Merge two nametables nt1, nt2.
 
         Returns:
-            NameTable: A name table containing all entries 
+            NameTable: A name table containing all entries
              from nt1 updated with entries from nt2.
         """
-
         copy = deepcopy(nt1.data)
         copy.update(nt2.data)
 
@@ -178,14 +170,12 @@ class NameTable(UserDict):
         """
         Instantiate an empty NameTable and apply diff to it.
         """
-
         return cls().apply(diff)
 
     def apply(self, diff: List[Dict[str:Any]]) -> NameTable:
         """
         Apply a diff to the current NameTable.
         """
-
         copy = deepcopy(self.data)
         for entry in diff:
             new, old = entry.get("new_path"), entry.get("old_path")
