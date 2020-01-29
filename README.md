@@ -27,6 +27,14 @@ pip install -r requirements.txt
 ```
 
 ### Configuration
+
+#### Obtain Private Access Token for GitLab
+
+Go to https://YOUR-GITLAB/profile/personal_access_tokens and claim a personal access token.
+The necessary scopes are `api` and `read_user`.
+
+#### Configure Project
+
 `gitlab2prov` is configured by its config file at `config/config.ini`.
 
 Excerpt from `config/config.ini.example`
