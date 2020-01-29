@@ -19,12 +19,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from gl2p.helpers import qname
-
 
 @dataclass
 class GitLabResourceEvent:
-
+    """
+    Represents an event occuring on a resource (Commit, Issue, Merge Request).
+    """
     identifier: str
     initiator: str
     type: str
@@ -34,26 +34,35 @@ class GitLabResourceEvent:
 
 @dataclass
 class EventParser:
-
+    """
+    Handles classification of resource events.
+    """
     @staticmethod
     def parse_note(note):
+        """
+        Returns GitLabResourceEvent with event type parsed from note.
+        """
         if note.get("system"):
             return EventParser.parse_system_note(note)
         return EventParser.parse_non_system_note(note)
 
     @staticmethod
     def parse_system_note(sysnote):
-        
+        """
+        Returns GitLabResourceEvent parsed from system note.
+        """
         identifier = sysnote.get("id")
-        initiator = sysnote.get("author").get("name")  # TODO: match this with real user accounts
+        initiator = sysnote.get("author").get("name")
         type_ = "system note"
-        labels = {"body": sysnote.get("body")} 
+        labels = {"body": sysnote.get("body")}
         created_at = sysnote.get("created_at")
         return GitLabResourceEvent(identifier, initiator, type_, labels, created_at)
 
     @staticmethod
     def parse_non_system_note(note):
-
+        """
+        Retruns GitLabResourceEvent parsed from non sytem note.
+        """
         identifier = note["id"]
         initiator = note["author"]["name"]
         type_ = "note"
