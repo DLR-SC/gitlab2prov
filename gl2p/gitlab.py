@@ -21,7 +21,7 @@ import asyncio
 import collections
 import urllib.parse
 from dataclasses import InitVar, dataclass, field
-from typing import Any, Callable, Coroutine, Dict, Generator, List, Tuple
+from typing import Any, Callable, Coroutine, Dict, List, Tuple
 
 import gl2p.ratelimiter as ratelimiter
 from gl2p.helpers import chunks, url_encoded_path
@@ -47,7 +47,7 @@ MERGE_REQUEST_NOTE_AWARDS = "merge_requests/{}/notes/{}/award_emoji"
 
 
 def cache_result(func) -> Callable[[Any], Coroutine[Any, Any, Any]]:
-    """Decorator that stores method return values in a self._cache. 
+    """Decorator that stores method return values in a self._cache.
 
     Returns:
         Callable: Wrapped method.
@@ -114,7 +114,7 @@ class ProjectWrapper:
     async def _first_page(self, url: str) -> Tuple[Any, int]:
         """Coroutine that performs a GET request to the first page of target *url*.
 
-        Returns content as json aswell as the number 
+        Returns content as json aswell as the number
         of pages that the content spreads across.
         """
 
@@ -127,7 +127,6 @@ class ProjectWrapper:
             x_total_pages = int(resp.headers.get("x-total-pages", 0))
 
             return json, x_total_pages
-
 
     async def _single_page(self, url: str, page_number: int) -> Any:
         """Coroutine that performs a GET request to a specific page of target *url*."""
@@ -224,17 +223,17 @@ class ProjectWrapper:
 
         A note on commit notes:
 
-        As of right now (Jan, 2020) there is no API endpoint to retrieve 
-        notes that are attached to GitLab commit resources. Rather you 
-        have to get "discussions" which organize notes in threads. 
+        As of right now (Jan, 2020) there is no API endpoint to retrieve
+        notes that are attached to GitLab commit resources. Rather you
+        have to get "discussions" which organize notes in threads.
 
-        This is inconsistent with the model that GitLab provides for other 
-        resources such as merge requests or issues. Additionally, though you 
-        can award emoji to notes of commit resources, there is no way 
-        to retrieve the awarded emoji. 
+        This is inconsistent with the model that GitLab provides for other
+        resources such as merge requests or issues. Additionally, though you
+        can award emoji to notes of commit resources, there is no way
+        to retrieve the awarded emoji.
 
-        This - considering that the analysis of interaction, communication 
-        and collaboration on git-hosting platforms thrives of each retrievable 
+        This - considering that the analysis of interaction, communication
+        and collaboration on git-hosting platforms thrives of each retrievable
         resource - is sad.
         """
 
