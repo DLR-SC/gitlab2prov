@@ -1,20 +1,29 @@
-# GitLab2PROV
+# GitLab2PROV - Extract Provenance Information from GitLab Repositories
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![DOI](https://zenodo.org/badge/215042878.svg)](https://zenodo.org/badge/latestdoi/215042878) ![Python application](https://github.com/DLR-SC/gitlab2prov/workflows/Python%20application/badge.svg?branch=master) ![mypy-check](https://github.com/DLR-SC/gitlab2prov/workflows/mypy-check/badge.svg) ![Deploy to Amazon ECS](https://github.com/DLR-SC/gitlab2prov/workflows/Deploy%20to%20Amazon%20ECS/badge.svg)
 
+## Data Model
 
-> GitLab2PROV is a tool to extract provenance information (W3C PROV) from GitLab repositories.
+GitLab2PROV uses a data model according to [W3C PROV](https://www.w3.org/TR/prov-overview/) specification.
 
-### Usage
+## Setup and Usage:rocket:
+
+### Installation
 ```
-usage: gitlab2prov.py [-h] [--provn PROVN] [--neo4j]
+# Clone repository via SSH (recommended)
+git clone git@github.com:DLR-SC/gitlab2prov.git
 
-Extract provenance information from a GitLab repository.
+# Change into directory
+cd gitlab2prov
 
-optional arguments:
-  -h, --help     show this help message and exit
-  --provn PROVN  output file
-  --neo4j        save to neo4j
+# Create a virtual environment (recommended)
+python -m venv env
+
+# Activate the environment
+source env/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
 ### Configuration
@@ -35,24 +44,19 @@ password = Password
 boltport = BOLTPort
 ```
 
-## Setup :rocket:
-### Installation
+### Usage
 ```
-# Clone repository via SSH (recommended)
-git clone git@github.com:DLR-SC/gitlab2prov.git
+usage: gitlab2prov.py [-h] [--provn PROVN] [--neo4j]
 
-# Change into directory
-cd gitlab2prov
+Extract provenance information from a GitLab repository.
 
-# Create a virtual environment (recommended)
-python -m venv env
-
-# Activate the environment
-source env/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+optional arguments:
+  -h, --help     show this help message and exit
+  --provn PROVN  output file
+  --neo4j        save to neo4j
 ```
+
+
 ## Credits
 **Software that has provided the foundations for GitLab2PROV**  
 > Martin Stoffers: "Gitlab2Graph", v1.0.0, October 13. 2019, [GitHub Link](https://github.com/DLR-SC/Gitlab2Graph), DOI 10.5281/zenodo.3469385  
