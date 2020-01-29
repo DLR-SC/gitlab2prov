@@ -14,20 +14,15 @@
 #
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
-import re
-from collections import namedtuple
-from collections.abc import MutableMapping
-from copy import deepcopy
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 from enum import Enum
-from functools import total_ordering
-from typing import Any, Dict, List, NamedTuple
+from typing import List
 
 
 class FileStatus(Enum):
-    """Action that diff entry represents."""
-
+    """
+    Action that diff entry represents.
+    """
     ADDED = "A"
     MODIFIED = "M"
     DELETED = "D"
@@ -35,8 +30,9 @@ class FileStatus(Enum):
 
 @dataclass
 class File:
-    """A repository file version."""
-
+    """
+    A repository file version.
+    """
     old_path: str = ""
     new_path: str = ""
     status: FileStatus = FileStatus.ADDED
@@ -47,8 +43,9 @@ class File:
 
     @staticmethod
     def _file_status(tup):
-        """Determine action occuring for diffed file."""
-
+        """
+        Determine action occuring for diffed file.
+        """
         new, deleted = tup
         if new:
             return FileStatus.ADDED
@@ -59,8 +56,9 @@ class File:
 
     @classmethod
     def from_diff(cls, diff):
-        """Create File from diff entry."""
-
+        """
+        Create File from diff entry.
+        """
         op, np = diff.get("old_path"), diff.get("new_path")
         nf, df = diff.get("new_file"), diff.get("deleted_file")
         status = cls._file_status((nf, df))
