@@ -16,9 +16,7 @@
 
 
 import datetime
-from dataclasses import dataclass, field
 from typing import List, Dict, Union, NamedTuple
-
 
 
 class PROVNode(NamedTuple):
@@ -79,7 +77,7 @@ class CommitResourceCreation(NamedTuple):
     """
     Represents the creation of a commit resource.
 
-    Special case of resource creation. 
+    Special case of resource creation.
     Link of commit model and commit resource model.
     """
     committer: PROVNode
