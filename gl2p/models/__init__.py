@@ -16,7 +16,7 @@
 
 
 from dataclasses import InitVar, dataclass, field
-from typing import Any, Optional, Set
+from typing import Any, Optional, Set, List, Union
 
 from gl2p.objects import (Addition, Deletion,
                           Modification, Resource, Commit)
@@ -57,53 +57,78 @@ class Commit(Model):
         Push resource into model document.
         """
         bundle = self.bundle
-        author, committer, commit, parents, files = resource
+        _, _, commit, parents, files = resource
 
+        self.add_commit(bundle, resource)
+
+        for parent in parents:
+            self.add_parent(bundle, resource, parent)
+
+        for f in files:
+            self.add_file(bundle, resource, f)
+
+        return
+
+    def add_commit(self, bundle: ProvBundle, resource: Commit) -> None:
+        """
+        Add commit nodes and relations of *resource* to *bundle*.
+        """
+        author, committer, commit, *_ = resource
         bundle.agent(*author)
         bundle.agent(*committer)
         bundle.activity(*commit)
         bundle.wasAssociatedWith(commit.id, author.id)
         bundle.wasAssociatedWith(commit.id, committer.id)
+        return
 
-        for parent in parents:
-            bundle.activity(*parent)
-            bundle.wasInformedBy(commit.id, parent.id)
+    def add_parent(self, bundle: ProvBundle, resource: Commit, parent: Any) -> None:
+        """
+        Add parent nodes and relations of *parent* to *bundle*.
+        """
+        _, _, commit, *_ = resource
+        bundle.activity(*parent)
+        bundle.wasInformedBy(commit.id, parent.id)
+        return
 
-        for f in files:
-            if isinstance(f, Addition):
-                f, fv = f
-                bundle.entity(*f)
-                bundle.entity(*fv)
-                bundle.wasGeneratedBy(f.id, commit.id)
-                bundle.wasGeneratedBy(fv.id, commit.id)
-                bundle.wasAttributedTo(f.id, author.id)
-                bundle.wasAttributedTo(fv.id, author.id)
-                if self.unique_specialization_of(fv.id, f.id):
-                    bundle.specializationOf(fv.id, f.id)
+    def add_file(self, bundle: ProvBundle, resource: Commit, f: List[Union[Addition, Modification, Deletion]]) -> None:
+        """
+        Add file relations and nodes stemming from *f* to *bundle*.
+        """
+        author, committer, commit, *_ = resource
 
-            if isinstance(f, Modification):
-                f, fv, fv_1s = f
-                bundle.entity(*f)
-                bundle.entity(*fv)
-                bundle.wasAttributedTo(fv.id, commit.id)
-                bundle.wasGeneratedBy(fv.id, commit.id)
-                if self.unique_specialization_of(fv.id, f.id):
-                    bundle.specializationOf(fv.id, f.id)
-                for fv_1 in fv_1s:
-                    bundle.entity(*fv_1)
-                    bundle.used(commit.id, fv_1.id)
-                    bundle.wasDerivedFrom(fv.id, fv_1.id)
-                    if self.unique_specialization_of(fv_1.id, f.id):
-                        bundle.specializationOf(fv_1.id, f.id)
+        if isinstance(f, Addition):
+            f, fv = f
+            bundle.entity(*f)
+            bundle.entity(*fv)
+            bundle.wasGeneratedBy(f.id, commit.id)
+            bundle.wasGeneratedBy(fv.id, commit.id)
+            bundle.wasAttributedTo(f.id, author.id)
+            bundle.wasAttributedTo(fv.id, author.id)
+            if self.unique_specialization_of(fv.id, f.id):
+                bundle.specializationOf(fv.id, f.id)
 
-            if isinstance(f, Deletion):
-                f, fv = f
-                bundle.entity(*f)
-                bundle.entity(*fv)
+        if isinstance(f, Modification):
+            f, fv, fv_1s = f
+            bundle.entity(*f)
+            bundle.entity(*fv)
+            bundle.wasAttributedTo(fv.id, commit.id)
+            bundle.wasGeneratedBy(fv.id, commit.id)
+            if self.unique_specialization_of(fv.id, f.id):
+                bundle.specializationOf(fv.id, f.id)
+            for fv_1 in fv_1s:
+                bundle.entity(*fv_1)
+                bundle.used(commit.id, fv_1.id)
+                bundle.wasDerivedFrom(fv.id, fv_1.id)
+                if self.unique_specialization_of(fv_1.id, f.id):
+                    bundle.specializationOf(fv_1.id, f.id)
 
-                if self.unique_specialization_of(fv.id, f.id):
-                    bundle.specializationOf(fv.id, f.id)
-                bundle.wasInvalidatedBy(fv.id, commit.id)
+        if isinstance(f, Deletion):
+            f, fv = f
+            bundle.entity(*f)
+            bundle.entity(*fv)
+            if self.unique_specialization_of(fv.id, f.id):
+                bundle.specializationOf(fv.id, f.id)
+            bundle.wasInvalidatedBy(fv.id, commit.id)
         return
 
     def unique_specialization_of(self, start: str, target: str) -> bool:
