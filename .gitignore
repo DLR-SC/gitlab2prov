@@ -1,1 +1,8 @@
 *.pyc
+.vscode
+.DS_Store
+dist/
+__pycache__/
+.mypy_cache/
+*.egg-info
+out.provn
