@@ -14,81 +14,181 @@
 #
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
-
+from typing import List, Tuple
 from dataclasses import dataclass
-from typing import Any
-
-import gl2p.models as models
-from gl2p.gitlab import ProjectWrapper
-from gl2p.processor import CommitProcessor, CommitResourceProcessor
-
-
-@dataclass
-class Pipeline:
-
-    client: ProjectWrapper
+from prov.model import ProvDocument
+from gl2p.api.gitlab import GitLabProjectWrapper
+from gl2p.processor import (CommitProcessor, CommitResourceProcessor,
+                            IssueResourceProcessor, MergeRequestResourceProcessor)
+from gl2p.models import CommitModel, CommitResourceModel, ResourceModel
+from gl2p.utils.objects import Resource, EventCandidateContainer, CommitResource
+from gl2p.utils.types import Commit, Issue, MergeRequest, Diff
 
 
 @dataclass
-class CommitPipeline(Pipeline):
+class CommitPipeline:
+    """
+    Pipeline that fetches, processes and models git commits of a project.
+    """
+    project_id: str
+    api_client: GitLabProjectWrapper
 
-    async def fetch(self):
+    async def fetch(self) -> Tuple[List[Commit], List[Diff]]:
         """
-        Get commits and commit diffs asynchronously.
+        Retrieve commits and their diffs from the project API wrapper.
         """
-        async with self.client as client:
+        async with self.api_client as client:
             commits = await client.commits()
             diffs = await client.commit_diffs()
 
         return commits, diffs
 
-    def process(self, commits, diffs):
+    def process(self, commits: List[Commit], diffs: List[Diff]) -> List[CommitResource]:
         """
-        Process commits and diffs.
-        """
-        return CommitProcessor(self.client.project_id).run(commits, diffs)
+        Return list of internal PROV-DM groupings.
 
-    def create_model(self, resources: Any):
+        Precompute id's, activities, entities, agents and labels.
         """
-        Create Model from commit objects.
-        """
-        model = models.Commit(self.client.project_id)
+        cp = CommitProcessor()
+        return cp.run(commits, diffs)
 
-        for commit in resources:
-            model.push(commit)
+    def create_model(self, resources: List[CommitResource]) -> ProvDocument:
+        """
+        Return PROV document containing commit model populated with
+        PROV-DM groupings.
+        """
+        model = CommitModel(self.project_id)
+
+        for resource in resources:
+            model.push(resource)
 
         return model.document()
 
 
 @dataclass
 class CommitResourcePipeline:
+    """
+    Pipeline that fetches, processes and models project commits.
+    """
+    project_id: str
+    api_client: GitLabProjectWrapper
 
-    client: ProjectWrapper
-
-    async def fetch(self):
+    async def fetch(self) -> Tuple[List[Commit], EventCandidateContainer]:
         """
-        Fetch commits and commit notes from gitlab client.
+        Retrieve commits and their notes from the project API wrapper.
         """
-        async with self.client as client:
-
+        async with self.api_client as client:
             commits = await client.commits()
             notes = await client.commit_notes()
 
-        return commits, notes
+        return commits, EventCandidateContainer(notes=notes)
 
-    def process(self, commits, notes):
+    def process(self, commits: List[Commit], eventables: EventCandidateContainer) -> List[Resource]:
         """
-        Process commits and notes into commitable PROVNodes.
-        """
-        return CommitResourceProcessor(self.client.project_id).run(commits, notes)
+        Return list of internal PROV-DM groupings.
 
-    def create_model(self, resources):
+        Precompute id's, activities, entities, agents and labels.
         """
-        Create commit resource model from commitable PROVNodes.
-        """
-        model = models.CommitResource(self.client.project_id)
+        crp = CommitResourceProcessor()
+        return crp.run(commits, eventables)
 
-        for commit in resources:
-            model.push(commit)
+    def create_model(self, resources: List[Resource]) -> ProvDocument:
+        """
+        Return PROV document containing commit resource model populated
+        with PROV-DM groupings.
+        """
+        model = CommitResourceModel(self.project_id)
+
+        for resource in resources:
+            model.push(resource)
+
+        return model.document()
+
+
+@dataclass
+class IssueResourcePipeline:
+    """
+    Pipeline that fetches, processes and models project issues.
+    """
+    project_id: str
+    api_client: GitLabProjectWrapper
+
+    async def fetch(self) -> Tuple[List[Issue], EventCandidateContainer]:
+        """
+        Retrieve issues, their labels, their awards, their notes and
+        the awards of all notes from the project API wrapper.
+        """
+        async with self.api_client as client:
+            issues = await client.issues()
+            labels = await client.issue_labels()
+            awards = await client.issue_awards()
+            notes = await client.issue_notes()
+            note_awards = await client.issue_note_awards()
+
+        return issues, EventCandidateContainer(labels, awards, notes, note_awards)
+
+    def process(self, issues: List[Issue], eventables: EventCandidateContainer) -> List[Resource]:
+        """
+        Return list of PROV-DM groupings.
+
+        Precompute id's, activities, entities, agents and labels.
+        """
+        irp = IssueResourceProcessor()
+        return irp.run(issues, eventables)
+
+    def create_model(self, resources: List[Resource]) -> ProvDocument:
+        """
+        Return PROV document containing the issue resource model
+        populated with PROV-DM groupings.
+        """
+        model = ResourceModel(self.project_id)
+
+        for resource in resources:
+            model.push(resource)
+
+        return model.document()
+
+
+@dataclass
+class MergeRequestResourcePipeline:
+    """
+    Pipeline that fetches, processes and models project merge requests.
+    """
+
+    project_id: str
+    api_client: GitLabProjectWrapper
+
+    async def fetch(self) -> Tuple[List[MergeRequest], EventCandidateContainer]:
+        """
+        Retrieve merge requests, their labels, their awards, their
+        notes and all awards for each note from the project API wrapper.
+        """
+        async with self.api_client as client:
+            merge_requests = await client.merge_requests()
+            labels = await client.merge_request_labels()
+            awards = await client.merge_request_awards()
+            notes = await client.merge_request_notes()
+            note_awards = await client.merge_request_note_awards()
+
+        return merge_requests, EventCandidateContainer(labels, awards, notes, note_awards)
+
+    def process(self, merge_requests: List[MergeRequest], eventables: EventCandidateContainer) -> List[Resource]:
+        """
+        Return list of PROV-DM groupings.
+
+        Precompute id's, activities, entities, agents and labels.
+        """
+        mrrp = MergeRequestResourceProcessor()
+        return mrrp.run(merge_requests, eventables)
+
+    def create_model(self, resources: List[Resource]) -> ProvDocument:
+        """
+        Return PROV document containing the merge request resource model
+        populated with PROV-DM groupings.
+        """
+        model = ResourceModel(self.project_id)
+
+        for resource in resources:
+            model.push(resource)
 
         return model.document()
