@@ -2,3 +2,4 @@ prov
 pydot
 aiohttp
 prov-db-connector
+yarl
