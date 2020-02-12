@@ -1,409 +1,500 @@
-# Copyright (c) 2019 German Aerospace Center (DLR/SC).
-# All rights reserved.
-#
-# This file is part of gitlab2prov.
-# gitlab2prov is licensed under the terms of the MIT License.
-# SPDX short Identifier: MIT
-#
-# You may obtain a copy of the License at:
-# https://opensource.org/licenses/MIT
-#
-# A command line tool to extract provenance data (PROV W3C)
-# from GitLab hosted repositories aswell as
-# to store the extracted data in a Neo4J database.
-#
-# code-author: Claas de Boer <claas.deboer@dlr.de>
-
+"""
+Wrapper for GitLab project API.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import collections
-import urllib.parse
-from dataclasses import InitVar, dataclass, field
-from typing import Any, Callable, Coroutine, Dict, List, Tuple
-
-import gl2p.ratelimiter as ratelimiter
-from gl2p.helpers import chunks, url_encoded_path
-
-BATCH_SIZE = 2000
-PAGE_SIZE = 50
-
-
-USERS = "users"
-COMMITS = "repository/commits"
-COMMIT_DIFFS = "repository/commits/{}/diff"
-COMMIT_NOTES = "repository/commits/{}/discussions"
-ISSUES = "issues"
-ISSUE_NOTES = "issues/{}/notes"
-ISSUE_LABELS = "issues/{}/resource_label_events"
-ISSUE_AWARDS = "issues/{}/award_emoji"
-ISSUE_NOTE_AWARDS = "issues/{}/notes/{}/award_emoji"
-MERGE_REQUESTS = "merge_requests"
-MERGE_REQUEST_LABELS = "merge_requests/{}/resource_label_events"
-MERGE_REQUEST_AWARDS = "merge_requests/{}/award_emoji"
-MERGE_REQUEST_NOTES = "merge_requests/{}/notes"
-MERGE_REQUEST_NOTE_AWARDS = "merge_requests/{}/notes/{}/award_emoji"
+from dataclasses import dataclass, InitVar
+from typing import (Any, Dict, Sequence, Tuple, Iterator, Optional,
+                    Iterable, List, TypeVar, Callable, cast, Coroutine)
+from aiohttp import ClientSession
+from yarl import URL
+from gl2p.api.ratelimiter import RateLimiter
+from gl2p.utils.types import Commit, Issue, MergeRequest, Note, Diff, Award, Label
+from gl2p.utils.helpers import chunks
 
 
-def cache_result(func) -> Callable[[Any], Coroutine[Any, Any, Any]]:
-    """Decorator that stores method return values in a self._cache.
+F = TypeVar("F", bound=Callable[..., Any])
+T = TypeVar("T")
 
-    Returns:
-        Callable: Wrapped method.
+
+def alru_cache(func: F) -> F:
     """
+    Typed lru cache decorator wrapping async coroutines.
 
-    async def wrapped(self) -> Any:
-        """Wrapper caching the value of the wrapped function."""
+    Preserve the type signature of the wrapped function.
+    Cache the return value of a function F on it's first execution.
+    Return that value for every call of F after the first.
+    """
+    cache = dict()  # type: Dict[str, Any]
 
-        res = await func(self)
-        if not self._cache:
-            self._cache = {}
+    async def memoizer(self: GitLabProjectWrapper) -> Any:
+        key = func.__name__
+        if key not in cache:
+            cache[key] = await func(self)
+        return cache[key]
 
-        self._cache[func.__name__] = res
-        return res
-
-    return wrapped
-
-
-async def gather(coroutines_or_tasks, batch_size):
-    """Wrapping one thing at a time."""
-
-    res = []
-
-    for chunk in chunks(coroutines_or_tasks, batch_size):
-        res.extend(await asyncio.gather(*chunk))
-
-    return res
+    return cast(F, memoizer)
 
 
 @dataclass
-class ProjectWrapper:
-    """Asynchronous rate limited gitlab project API wrapper."""
+class GitLabProjectWrapper:
+    """
+    A wrapper for the GitLab project API.
+    """
+    purl: InitVar[str]
+    token: InitVar[str]
+    rate: InitVar[int]
 
-    project_url: InitVar[str]
-    token: str
-    rate: int = 10
+    def __post_init__(self, purl: str, token: str, rate: int) -> None:
+        self.url_builder = URLBuilder(purl)
+        self.request_handler = RequestHandler(token, rate)
 
-    url: str = ""
-    project_id: str = ""
-
-    _cache: Dict[str, Any] = field(default_factory=dict)
-    __session: ratelimiter.Session = None
-
-    def __post_init__(self, project_url: str):
-        """Extract GitLab url and project id from project url."""
-
-        self.project_id = url_encoded_path(project_url)
-        scheme, netloc, *_ = urllib.parse.urlparse(project_url)
-        self.url = f"{scheme}://{netloc}/api/v4/projects/{self.project_id}"
-
-    async def __aenter__(self):
-        """Init self.__session on entering context."""
-
-        headers = {"Private-Token": self.token}
-        self.__session = ratelimiter.Session(rate=self.rate, headers=headers)
-
+    async def __aenter__(self) -> GitLabProjectWrapper:
+        """
+        Open client session of request handler.
+        """
+        self.request_handler = await self.request_handler.__aenter__()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Close session upon leaving context."""
-
-        await self.__session.close()
-
-    async def _first_page(self, url: str) -> Tuple[Any, int]:
-        """Coroutine that performs a GET request to the first page of target *url*.
-
-        Returns content as json aswell as the number
-        of pages that the content spreads across.
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """
+        Close client session of request handler.
+        """
+        await self.request_handler.__aexit__(exc_type, exc_val, exc_tb)
 
-        # TODO: retry on 429 TOO MANY REQUESTS after specified amount of time
+    @alru_cache
+    async def commits(self) -> List[Commit]:
+        """
+        Return list of commits of the wrapped project repository.
+        """
+        path = "repository/commits"
+        url = self.url_builder.build(path)
 
-        params = {"per_page": PAGE_SIZE}
-        async with await self.__session.get(url, params=params) as resp:
-
-            json = await resp.json()
-            x_total_pages = int(resp.headers.get("x-total-pages", 0))
-
-            return json, x_total_pages
-
-    async def _single_page(self, url: str, page_number: int) -> Any:
-        """Coroutine that performs a GET request to a specific page of target *url*."""
-
-        params = {"per_page": PAGE_SIZE, "page": page_number}
-        async with await self.__session.get(url, params=params) as resp:
-            return await resp.json()
-
-    def _format_urls(self, path: str, inserts: List[Any] = []) -> List[str]:
-        """Build urls that are going to be used in GET requests."""
-
-        urls = []
-
-        if not inserts:
-            return [f"{self.url}/{path}"]
-
-        for tpl in inserts:
-            if isinstance(tpl, tuple):
-                fmt = path.format(*tpl)
-            else:
-                fmt = path.format(tpl)
-            urls.append(f"{self.url}/{fmt}")
-
-        return urls
-
-    async def request(self, path, inserts=[]):
-        """Perform GET requests for all built urls asynchronously in batches."""
-
-        urls = self._format_urls(path, inserts)
-
-        first_pages = [self._first_page(url) for url in urls]
-        first_pages = await gather(first_pages, BATCH_SIZE)
-
-        remaining = [
-            self._single_page(url, page_number=n)
-            for url, (_, x_total_pages) in zip(urls, first_pages)
-            for n in range(2, x_total_pages + 1)
-        ]
-
-        remaining = collections.deque(await gather(remaining, BATCH_SIZE))
-
-        results = []
-
-        for (page, x_total_pages) in first_pages:
-
-            for _ in range(2, x_total_pages + 1):
-                page.extend(remaining.popleft())
-
-            results.append(page)
-
-        return results
-
-    @cache_result
-    async def users(self) -> Any:
-        """Get all users of the wrapped project."""
-
-        users = []
-
-        for sublist in await self.request(USERS):
-            for user in sublist:
-                users.append(user)
-
-        return users
-
-    @cache_result
-    async def commits(self):
-        """Get all commits of the wrapped project."""
-
-        commits = []
-
-        for sublist in await self.request(COMMITS):
+        commits = []  # type: List[Commit]
+        for sublist in await self.request_handler.request(url):
             for commit in sublist:
                 commits.append(commit)
 
         return commits
 
-    async def commit_diffs(self):
-        """Get all diffs for all commits of the wrapped project."""
-
-        commits = self._cache.get("commits")
-
-        if not commits:
-            commits = self.commits()
-
-        if not commits:
-            return []
-
-        inserts = [c.get("id") for c in commits]
-        return await self.request(COMMIT_DIFFS, inserts)
-
-    @cache_result
-    async def commit_notes(self):
-        """Retrieve notes that reside on commits of the wrapped project.
-
-        A note on commit notes:
-
-        As of right now (Jan, 2020) there is no API endpoint to retrieve
-        notes that are attached to GitLab commit resources. Rather you
-        have to get "discussions" which organize notes in threads.
-
-        This is inconsistent with the model that GitLab provides for other
-        resources such as merge requests or issues. Additionally, though you
-        can award emoji to notes of commit resources, there is no way
-        to retrieve the awarded emoji.
-
-        This - considering that the analysis of interaction, communication
-        and collaboration on git-hosting platforms thrives of each retrievable
-        resource - is sad.
+    @alru_cache
+    async def commit_diffs(self) -> List[Diff]:
         """
+        Return list of commit diffs of the wrapped project repository.
 
-        commits = self._cache.get("commits")
-
-        if not commits:
-            commits = await self.commits()
+        Same order of commits as in self.commits. (zipable)
+        """
+        commits = await self.commits()
 
         if not commits:
             return []
 
-        inserts = [c.get("id") for c in commits]
-        commits = await self.request(COMMIT_NOTES, inserts)
+        path = "repository/commits/{}/diff"
+        inserts = [(c["id"],) for c in commits]
+        urls = self.url_builder.build(path, inserts)
 
-        return [
-            [note for discussion in commit for note in discussion.get("notes", [])]
-            for commit in commits
-        ]
+        diffs = await self.request_handler.request(urls)  # type: List[Diff]
+        return diffs
 
-    @cache_result
-    async def issues(self):
-        """Get all issues of the wrapped project."""
+    @alru_cache
+    async def commit_notes(self) -> List[List[Note]]:
+        """
+        Return list of commit notes for each commit of the wrapped
+        project repository.
+        """
+        commits = await self.commits()
 
-        issues = []
+        if not commits:
+            return []
 
-        for sublist in await self.request(ISSUES):
+        path = "repository/commits/{}/discussions"
+        inserts = [(c["id"],) for c in commits]
+        urls = self.url_builder.build(path, inserts)
+
+        commit_notes = []  # type: List[List[Note]]
+
+        for commit in await self.request_handler.request(urls):
+            notes = [n for discussion in commit for n in discussion["notes"]]
+            commit_notes.append(notes)
+        return commit_notes
+
+    @alru_cache
+    async def issues(self) -> List[Issue]:
+        """
+        Return list of all issues of the wrapped project.
+        """
+        path = "issues"
+        url = self.url_builder.build(path)
+
+        issues = []  # type: List[Issue]
+        for sublist in await self.request_handler.request(url):
             for issue in sublist:
                 issues.append(issue)
-
         return issues
 
-    @cache_result
-    async def issue_notes(self):
-        """Get all notes of all issues of the wrapped project."""
-
-        issues = self._cache.get("issues")
-
-        if not issues:
-            issues = self.issues()
+    @alru_cache
+    async def issue_labels(self) -> List[List[Label]]:
+        """
+        Return list of issue labels for each issue of the wrapped
+        project.
+        """
+        issues = await self.issues()
 
         if not issues:
             return []
 
-        inserts = [i.get("iid") for i in issues]
-        notes = await self.request(ISSUE_NOTES, inserts)
+        path = "issues/{}/resource_label_events"
+        inserts = [(i["iid"],) for i in issues]
+        urls = self.url_builder.build(path, inserts)
+
+        return await self.request_handler.request(urls)
+
+    @alru_cache
+    async def issue_awards(self) -> List[List[Award]]:
+        """
+        Return list of award emoji for each issue of the wrapped
+        project.
+        """
+        issues = await self.issues()
+
+        if not issues:
+            return []
+
+        path = "issues/{}/award_emoji"
+        inserts = [(i["iid"],) for i in issues]
+        urls = self.url_builder.build(path, inserts)
+
+        return await self.request_handler.request(urls)
+
+    @alru_cache
+    async def issue_notes(self) -> List[List[Note]]:
+        """
+        Return list of issue notes for each issue of the wrapped
+        project.
+        """
+        issues = await self.issues()
+
+        if not issues:
+            return []
+
+        path = "issues/{}/notes"
+        inserts = [(i["iid"],) for i in issues]
+        urls = self.url_builder.build(path, inserts)
+
+        return await self.request_handler.request(urls)
+
+    @alru_cache
+    async def issue_note_awards(self) -> List[List[Award]]:
+        """
+        Return list of award emoji that have been awarded
+        to notes of an issue for each issue.
+        """
+        issue_notes = await self.issue_notes()
+
+        if not issue_notes:
+            return []
+
+        path = "issues/{}/notes/{}/award_emoji"
+
+        inserts = [
+            (note["noteable_iid"], note["id"])
+            for issue in issue_notes
+            for note in issue
+            if not note["system"]
+        ]
+
+        urls = self.url_builder.build(path, inserts)
+        result = await self.request_handler.request(urls)
+        notes = []
+
+        for note_count in (len(issue) for issue in issue_notes):
+
+            notes.append([n for sublist in result[:note_count] for n in sublist])
+
+            result = result[note_count:]
 
         return notes
 
-    async def issue_label_events(self):
-        """Get all issue label events for all issues of the wrapped project."""
+    @alru_cache
+    async def merge_requests(self) -> List[MergeRequest]:
+        """
+        Return list of all merge request of the wrapped project.
+        """
+        path = "merge_requests"
+        url = self.url_builder.build(path)
 
-        issues = self._cache.get("issues")
-
-        if not issues:
-            issues = self.issues()
-
-        if not issues:
-            return []
-
-        inserts = [i.get("iid") for i in issues]
-        label_events = await self.request(ISSUE_LABELS, inserts)
-
-        return label_events
-
-    async def issue_award_emoji(self):
-        """Get all award emoji of all issues of the wrapped project."""
-
-        issues = self._cache.get("issues")
-
-        if not issues:
-            issues = self.issues()
-
-        if not issues:
-            return []
-
-        inserts = [i.get("iid") for i in issues]
-        awards = await self.request(ISSUE_AWARDS, inserts)
-
-        return awards
-
-    async def issue_note_award_emoji(self):
-        """Get all award emoji of all notes of all issues of the wrapped project."""
-
-        issue_notes = self._cache.get("issue_notes")
-
-        if not issue_notes:
-            issue_notes = self.issue_notes()
-
-        if not issue_notes:
-            return []
-
-        inserts = [
-            (n.get("noteable_iid"), n.get("id")) for notes in issue_notes for n in notes
-        ]
-
-        return await self.request(ISSUE_NOTE_AWARDS, inserts)
-
-    @cache_result
-    async def merge_requests(self):
-        """Get all merge requests of the wrapped project."""
-
-        merge_requests = []
-
-        for sublist in await self.request(MERGE_REQUESTS):
-            for mr in sublist:
-                merge_requests.append(mr)
-
+        merge_requests = []  # type: List[MergeRequest]
+        for sublist in await self.request_handler.request(url):
+            for merge_request in sublist:
+                merge_requests.append(merge_request)
         return merge_requests
 
-    @cache_result
-    async def merge_request_notes(self):
-        """Get all notes of all merge requests of the wrapped project."""
+    @alru_cache
+    async def merge_request_labels(self) -> List[List[Label]]:
+        """
+        Return list of all label events for each merge request of the
+        wrapped project.
+        """
+        mrs = await self.merge_requests()
 
-        merge_requests = self._cache.get("merge_requests")
-
-        if not merge_requests:
-            merge_requests = await self.merge_requests()
-
-        if not merge_requests:
+        if not mrs:
             return []
 
-        inserts = [mr.get("iid") for mr in merge_requests]
-        mr_notes = await self.request(MERGE_REQUEST_NOTES, inserts)
+        path = "merge_requests/{}/resource_label_events"
+        inserts = [(mr["iid"],) for mr in mrs]
+        urls = self.url_builder.build(path, inserts)
 
-        return mr_notes
+        return await self.request_handler.request(urls)
 
-    async def merge_request_label_events(self):
-        """Get all label events for all merge requests of the wrapped project."""
+    @alru_cache
+    async def merge_request_awards(self) -> List[List[Award]]:
+        """
+        Return list of all award emoji for each merge request of the
+        wrapped project.
+        """
+        mrs = await self.merge_requests()
 
-        merge_requests = self._cache.get("merge_requests")
-
-        if not merge_requests:
-            merge_requests = await self.merge_requests()
-
-        if not merge_requests:
+        if not mrs:
             return []
 
-        inserts = [mr.get("iid") for mr in merge_requests]
-        return await self.request(MERGE_REQUEST_LABELS, inserts)
+        path = "merge_requests/{}/award_emoji"
+        inserts = [(mr["iid"],) for mr in mrs]
+        urls = self.url_builder.build(path, inserts)
 
-    async def merge_request_award_emoji(self):
-        """Get all award emoji of all merge requests of the wrapped project."""
+        return await self.request_handler.request(urls)
 
-        merge_requests = self._cache.get("merge_requests")
+    @alru_cache
+    async def merge_request_notes(self) -> List[List[Note]]:
+        """
+        Return list of merge request notes for each merge request of
+        the wrapped project.
+        """
+        mrs = await self.merge_requests()
 
-        if not merge_requests:
-            merge_requests = await self.merge_requests()
-
-        if not merge_requests:
+        if not mrs:
             return []
 
-        inserts = [mr.get("iid") for mr in merge_requests]
-        return await self.request(MERGE_REQUEST_AWARDS, inserts)
+        path = "merge_requests/{}/notes"
+        inserts = [(mr["iid"],) for mr in mrs]
+        urls = self.url_builder.build(path, inserts)
 
-    async def merge_request_note_award_emoji(self):
-        """Get all award emoji of all notes of all merge requests of the wrapped project."""
+        return await self.request_handler.request(urls)
 
-        merge_request_notes = self._cache.get("merge_request_notes")
+    @alru_cache
+    async def merge_request_note_awards(self) -> List[List[Award]]:
+        """
+        Return list of award emoji that have been awarded to notes
+        of a merge request for each merge request.
+        """
+        mrs_notes = await self.merge_request_notes()
 
-        if not merge_request_notes:
-            merge_request_notes = await self.merge_request_notes()
-
-        if not merge_request_notes:
+        if not mrs_notes:
             return []
 
+        path = "merge_requests/{}/notes/{}/award_emoji"
         inserts = [
-            (note.get("noteable_iid"), note.get("id"))
-            for mr in merge_request_notes
+            (note["noteable_iid"], note["id"])
+            for mr in mrs_notes
             for note in mr
-            if not note.get("system")
+            if not note["system"]
         ]
 
-        return await self.request(MERGE_REQUEST_NOTE_AWARDS, inserts)
+        urls = self.url_builder.build(path, inserts)
+        result = await self.request_handler.request(urls)
+        notes = []
+
+        # rematch note awards to the merge requests
+        # that they have been awarded on
+
+        for note_count in (len(mr) for mr in mrs_notes):
+
+            notes.append([n for sublist in result[:note_count] for n in sublist])
+
+            result = result[note_count:]
+
+        return notes
+
+
+@dataclass
+class URLBuilder:
+    """
+    URL formatting and path building.
+    """
+    purl: InitVar[str]
+    base: URL = URL()
+
+    def __post_init__(self, purl: str) -> None:
+        if not purl:
+            raise ValueError
+
+        url = URL(purl)
+
+        if not url.scheme:
+            raise ValueError
+
+        p_id = self.url_encode(url.path)
+        self.base = url.origin().with_path(f"api/v4/projects/{p_id}")
+
+    def build(self, path: str, inserts: Optional[Sequence[Tuple[str, ...]]] = None) -> Iterator[URL]:
+        """
+        Yield urls by appending *path* optionally formatted with values
+        of *inserts* to self.base.
+
+        Update query string to request 50 entries per page.
+        """
+        if inserts is None:
+            inserts = []
+
+        if path and not path.startswith("/"):
+            path = "/" + path
+
+        if not inserts:
+            if path.count("{}"):
+                # blanks in path but insert list empty
+                raise ValueError("Blanks exist. No values to insert.")
+
+            url = self.base.origin().with_path(self.base.raw_path + path)
+            yield url.update_query({"per_page": 50})
+
+        for vals in inserts:
+            if len(vals) != path.count("{}"):
+                # blank count doesn't match count of insert values
+                raise ValueError("Unequal amount of blanks and insert values.")
+
+            fmt = path.format(*vals)
+            url = self.base.origin().with_path(self.base.raw_path + fmt)
+            yield url.update_query({"per_page": 50})
+
+    @staticmethod
+    def url_encode(string: str) -> str:
+        """
+        Remove leading slash from *string*, replace remaining slashes
+        by "%2F".
+        """
+        if string.startswith("/"):
+            # remove leading slash
+            string = string[1:]
+        return string.replace("/", "%2F")
+
+
+@dataclass
+class RequestHandler:
+    """
+    Dispatch requests ansynchronously, though adhere to rate limiting.
+    """
+    token: str
+    rate: int = 10
+    session: Optional[RateLimiter] = None
+
+    async def __aenter__(self) -> RequestHandler:
+        """
+        Create client session with authorization info.
+        """
+        auth = {"Private-Token": self.token}
+        self.session = RateLimiter(ClientSession(headers=auth), rate=self.rate)
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """
+        Close client session.
+        """
+        if not self.session:
+            return
+        await self.session.close()
+
+    async def first_page(self, url: URL) -> Tuple[Any, int]:
+        """
+        Return content of first page and number of total pages.
+        """
+        if not self.session:
+            raise ValueError
+
+        url = url.update_query({"page": 1})
+
+        async with await self.session.get(url) as resp:
+            json = await resp.json()
+            page_count = int(resp.headers["x-total-pages"])
+
+        return json, page_count
+
+    async def single_page(self, url: URL, page: int) -> Any:
+        """
+        Return json content of page number *page* of request *url*.
+        """
+        if not self.session:
+            raise ValueError
+
+        url = url.update_query({"page": page})
+
+        async with await self.session.get(url) as resp:
+            json = await resp.json()
+
+        return json
+
+    async def request(self, urls: Iterable[URL]) -> List[Any]:
+        """
+        Return content of all pages for each url in *urls*
+
+        Workflow of this method:
+
+        1. Asynchronously request first page and page count for all
+            urls.
+
+        2. Create request tasks for the remaining pages of urls that
+            have more than one content page.
+
+        3. Dispatch tasks batches asynchronously.
+
+        4. Match remaining pages with their corresponding first.
+
+        5. Return as one big page for all urls.
+        """
+        # hotfix for generator exhaustion
+        urls = list(urls)
+
+        # create tasks for first pages
+        tasks = [self.first_page(url) for url in urls]
+        # collect first pages
+        first_pages = await self.gather_in_batches(tasks)
+        
+        # create tasks for remaining pages
+        tasks = []
+        for url, (_, page_count) in zip(urls, first_pages):
+            if page_count < 2:
+                continue
+            remaining = [self.single_page(url, n) for n in range(2, page_count + 1)]
+            tasks.extend(remaining)
+
+        # collect remaining pages
+        remaining_pages = collections.deque(await self.gather_in_batches(tasks))
+
+        if not remaining_pages:
+            return [page for (page, _) in first_pages]
+
+        # extend first page of each request to
+        # hold the entire content of all pages
+
+        results = []  # type: List[Any]
+        for (page, page_count) in first_pages:
+            for _ in range(2, page_count + 1):
+                page.extend(remaining_pages.popleft())
+            results.append(page)
+
+        return results
+
+    @staticmethod
+    async def gather_in_batches(coroutines: List[Coroutine[Any, Any, T]]) -> List[T]:
+        """
+        Perform a limited amount of requests per asyncio.gather statement.
+
+        Prevent segfault when matching queries to their answers.
+        """
+        result = []  # type: List[T]
+
+        for coroutine_batch in chunks(coroutines, 200):
+            result.extend(await asyncio.gather(*coroutine_batch))
+
+        return result
