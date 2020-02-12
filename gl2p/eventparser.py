@@ -1,3 +1,7 @@
+"""
+Classify API resources into predefined events.
+"""
+
 # Copyright (c) 2019 German Aerospace Center (DLR/SC).
 # All rights reserved.
 #
@@ -16,20 +20,11 @@
 
 
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Any, Dict, Optional
-
-
-@dataclass
-class GitLabResourceEvent:
-    """
-    Represents an event occuring on a resource (Commit, Issue, Merge Request).
-    """
-    identifier: str
-    initiator: str
-    type: str
-    labels: Dict[Any, Any]
-    created_at: Optional[datetime] = None
+from typing import List
+from prov.constants import PROV_TYPE
+from gl2p.utils.objects import EventCandidates, GL2PEvent
+from gl2p.utils.types import Label, Note, Award
+from gl2p.utils.helpers import by_date
 
 
 @dataclass
@@ -37,35 +32,105 @@ class EventParser:
     """
     Handles classification of resource events.
     """
-    @staticmethod
-    def parse_note(note):
+    def parse(self, eventables: EventCandidates) -> List[GL2PEvent]:
         """
-        Returns GitLabResourceEvent with event type parsed from note.
+        Return list of GL2PEvent internals parsed from event candidates of *eventables*.
+
+        A list of possible events can be found in /docs.
         """
-        if note.get("system"):
-            return EventParser.parse_system_note(note)
-        return EventParser.parse_non_system_note(note)
+        events = []  # type: List[GL2PEvent]
+
+        for label in eventables.labels:
+            if not label:
+                continue
+            events.append(self.parse_label(label))
+
+        for award in [*eventables.awards, *eventables.note_awards]:
+            if not award:
+                continue
+            events.append(self.parse_award(award))
+
+        for note in eventables.notes:
+            if not note:
+                continue
+            events.append(self.parse_note(note))
+
+        return sorted(events, key=by_date)
 
     @staticmethod
-    def parse_system_note(sysnote):
+    def parse_label(label: Label) -> GL2PEvent:
         """
-        Returns GitLabResourceEvent parsed from system note.
+        Return GL2PEvent internal parsed from *label*.
         """
-        identifier = sysnote.get("id")
-        initiator = sysnote.get("author").get("name")
-        type_ = "system note"
-        labels = {"body": sysnote.get("body")}
-        created_at = sysnote.get("created_at")
-        return GitLabResourceEvent(identifier, initiator, type_, labels, created_at)
+        id_ = label["id"]
+        initiator = label["user"]["name"]
+
+        if label["action"] == "remove":
+            type_ = "remove_label"
+        elif label["action"] == "add":
+            type_ = "add_label"
+
+        created_at = label["created_at"]
+
+        label = {
+            PROV_TYPE: "resource_event",
+            "event_type": type_,
+            "label_name": label["label"]["name"]
+        }
+        return GL2PEvent(id_, initiator, label, created_at)
 
     @staticmethod
-    def parse_non_system_note(note):
+    def parse_award(award: Award) -> GL2PEvent:
         """
-        Retruns GitLabResourceEvent parsed from non sytem note.
+        Return GL2PEvent internal parsed from *award*.
         """
-        identifier = note["id"]
+        id_ = award["id"]
+        initiator = award["user"]["name"]
+        type_ = "award_emoji"
+
+        label = {
+            PROV_TYPE: "resource_event",
+            "event_type": type_,
+            "awardable_id": award["awardable_id"],
+            "awardable_type": award["awardable_type"],
+            "award_name": award["name"],
+        }
+
+        created_at = award["created_at"]
+
+        return GL2PEvent(id_, initiator, label, created_at)
+
+    def parse_note(self, note: Note) -> GL2PEvent:
+        """
+        Return GL2PEvent internal parsed from *note*.
+        """
+        if note["system"]:
+            return self.parse_system_note(note)
+
+        return self.parse_non_system_note(note)
+
+    @staticmethod
+    def parse_system_note(note: Note) -> GL2PEvent:
+        """
+        Parse system note to GL2PEvent internal.
+        """
+        id_ = note["id"]
         initiator = note["author"]["name"]
+        created_at = note["created_at"]
+        type_ = "system_note"
+        label = {PROV_TYPE: "resource_event", "event_type": type_}
+
+        return GL2PEvent(id_, initiator, label, created_at)
+
+    @staticmethod
+    def parse_non_system_note(note: Note) -> GL2PEvent:
+        """
+        Parse non system note to GL2PEvent internal.
+        """
+        id_ = note["id"]
+        initiator = note["author"]["name"]
+        created_at = note["created_at"]
         type_ = "note"
-        labels = {"body": note["body"]}
-        created_at = note.get("created_at")
-        return GitLabResourceEvent(identifier, initiator, type_, labels, created_at)
+        label = {PROV_TYPE: "resource_event", "event_type": type_}
+
+        return GL2PEvent(id_, initiator, label, created_at)
