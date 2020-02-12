@@ -12,47 +12,58 @@
 # from GitLab hosted repositories aswell as to store the extracted data in a Neo4J database.
 #
 # code-author: Claas de Boer <claas.deboer@dlr.de>
+"""
+Helper functions.
+"""
 
 
 import datetime
-import urllib
+import urllib.parse
 import uuid
-from typing import Any, Dict, Iterator, List
+from typing import Any, Iterator, List
+from gl2p.utils.objects import GL2PEvent
 
 
-def ptime(s: str) -> datetime.datetime:
+def ptime(string: str) -> datetime.datetime:
     """
     Parse datetimestring to datetime object.
     """
     fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
-    date = datetime.datetime.strptime(s, fmt)
+    date = datetime.datetime.strptime(string, fmt)
     return date
 
 
-def by_date(resource: Dict[str, Any]) -> datetime.datetime:
+def by_date(event: GL2PEvent) -> datetime.datetime:
     """
     Parse value of key 'created_at' of resource to datetime object.
     """
-    return ptime(resource["created_at"])
+    return ptime(event.created_at)
 
 
-def chunks(l: List[Any], n: int) -> Iterator[List[Any]]:
+def chunks(lst: List[Any], chunk_size: int) -> Iterator[List[Any]]:
     """
     Generator for n-sized chunks of list l.
     """
-    for i in range(0, len(l), n):
-        yield l[i:i + n]
+    for i in range(0, len(lst), chunk_size):
+        yield lst[i: i+chunk_size]
 
 
 def url_encoded_path(url: str) -> str:
     """
     Extract project path from url and replace "/" by "%2F".
     """
-    return urllib.parse.urlparse(url).path[1:].replace("/", "%2F")
+    path = urllib.parse.urlparse(url).path
+
+    if not path:
+        return ""
+
+    return path[1:].replace("/", "%2F")
 
 
-def qname(s: str):
+def qname(string: str) -> str:
     """
-    Return uuid5 of *string*. Used to create unique identifiers.
+    Return uuid5 of *string* in string representation.
+
+    Used to create unique identifiers.
     """
-    return str(uuid.uuid5(uuid.NAMESPACE_DNS, s))
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, string))
