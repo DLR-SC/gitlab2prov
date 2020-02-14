@@ -24,44 +24,75 @@ source env/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-```
 
+```
 ### Configuration
 
 #### Obtain Private Access Token for GitLab
 
-Go to https://YOUR-GITLAB/profile/personal_access_tokens and claim a personal access token.
-The necessary scopes are `api` and `read_user`.
+Go to `https://YOUR-GITLAB/profile/personal_access_tokens` and claim a personal access token.
+The necessary scopes are `api` and `read_user`. A guide on how to create an API access token can be found [here](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token).
 
-#### Configure Project
 
-`gitlab2prov` is configured by its config file at `config/config.ini`.
+#### Configure `gitlab2prov`
 
-Excerpt from `config/config.ini.example`
+All available configuration options can be set by providing command line arguments/flags.
+To get a list of available options, simply run `python gitlab2prov.py -h` or refer to the **Usage** section of this README.
+To ease the configuration of consecutive runs, `gitlab2prov` is able to use a configuration file.
+The default path for the config file is set to `config/config.ini` and can be changed by using the `-c` or likewise the `--config-file` flag.
 
+An example of a configuration file can be found at `config/example.ini`.
+
+Excerpt from `config/example.ini`
 ```ini
-[GITLAB]
-token = GitLabAPIToken
-project = ProjectUrl
-rate = RateLimit
-
-[NEO4J]
-host = Neo4jHost
-user = Username
-password = Password
-boltport = BOLTPort
+[GITLAB2PROV]
+project_url = project_url
+token = token
+rate_limit = 10
+format = provn
+neo4j_user = username
+neo4j_password = password
+neo4j_host = localhost
+neo4j_boltport = 7687
 ```
+**Note:** Command line flags will take precedence over values provided by the config file.
 
 ### Usage
 ```
-usage: gitlab2prov.py [-h] [--provn PROVN] [--neo4j]
+❯ python gitlab2prov.py -h
+usage: gitlab2prov.py [-h] [-p URL] [-t TOKEN] [-r LIMIT] [-c CONFIG]
+                      [-f {provn,json,rdf,xml}] [--neo4j]
+                      [--neo4j-user USERNAME] [--neo4j-password PASSWORD]
+                      [--neo4j-host HOST] [--neo4j-boltport PORT]
 
-Extract provenance information from a GitLab repository.
+Extract provenance information from GitLab projects.
 
 optional arguments:
-  -h, --help     show this help message and exit
-  --provn PROVN  output file
-  --neo4j        save to neo4j
+  -h, --help            show this help message and exit
+
+BASIC CONFIG:
+  -p URL, --project-url URL
+                        gitlab project url
+  -t TOKEN, --token TOKEN
+                        gitlab api access token
+  -r LIMIT, --rate-limit LIMIT
+                        api client rate limit (in req/s)
+  -c CONFIG, --config-file CONFIG
+                        config file path
+  -f {provn,json,rdf,xml}, --format {provn,json,rdf,xml}
+                        provenance output format
+
+NEO4J CONFIG:
+  --neo4j               enable neo4j storage
+  --neo4j-user USERNAME
+                        neo4j username
+  --neo4j-password PASSWORD
+                        neo4j password
+  --neo4j-host HOST     neo4j host
+  --neo4j-boltport PORT
+                        neo4j bolt protocol port
+
+Consider visiting GitLab2PROV on GitHub: https://github.com/DLR-SC/gitlab2prov
 ```
 
 ## Example
