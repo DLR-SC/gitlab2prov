@@ -13,7 +13,7 @@ from aiohttp import ClientSession
 from yarl import URL
 from gl2p.api.ratelimiter import RateLimiter
 from gl2p.utils.types import Commit, Issue, MergeRequest, Note, Diff, Award, Label
-from gl2p.utils.helpers import chunks
+from gl2p.utils.helpers import chunks, url_encoded_path
 
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -335,7 +335,7 @@ class URLBuilder:
         if not url.scheme:
             raise ValueError
 
-        p_id = self.url_encode(url.path)
+        p_id = url_encoded_path(url.path)
         self.base = url.origin().with_path(f"api/v4/projects/{p_id}")
 
     def build(self, path: str, inserts: Optional[Sequence[Tuple[str, ...]]] = None) -> Iterator[URL]:
@@ -367,17 +367,6 @@ class URLBuilder:
             fmt = path.format(*vals)
             url = self.base.origin().with_path(self.base.raw_path + fmt)
             yield url.update_query({"per_page": 50})
-
-    @staticmethod
-    def url_encode(string: str) -> str:
-        """
-        Remove leading slash from *string*, replace remaining slashes
-        by "%2F".
-        """
-        if string.startswith("/"):
-            # remove leading slash
-            string = string[1:]
-        return string.replace("/", "%2F")
 
 
 @dataclass
@@ -459,7 +448,7 @@ class RequestHandler:
         tasks = [self.first_page(url) for url in urls]
         # collect first pages
         first_pages = await self.gather_in_batches(tasks)
-        
+
         # create tasks for remaining pages
         tasks = []
         for url, (_, page_count) in zip(urls, first_pages):
