@@ -54,6 +54,9 @@ def url_encoded_path(url: str) -> str:
     """
     path = urllib.parse.urlparse(url).path
 
+    if path.endswith("/"):
+        path = path[:-1]
+
     if not path:
         return ""
 
