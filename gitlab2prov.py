@@ -16,12 +16,12 @@
 #
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
-import argparse
 import asyncio
+import argparse
 from typing import List, Union
 from provdbconnector import Neo4jAdapter, ProvDb
 from prov.model import ProvDocument
-from gl2p.config import CONFIG, PROJECT, RATE_LIMIT, TOKEN
+from gl2p.config import get_config
 from gl2p.api.gitlab import GitLabProjectWrapper
 from gl2p.utils.helpers import url_encoded_path
 from gl2p.pipelines import (CommitPipeline, CommitResourcePipeline,
@@ -34,21 +34,6 @@ Pipeline = Union[
     IssueResourcePipeline,
     MergeRequestResourcePipeline
 ]
-
-
-def parse_args() -> argparse.Namespace:
-    """
-    Parse command line arguments.
-    """
-    parser = argparse.ArgumentParser(
-        description="Extract provenance information from a GitLab repository."
-    )
-
-    parser.add_argument("--provn", help="output file")
-    parser.add_argument("--config", help="specify config file path")
-    parser.add_argument("--neo4j", help="save to neo4j", action="store_true")
-
-    return parser.parse_args()
 
 
 def unite_documents(documents: List[ProvDocument]) -> ProvDocument:
@@ -79,32 +64,14 @@ def run_pipes(pipelines: List[Pipeline]) -> List[ProvDocument]:
     return models
 
 
-def write_to_file(document: ProvDocument, provn: str, project_id: str) -> None:
-    """
-    Write prov document in PROVN notation to *outfile*.
-    """
-    outfile = ""
-
-    if provn:
-        if not provn.endswith(".provn"):
-            outfile = provn + ".provn"
-        else:
-            outfile = provn
-    else:
-        outfile = f"{project_id.replace('%2F', '-')}.provn"
-
-    with open(outfile, "w") as f:
-        print(document.get_provn(), file=f)
-
-
-def store_in_db(document: ProvDocument) -> None:
+def store_in_db(document: ProvDocument, config: argparse.Namespace) -> None:
     """
     Store prov document in neo4j instance.
     """
     auth_info = {
-        "user_name": CONFIG["NEO4J"]["user"],
-        "user_password": CONFIG["NEO4J"]["password"],
-        "host": f"{CONFIG['NEO4J']['host']}:{CONFIG['NEO4J']['boltport']}"
+        "user_name": config.neo4j_user,
+        "user_password": config.neo4j_password,
+        "host": f"{config.neo4j_host}:{config.neo4j_boltport}"
         }
 
     prov_api = ProvDb(adapter=Neo4jAdapter, auth_info=auth_info)
@@ -114,19 +81,11 @@ def store_in_db(document: ProvDocument) -> None:
 def main() -> None:
     """
     Main execution loop.
-
-    Create api wrapper instance, pass it to each pipeline.
-    Run pipeline execution flows (fetch, process, create_model).
-    Merge resulting prov documents.
-
-    Write united document in PROVN notation to file.
-    Store united document in Neo4j if appropriate flag is set.
     """
-    args = parse_args()
-    provn, neo4j = args.provn, args.neo4j
+    config = get_config()
 
-    api_client = GitLabProjectWrapper(PROJECT, TOKEN, RATE_LIMIT)
-    project_id = url_encoded_path(PROJECT)
+    api_client = GitLabProjectWrapper(config.project_url, config.token, config.rate_limit)
+    project_id = url_encoded_path(config.project_url)
 
     pipelines = [
         CommitPipeline(project_id, api_client),
@@ -138,10 +97,11 @@ def main() -> None:
     docs = run_pipes(pipelines)
     doc = unite_documents(docs)
 
-    write_to_file(doc, provn, project_id)
+    print(doc.serialize(format=config.format))
 
-    if neo4j:
-        store_in_db(doc)
+    # store in neo4j, if flag is set
+    if config.neo4j:
+        store_in_db(doc, config)
 
 
 if __name__ == "__main__":
