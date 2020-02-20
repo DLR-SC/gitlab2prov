@@ -20,8 +20,8 @@ from prov.constants import PROV_ROLE, PROV_TYPE
 from gl2p.eventparser import EventParser
 from gl2p.history import FileNameHistory
 from gl2p.utils.objects import (CommitResource, Event, Resource, Creation, Agent, GL2PEvent,
-                                Entity, Activity, CommitCreation, EventCandidateContainer,
-                                EventCandidates, Addition, Deletion, Modification)
+                                Entity, Activity, CommitCreation, ParseableContainer,
+                                Candidates, Addition, Deletion, Modification)
 from gl2p.utils.types import Commit, Issue, MergeRequest, Diff
 from gl2p.utils.helpers import qname, ptime
 
@@ -295,23 +295,26 @@ class CommitResourceProcessor:
     """
     eventparser: EventParser = EventParser()
 
-    def run(self, commits: List[Commit], eventables: EventCandidateContainer) -> List[Resource]:
+    def run(self, commits: List[Commit], parsables: ParseableContainer) -> List[Resource]:
         """
-        Return
+        Return list of PROV-DM commit resources.
         """
         processed = []
-        for commit, candidates in eventables.zip(commits):
+
+        for commit, candidates in zip(commits, parsables):
+
             processed.append(
                 Resource(
                     self.creation(commit),
                     self.events(commit, candidates)
                 )
             )
+
         return processed
 
     def creation(self, commit: Commit) -> CommitCreation:
         """
-        docstring
+        Return PROV-DM creation grouping for *commit*.
         """
         return CommitCreation(
             committer(commit),
@@ -321,7 +324,7 @@ class CommitResourceProcessor:
             commit_resource_version_entity(commit, postfix="")
         )
 
-    def events(self, commit: Commit, candidates: EventCandidates) -> List[Event]:
+    def events(self, commit: Commit, candidates: Candidates) -> List[Event]:
         """
         Return list of events parsed from *notes* in chronological order.
         """
@@ -356,12 +359,12 @@ class IssueResourceProcessor:
 
     eventparser: EventParser = EventParser()
 
-    def run(self, issues: List[Issue], eventables: EventCandidateContainer) -> List[Resource]:
+    def run(self, issues: List[Issue], eventables: ParseableContainer) -> List[Resource]:
         """
         Return list of resource life cycles for issues.
         """
         processed = []
-        for issue, candidates in eventables.zip(issues):
+        for issue, candidates in zip(issues, eventables):
 
             processed.append(
                 Resource(
@@ -383,7 +386,7 @@ class IssueResourceProcessor:
             issue_resource_version_entity(issue, postfix=""),
         )
 
-    def events(self, issue: Issue, eventables: EventCandidates) -> List[Event]:
+    def events(self, issue: Issue, eventables: Candidates) -> List[Event]:
         """
         """
         previous_resource_version = issue_resource_version_entity(issue, postfix="")
@@ -415,7 +418,7 @@ class MergeRequestResourceProcessor:
 
     eventparser: EventParser = EventParser()
 
-    def run(self, merge_requests: List[MergeRequest], eventables: EventCandidateContainer) -> List[Resource]:
+    def run(self, merge_requests: List[MergeRequest], eventables: ParseableContainer) -> List[Resource]:
         """
         Return the resource life cycle of each merge request in
         *merge_requests*.
@@ -424,7 +427,7 @@ class MergeRequestResourceProcessor:
         """
         processed = []
 
-        for mr, candidates in eventables.zip(merge_requests):
+        for mr, candidates in zip(merge_requests, eventables):
             processed.append(
                 Resource(
                     self.creation(mr),
@@ -445,7 +448,7 @@ class MergeRequestResourceProcessor:
             merge_request_resource_version_entity(merge_request, postfix="")
         )
 
-    def events(self, merge_request: MergeRequest, eventables: EventCandidates) -> List[Event]:
+    def events(self, merge_request: MergeRequest, eventables: Candidates) -> List[Event]:
         """
         Return list of events for *merge_request* from *eventables* in
         chronological order.
