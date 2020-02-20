@@ -206,6 +206,11 @@ class GitLabProjectWrapper:
             if not note["system"]
         ]
 
+        if not inserts:
+            # do not perform requests
+            # if no awardable notes exist
+            return [list() for issue in issue_notes]
+
         urls = self.url_builder.build(path, inserts)
         result = await self.request_handler.request(urls)
         notes = []
@@ -301,6 +306,11 @@ class GitLabProjectWrapper:
             for note in mr
             if not note["system"]
         ]
+
+        if not inserts:
+            # do not perform requests
+            # if no awardable notes exist
+            return [list() for mr in mrs_notes]
 
         urls = self.url_builder.build(path, inserts)
         result = await self.request_handler.request(urls)
