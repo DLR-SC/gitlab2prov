@@ -16,7 +16,7 @@
 
 from dataclasses import dataclass, field, asdict
 import datetime
-from typing import NamedTuple, Union, Dict, List, Any, Iterable, Tuple
+from typing import NamedTuple, Union, Dict, List, Any, Iterator
 from gl2p.utils.types import Note, Label, Award
 
 
@@ -55,7 +55,7 @@ class ParseableContainer:
             value = [list() for _ in range(max_len)]
             setattr(self, key, value)
 
-    def __iter__(self) -> Iterable[Tuple[List[Label], List[Award], List[Note], List[Award]]]:
+    def __iter__(self) -> Iterator[Candidates]:
         """
         Return iterator over stored attributes.
         """
