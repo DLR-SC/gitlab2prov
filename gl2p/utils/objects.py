@@ -17,76 +17,50 @@
 from dataclasses import dataclass, field, asdict
 import datetime
 from typing import NamedTuple, Union, Dict, List, Any, Iterable, Tuple
+from gl2p.utils.types import Note, Label, Award
 
 
-APIResource = Dict[str, Any]
-
-
-@dataclass
-class EventCandidates:
-
-    labels: List[APIResource] = field(default_factory=list)
-    awards: List[APIResource] = field(default_factory=list)
-    notes: List[APIResource] = field(default_factory=list)
-    note_awards: List[APIResource] = field(default_factory=list)
-
-    def __post_init__(self) -> None:
-        """
-        Fill all class properties to same length.
-
-        Default value is an empty dict.
-        """
-        max_len = len(max(asdict(self).values(), key=len))
-
-        if not self.labels:
-            self.labels = [{} for _ in range(max_len)]
-
-        if not self.awards:
-            self.awards = [{} for _ in range(max_len)]
-
-        if not self.notes:
-            self.notes = [{} for _ in range(max_len)]
-
-        if not self.note_awards:
-            self.note_awards = [{} for _ in range(max_len)]
+class Candidates(NamedTuple):
+    labels: List[Label]
+    awards: List[Award]
+    notes: List[Note]
+    note_awards: List[Award]
 
 
 @dataclass
-class EventCandidateContainer:
+class ParseableContainer:
     """
-    A container for API resources that represent gl2p resource events.
+    Container for event candidates.
     """
-    labels: List[List[APIResource]] = field(default_factory=list)
-    awards: List[List[APIResource]] = field(default_factory=list)
-    notes: List[List[APIResource]] = field(default_factory=list)
-    note_awards: List[List[APIResource]] = field(default_factory=list)
+    labels: List[List[Label]] = field(default_factory=list)
+    awards: List[List[Award]] = field(default_factory=list)
+    notes: List[List[Note]] = field(default_factory=list)
+    note_awards: List[List[Award]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """
-        Fill all class properties to same length.
-
-        Default value is an empty list.
+        Match all attribute values to same length.
         """
-        max_len = len(max(asdict(self).values(), key=len))
+        selfdict = asdict(self)
+        max_len = len(max(selfdict.values(), key=len))
 
-        if not self.labels:
-            self.labels = [[] for _ in range(max_len)]
+        if not max_len:
+            return
 
-        if not self.awards:
-            self.awards = [[] for _ in range(max_len)]
+        for key, value in selfdict.items():
+            if len(value):
+                # don't override items
+                continue
+            # fill up to max len with empty lists
+            value = [list() for _ in range(max_len)]
+            setattr(self, key, value)
 
-        if not self.notes:
-            self.notes = [[] for _ in range(max_len)]
-
-        if not self.note_awards:
-            self.note_awards = [[] for _ in range(max_len)]
-
-    def zip(self, iterable: Iterable[APIResource]) -> Iterable[Tuple[APIResource, EventCandidates]]:
+    def __iter__(self) -> Iterable[Tuple[List[Label], List[Award], List[Note], List[Award]]]:
         """
-        Yield items from iterable zipped with items from container.
+        Return iterator over stored attributes.
         """
-        for item, *candidates in zip(iterable, self.labels, self.awards, self.notes, self.note_awards):
-            yield item, EventCandidates(*candidates)
+        for zipped in zip(self.labels, self.awards, self.notes, self.note_awards):
+            yield Candidates(*zipped)
 
 
 @dataclass
@@ -94,10 +68,10 @@ class GL2PEvent:
     """
     Internal event representation.
     """
-    id: str
-    initiator: str
-    label: Dict[str, Any]
-    created_at: str
+    id: str = ""
+    initiator: str = ""
+    created_at: str = ""
+    label: Dict[str, Any] = field(default_factory=dict)
 
 
 class Activity(NamedTuple):
