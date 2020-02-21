@@ -460,6 +460,8 @@ class EventParser:
             PROV_TYPE: "resource_event",
             "system_note_id": note["id"],
             "content": note["body"],
-            **self.classifier.classify(note["body"]),
+            "noteable_id": note["noteable_id"],
+            "noteable_type": note["noteable_type"],
+            **self.classifier.classify(note["body"])
         }
         return event
