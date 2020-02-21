@@ -20,6 +20,7 @@ Classify API resources into predefined events.
 
 
 import re
+import textwrap
 
 from typing import List, Dict, Any, Optional
 from prov.constants import PROV_TYPE
@@ -33,39 +34,33 @@ class SystemNoteEventClassifier:
     A regex based classifier for a single event type.
     """
 
-    def __init__(self, event_type: str, regex: str) -> None:
+    def __init__(self, event_type: str, regex: List[str]) -> None:
         """
         Only allow non capturing and named groups in *regex*.
         """
-        if not self.valid_regex(regex):
-            raise ValueError(f"Only non capturing and named groups are allowed in regex.")
 
         self.event_type = event_type
-        self.regex = re.compile(regex)
-
-    def valid_regex(self, regex: str) -> bool:
-        """
-        Return whether all groups are either non capturing or named.
-        """
-        # TODO: implement
-        return True
+        self.patterns = [re.compile(r) for r in regex]
 
     def matches(self, body: str) -> bool:
         """
         Return whether classifier matches *body*.
         """
-        return bool(self.regex.search(body))
+        return any(bool(p.search(body)) for p in self.patterns)
 
     def construct(self, body: str) -> Dict[str, Any]:
         """
         Construct label information from classifier.
         """
-        search_result = self.regex.search(body)
+        # pick the first pattern that matched
+        # is this a potential problem?
+        matched = list(filter(bool, map(lambda p: p.search(body), self.patterns)))[0]
 
-        if not search_result:
+        if not matched:
+            # should never happen
             return dict()
 
-        info = search_result.groupdict()
+        info = matched.groupdict()
 
         return {"event_type": self.event_type, **info}
 
@@ -82,47 +77,47 @@ class SystemNoteEventClassifier:
 classifiers = [
     SystemNoteEventClassifier(
         event_type="metion_in_issue",
-        regex=r"^mentioned in issue #(?P<issue_iid>\d+)$"
+        regex=[r"^mentioned in issue #(?P<issue_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="mention_in_external_issue",
-        regex=r"^mentioned in issue (?P<project_slug>.+)#(?P<issue_iid>\d+)$"
+        regex=[r"^mentioned in issue (?P<project_slug>.+)#(?P<issue_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="metion_in_commit",
-        regex=r"^mentioned in commit (?P<commit_sha>[0-9a-z]{40})$"
+        regex=[r"^mentioned in commit (?P<commit_sha>[0-9a-z]{40})$"]
     ),
     SystemNoteEventClassifier(
         event_type="mention_in_external_commit",
-        regex=r"^mentioned in commit (?P<project_slug>.+)@(?P<commit_sha>[0-9a-z]{40})$"
+        regex=[r"^mentioned in commit (?P<project_slug>.+)@(?P<commit_sha>[0-9a-z]{40})$"]
     ),
     SystemNoteEventClassifier(
         event_type="mention_in_merge_request",
-        regex=r"^mentioned in merge request !(?P<merge_request_iid>\d+)$"
+        regex=[r"^mentioned in merge request !(?P<merge_request_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="mention_in_external_merge_request",
-        regex=r"^mentioned in merge request (?P<project_slug>.+)!(?P<merge_request_iid>\d+)$"
+        regex=[r"^mentioned in merge request (?P<project_slug>.+)!(?P<merge_request_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="assign_user",
-        regex=r"^assigned to @(?P<user_name>.*)$"
+        regex=[r"^assigned to @(?P<user_name>.*)$"]
     ),
     SystemNoteEventClassifier(
         event_type="unassign_user",
-        regex=r"^unassigned @(?P<user_name>.*)$"
+        regex=[r"^unassigned @(?P<user_name>.*)$"]
     ),
     SystemNoteEventClassifier(
         event_type="change_milestone",
-        regex=r"^changed milestone to %(?P<milestone_iid>\d+)$"
+        regex=[r"^changed milestone to %(?P<milestone_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="remove_milestone",
-        regex=r"^removed milestone$"
+        regex=[r"^removed milestone$"]
     ),
     SystemNoteEventClassifier(
         event_type="add_spend_time",
-        regex=(
+        regex=[(
             r"^added\s" +
             r"(?:(?P<months>\d+)mo\s)?" +
             r"(?:(?P<weeks>\d+)w\s)?" +
@@ -130,11 +125,11 @@ classifiers = [
             r"(?:(?P<hours>\d+)h\s)?" +
             r"(?:(?P<minutes>\d+)m)?" +
             r"\sof time spent at (?P<date>\d{4}-\d{2}-\d{2})$"
-        )
+        )]
     ),
     SystemNoteEventClassifier(
         event_type="subtract_spend_time",
-        regex=(
+        regex=[(
             r"^subtracted\s" +
             r"(?:(?P<months>\d+)mo\s)?" +
             r"(?:(?P<weeks>\d+)w\s)?" +
@@ -142,153 +137,178 @@ classifiers = [
             r"(?:(?P<hours>\d+)h\s)?" +
             r"(?:(?P<minutes>\d+)m)?" +
             r"\sof time spent at (?P<date>\d{4}-\d{2}-\d{2})$"
-        )
+        )]
     ),
     SystemNoteEventClassifier(
         event_type="remove_spend_time",
-        regex=r"^removed time spent$"
+        regex=[r"^removed time spent$"]
     ),
     SystemNoteEventClassifier(
         event_type="lock_issue",
-        regex=r"^locked this issue$"
+        regex=[r"^locked this issue$"]
     ),
     SystemNoteEventClassifier(
         event_type="unlock_issue",
-        regex=r"^unlocked this issue$"
+        regex=[r"^unlocked this issue$"]
     ),
     SystemNoteEventClassifier(
         event_type="lock_merge_request",
-        regex=r"^locked this merge request$"
+        regex=[r"^locked this merge request$"]
     ),
     SystemNoteEventClassifier(
         event_type="unlock_merge_request",
-        regex=r"^unlocked this merge request$"
+        regex=[r"^unlocked this merge request$"]
     ),
     SystemNoteEventClassifier(
         event_type="change_time_estimate",
-        regex=(
+        regex=[(
             r"^changed time estimate to\s" +
             r"(?:(?P<months>\d+)mo\s?)?" +
             r"(?:(?P<weeks>\d+)w\s?)?" +
             r"(?:(?P<days>\d+)d\s?)?" +
             r"(?:(?P<hours>\d+)h\s?)?" +
             r"(?:(?P<minutes>\d+)m)?$"
-        )
+        )]
     ),
     SystemNoteEventClassifier(
         event_type="remove_time_estimate",
-        regex=r"^removed time estimate$"
+        regex=[r"^removed time estimate$"]
     ),
     SystemNoteEventClassifier(
         event_type="change_due_date",
-        regex=(
+        regex=[(
             r"^changed due date to\s" +
             r"(?P<month>(?:January|February|March|April|May|June|July|August|September|October|November|December))\s" +
             r"(?P<day>\d\d),\s" +
             r"(?P<year>\d{4})$"
-        )
+        )]
     ),
     SystemNoteEventClassifier(
         event_type="remove_due_date",
-        regex=r"^removed due date$"
+        regex=[r"^removed due date$"]
     ),
     SystemNoteEventClassifier(
         event_type="change_weight",
-        regex=r"^changed weight to \*\*(?P<weight>\d+)\*\*$"
+        regex=[r"^changed weight to \*\*(?P<weight>\d+)\*\*$"]
     ),
     SystemNoteEventClassifier(
         event_type="remove_weight",
-        regex=r"^removed the weight$"
+        regex=[r"^removed the weight$"]
     ),
     SystemNoteEventClassifier(
         event_type="make_confidential",
-        regex=r"^made the issue confidential$"
+        regex=[r"^made the issue confidential$"]
     ),
     SystemNoteEventClassifier(
         event_type="make_visible",
-        regex=r"^made the issue visible to everyone$"
+        regex=[r"^made the issue visible to everyone$"]
     ),
     SystemNoteEventClassifier(
         event_type="mark_as_duplicate",
-        regex=r"^marked this issue as a duplicate of #(?P<issue_iid>\d+)$"
+        regex=[r"^marked this issue as a duplicate of #(?P<issue_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="has_duplicate",
-        regex=r"^marked #(?P<issue_iid>\d+) as a duplicate of this issue$"
+        regex=[r"^marked #(?P<issue_iid>\d+) as a duplicate of this issue$"]
     ),
     SystemNoteEventClassifier(
         event_type="relate",
-        regex=r"^marked this issue as related to #(?P<issue_iid>\d+)$"
+        regex=[r"^marked this issue as related to #(?P<issue_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="unrelate",
-        regex=r"^removed the relation with #(?P<issue_iid>\d+)$"
+        regex=[r"^removed the relation with #(?P<issue_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="relate_external_issue",
-        regex=r"^marked this issue as related to (?P<project_slug>.+)#(?P<issue_iid>\d+)$"
+        regex=[r"^marked this issue as related to (?P<project_slug>.+)#(?P<issue_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="unrelate_external_issue",
-        regex=r"^removed the relation with (?P<project_slug>.+)#(?P<issue_iid>\d+)$"
+        regex=[r"^removed the relation with (?P<project_slug>.+)#(?P<issue_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="close",
-        regex=r"^closed$"
+        regex=[
+            r"^closed$",
+            r"^Status changed to closed$"
+        ]
     ),
     SystemNoteEventClassifier(
         event_type="reopen",
-        regex=r"^reopened$"
+        regex=[r"^reopened$"]
     ),
     SystemNoteEventClassifier(
         event_type="move_to",
-        regex=r"^moved to (?P<project_slug>.*?)#(?P<issue_iid>\d+)$"
+        regex=[r"^moved to (?P<project_slug>.*?)#(?P<issue_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="move_from",
-        regex=r"^moved from (?P<project_slug>.*?)#(?P<issue_iid>\d+)$"
+        regex=[r"^moved from (?P<project_slug>.*?)#(?P<issue_iid>\d+)$"]
     ),
     SystemNoteEventClassifier(
         event_type="change_title",
-        regex=(
-            r"^changed title from\s" +
-            r"\*\*(?P<old_title>.+)\*\*" +
-            r"\sto\s" +
-            r"\*\*(?P<new_title>.+)\*\*$"
-        )
+        regex=[
+            (
+                r"^changed title from\s" +
+                r"\*\*(?P<old_title>.+)\*\*" +
+                r"\sto\s" +
+                r"\*\*(?P<new_title>.+)\*\*$"
+            ),
+            r"^Changed title: \*\*(?P<old_title>.+)\*\* → \*\*(?P<new_title>.+)\*\*$"
+        ]
     ),
     SystemNoteEventClassifier(
         event_type="change_description",
-        regex=r"^changed the description$"
+        regex=[r"^changed the description$"]
     ),
     SystemNoteEventClassifier(
         event_type="merge",
-        regex=r"^merged$"
+        regex=[r"^merged$"]
     ),
     SystemNoteEventClassifier(
         event_type="mark_as_work_in_progress",
-        regex=r"^marked as a \*\*Work In Progress\*\*$"
+        regex=[r"^marked as a \*\*Work In Progress\*\*$"]
     ),
     SystemNoteEventClassifier(
         event_type="unmark_as_work_in_progress",
-        regex=r"^unmarked as a \*\*Work In Progress\*\*$"
+        regex=[r"^unmarked as a \*\*Work In Progress\*\*$"]
     ),
     SystemNoteEventClassifier(
         event_type="address_in_merge_request",
-        regex=r"^created merge request !(?P<merge_request_iid>\d+) to address this issue$"
+        regex=[r"^created merge request !(?P<merge_request_iid>\d+) to address this issue$"]
     ),
     SystemNoteEventClassifier(
         event_type="add_commits",
-        regex=(
+        regex=[(
             r"added\s" +
-            r"(?P<number_of_commits>\d+)\scommit\n\n<.*>" +
-            r"(?P<short_sha>[a-z0-9]{8})\s-\s" +
-            r"(?P<title>.+?)<.*>\n\n.*"
-        )
+            r"(?P<number_of_commits>\d+)\scommit\n\n" +
+            r".*?(?P<short_sha>[a-z0-9]{8})\s-\s" +
+            r"(?P<title>.+?).*?\n\n.*"
+        )]
     ),
     SystemNoteEventClassifier(
         event_type="mark_task_as_done",
-        regex=r"^marked the task \*\*(?P<task_description>.+)\*\* as completed$"
+        regex=[r"^marked the task \*\*(?P<task_description>.+)\*\* as completed$"]
+    ),
+    SystemNoteEventClassifier(
+        event_type="create_branch",
+        regex=[r"^created branch \[`(?P<branch_name>.+)`\]\((?P<compare_link>.+)\)$"]
+    ),
+    SystemNoteEventClassifier(
+        event_type="add_label",
+        regex=[r"^added ~(?P<label_id>\d+) label$"]
+    ),
+    SystemNoteEventClassifier(
+        event_type="remove_label",
+        regex=[r"^removed ~(?P<label_id>\d+) label$"]
+    ),
+    SystemNoteEventClassifier(
+        event_type="restore_source_branch",
+        regex=[
+            r"^restored source branch `(?P<branch_name>.+)`$",
+            r"^Restored source branch `(?P<branch_name>.+)`$"
+        ]
     )
 ]
 
@@ -312,16 +332,16 @@ class SystemNoteClassifier:
 
         if not matching:
             raise ValueError((
-                f"No classifier matched the system note body: {body}. " +
-                """
+                f"No classifier matched the system note body: '{body}'.\n" + \
+                textwrap.dedent("""\
                 This can be due to a couple of different reasons:
                 1.) The system note body denotes an event for which no classifier exists yet.
                 2.) GitLab made changes to it's API, such that an event that was previously covered
                     by classifiers isn't any more.
-                 3.) A classifier for this event type exists, though is faulty.
+                3.) A classifier for this event type exists, though is faulty.
 
                 Please open an Issue on GitLab2PROV's GitHub page and copy this error message to the issue description.
-                """
+                """)
             ))
 
         if len(matching) > 1:
