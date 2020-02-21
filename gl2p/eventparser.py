@@ -285,6 +285,10 @@ classifiers = [
             r"(?P<short_sha>[a-z0-9]{8})\s-\s" +
             r"(?P<title>.+?)<.*>\n\n.*"
         )
+    ),
+    SystemNoteEventClassifier(
+        event_type="mark_task_as_done",
+        regex=r"^marked the task \*\*(?P<task_description>.+)\*\* as completed$"
     )
 ]
 
