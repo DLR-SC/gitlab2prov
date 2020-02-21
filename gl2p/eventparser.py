@@ -22,7 +22,7 @@ Classify API resources into predefined events.
 import re
 import textwrap
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from prov.constants import PROV_TYPE
 from gl2p.utils.objects import Candidates, GL2PEvent
 from gl2p.utils.types import Label, Note, Award
@@ -332,7 +332,7 @@ class SystemNoteClassifier:
 
         if not matching:
             raise ValueError((
-                f"No classifier matched the system note body: '{body}'.\n" + \
+                f"No classifier matched the system note body: '{body}'.\n" +
                 textwrap.dedent("""\
                 This can be due to a couple of different reasons:
                 1.) The system note body denotes an event for which no classifier exists yet.
@@ -399,7 +399,7 @@ class EventParser:
         event.label = {
             "event_type": "add_label" if label_event["action"] == "add" else "remove_label",
             "label_name": label_info.get("name"),
-            "label_id" : label_info.get("id"),
+            "label_id": label_info.get("id"),
             "label_color": label_info.get("color"),
             "label_description": label_info.get("description")
         }
