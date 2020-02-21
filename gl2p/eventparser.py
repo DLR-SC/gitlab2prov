@@ -363,16 +363,25 @@ class EventParser:
                 events.append(self.parse_label(label))
         return events
 
-    def parse_label(self, label: Label) -> GL2PEvent:
+    def parse_label(self, label_event: Label) -> GL2PEvent:
         """
         Parse a single label.
         """
         event = GL2PEvent()
-        event.id = label["id"]
-        event.initiator = label["user"]["name"]
-        event.created_at = label["created_at"]
+        event.id = label_event["id"]
+        event.initiator = label_event["user"]["name"]
+        event.created_at = label_event["created_at"]
+
+        # sometimes the label field seems to have value None
+        # avoid erros by providing an empty dict as a default
+        label_info = label_event["label"] if label_event.get("label", {}) else {}
+
         event.label = {
-            "event_type": "add_label" if label["action"] == "add" else "remove_label"
+            "event_type": "add_label" if label_event["action"] == "add" else "remove_label",
+            "label_name": label_info.get("name"),
+            "label_id" : label_info.get("id"),
+            "label_color": label_info.get("color"),
+            "label_description": label_info.get("description")
         }
         return event
 
