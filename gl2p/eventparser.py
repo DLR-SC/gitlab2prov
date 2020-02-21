@@ -439,8 +439,10 @@ class EventParser:
             "event_type": "note",
             "content": note["body"],
             "note_id": note["id"],
+            "noteable_type": note["noteable_type"],
             "noteable_iid": note["noteable_iid"],
-            "noteable_id": note["noteable_id"]
+            "noteable_id": note["noteable_id"],
+            "attachment": note["attachment"]
         }
         return event
 
