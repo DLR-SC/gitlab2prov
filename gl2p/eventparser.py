@@ -121,24 +121,24 @@ classifiers = [
     SystemNoteEventClassifier(
         event_type="add_spend_time",
         regex=[(
-            r"^added\s" +
-            r"(?:(?P<months>\d+)mo\s)?" +
-            r"(?:(?P<weeks>\d+)w\s)?" +
-            r"(?:(?P<days>\d+)d\s)?" +
-            r"(?:(?P<hours>\d+)h\s)?" +
-            r"(?:(?P<minutes>\d+)m)?" +
+            r"^added" +
+            r"\s(?:(?P<months>\d+)mo)?" +
+            r"\s(?:(?P<weeks>\d+)w)?" +
+            r"\s(?:(?P<days>\d+)d)?" +
+            r"\s(?:(?P<hours>\d+)h)?" +
+            r"\s(?:(?P<minutes>\d+)m)?" +
             r"\sof time spent at (?P<date>\d{4}-\d{2}-\d{2})$"
         )]
     ),
     SystemNoteEventClassifier(
         event_type="subtract_spend_time",
         regex=[(
-            r"^subtracted\s" +
-            r"(?:(?P<months>\d+)mo\s)?" +
-            r"(?:(?P<weeks>\d+)w\s)?" +
-            r"(?:(?P<days>\d+)d\s)?" +
-            r"(?:(?P<hours>\d+)h\s)?" +
-            r"(?:(?P<minutes>\d+)m)?" +
+            r"^subtracted" +
+            r"\s(?:(?P<months>\d+)mo)?" +
+            r"\s(?:(?P<weeks>\d+)w)?" +
+            r"\s(?:(?P<days>\d+)d)?" +
+            r"\s(?:(?P<hours>\d+)h)?" +
+            r"\s(?:(?P<minutes>\d+)m)?" +
             r"\sof time spent at (?P<date>\d{4}-\d{2}-\d{2})$"
         )]
     ),
