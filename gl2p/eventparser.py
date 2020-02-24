@@ -109,7 +109,10 @@ classifiers = [
     ),
     SystemNoteEventClassifier(
         event_type="change_milestone",
-        regex=[r"^changed milestone to %(?P<milestone_iid>\d+)$"]
+        regex=[
+            r"^changed milestone to %(?P<milestone_iid>\d+)$",
+            r"^changed milestone to %(?P<milestone_name>.+)$"
+        ]
     ),
     SystemNoteEventClassifier(
         event_type="remove_milestone",
