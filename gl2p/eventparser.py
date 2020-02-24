@@ -122,11 +122,11 @@ classifiers = [
         event_type="add_spend_time",
         regex=[(
             r"^added" +
-            r"\s(?:(?P<months>\d+)mo)?" +
-            r"\s(?:(?P<weeks>\d+)w)?" +
-            r"\s(?:(?P<days>\d+)d)?" +
-            r"\s(?:(?P<hours>\d+)h)?" +
-            r"\s(?:(?P<minutes>\d+)m)?" +
+            r"(?:\s(?P<months>\d+)mo)?" +
+            r"(?:\s(?P<weeks>\d+)w)?" +
+            r"(?:\s(?P<days>\d+)d)?" +
+            r"(?:\s(?P<hours>\d+)h)?" +
+            r"(?:\s(?P<minutes>\d+)m)?" +
             r"\sof time spent at (?P<date>\d{4}-\d{2}-\d{2})$"
         )]
     ),
@@ -134,11 +134,11 @@ classifiers = [
         event_type="subtract_spend_time",
         regex=[(
             r"^subtracted" +
-            r"\s(?:(?P<months>\d+)mo)?" +
-            r"\s(?:(?P<weeks>\d+)w)?" +
-            r"\s(?:(?P<days>\d+)d)?" +
-            r"\s(?:(?P<hours>\d+)h)?" +
-            r"\s(?:(?P<minutes>\d+)m)?" +
+            r"(?:\s(?P<months>\d+)mo)?" +
+            r"(?:\s(?P<weeks>\d+)w)?" +
+            r"(?:\s(?P<days>\d+)d)?" +
+            r"(?:\s(?P<hours>\d+)h)?" +
+            r"(?:\s(?P<minutes>\d+)m)?" +
             r"\sof time spent at (?P<date>\d{4}-\d{2}-\d{2})$"
         )]
     ),
