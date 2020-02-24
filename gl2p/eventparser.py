@@ -302,7 +302,7 @@ classifiers = [
     ),
     SystemNoteEventClassifier(
         event_type="create_branch",
-        regex=[r"^created branch \[`(?P<branch_name>.+)`\]\((?P<compare_link>.+)\)$"]
+        regex=[r"^created branch \[`(?P<branch_name>.+)`\]\((?P<compare_link>.+)\).*$"]
     ),
     SystemNoteEventClassifier(
         event_type="add_label",
