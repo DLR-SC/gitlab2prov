@@ -318,6 +318,30 @@ classifiers = [
             r"^restored source branch `(?P<branch_name>.+)`$",
             r"^Restored source branch `(?P<branch_name>.+)`$"
         ]
+    ),
+    SystemNoteEventClassifier(
+        event_type="close_by_commit",
+        regex=[
+            r"^closed via commit (?P<commit_sha>[a-z0-9]+)$"
+        ]
+    ),
+    SystemNoteEventClassifier(
+        event_type="close_by_merge_request",
+        regex=[
+            r"^closed via merge request !(?P<merge_request_iid>.+)$"
+        ]
+    ),
+    SystemNoteEventClassifier(
+        event_type="close_by_external_merge_request",
+        regex=[
+            r"^close via merge request (?P<project_slug>.+)!(?P<merge_request_iid>.+)$"
+        ]
+    ),
+    SystemNoteEventClassifier(
+        event_type="close_by_external_commit",
+        regex=[
+            r"^closed via commit (?P<project_slug>.+)@(?P<commit_sha>[0-9a-z]+)$"
+        ]
     )
 ]
 
