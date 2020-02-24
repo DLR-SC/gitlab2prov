@@ -295,6 +295,12 @@ classifiers = [
         regex=[r"^marked the task \*\*(?P<task_description>.+)\*\* as completed$"]
     ),
     SystemNoteEventClassifier(
+        event_type="mark_task_as_incomplete",
+        regex=[
+            r"^marked the task \*\*(?P<task_description>.+)\*\* as incomplete$"
+        ]
+    ),
+    SystemNoteEventClassifier(
         event_type="create_branch",
         regex=[r"^created branch \[`(?P<branch_name>.+)`\]\((?P<compare_link>.+)\)$"]
     ),
