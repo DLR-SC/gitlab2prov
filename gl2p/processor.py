@@ -101,6 +101,14 @@ def commit_resource_entity(commit: Commit) -> Entity:
     """
     id_ = qname(f"commit-resource-{commit['id']}")
     label = {PROV_TYPE: "commit_resource"}
+
+    label.update({
+        "id": commit["id"],
+        "short_id": commit["short_id"],
+        "title": commit["title"],
+        "message": commit["message"]
+    })
+
     return Entity(id_, label)
 
 
@@ -160,9 +168,16 @@ def issue_resource_entity(issue: Issue) -> Entity:
     """
     Return entity that represents the original *issue* version.
     """
-    # TODO: add more information into the label?
     id_ = qname(f"issue-resource-{issue['iid']}")
     label = {PROV_TYPE: "issue"}
+
+    label.update({
+        "id": issue["id"],
+        "iid": issue["iid"],
+        "title": issue["title"],
+        "description": issue["description"]
+    })
+
     return Entity(id_, label)
 
 
@@ -224,6 +239,18 @@ def merge_request_resource_entity(merge_request: MergeRequest) -> Entity:
     """
     id_ = qname(f"merge-request-resource-{merge_request['iid']}")
     label = {PROV_TYPE: "merge_request"}
+
+    label.update({
+        "id": merge_request["id"],
+        "iid": merge_request["iid"],
+        "title": merge_request["title"],
+        "description": merge_request["description"],
+        "source_project_id": merge_request["source_project_id"],
+        "target_project_id": merge_request["target_project_id"],
+        "source_branch": merge_request["source_branch"],
+        "target_branch": merge_request["target_branch"]
+    })
+
     return Entity(id_, label)
 
 
@@ -425,7 +452,7 @@ class MergeRequestResourceProcessor:
 
         Parse labels, awards, notes and note awards as eventables.
         """
-        processed = []
+        processed: List[Resource] = []
 
         for mr, candidates in zip(merge_requests, eventables):
             processed.append(
@@ -453,7 +480,8 @@ class MergeRequestResourceProcessor:
         Return list of events for *merge_request* from *eventables* in
         chronological order.
         """
-        events = []
+        events: List[Event] = []
+
         previous_event = merge_request_creation_activity(merge_request)
         previous_version = merge_request_resource_version_entity(merge_request, postfix="")
 
