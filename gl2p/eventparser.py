@@ -132,8 +132,7 @@ classifiers: Dict[str, List[str]] = {
 
         r"added " +
         r"(?P<number_of_commits>\d+)\scommit\n\n" +
-        r".*?(?P<short_sha>[a-z0-9]{8}) - " +
-        r"(?P<title>.+?).*?\n\n.*"
+        r".+(?P<short_sha>[a-z0-9]{8}) - (?P<title>.+?)<.*"
 
     ],
 
