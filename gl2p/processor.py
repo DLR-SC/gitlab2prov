@@ -90,7 +90,7 @@ def commit_resource_creation(commit: Commit) -> Activity:
     id_ = qname(f"commit-resource-creation-{commit['id']}")
     start = ptime(commit["committed_date"])
     end = ptime(commit["committed_date"])
-    label = {PROV_TYPE: "commit_resource_creation"}
+    label = {PROV_TYPE: "commit_creation"}
     return Activity(id_, start, end, label)
 
 
