@@ -22,24 +22,22 @@ Regex based event classification.
 import re
 import textwrap
 
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Pattern, Match, Tuple, Optional
 from prov.constants import PROV_TYPE
 from gl2p.utils.objects import Candidates, GL2PEvent
 from gl2p.utils.types import Label, Note, Award
 from gl2p.utils.helpers import by_date
 
 
-# dict of events with their respective patterns
-# a single event can look different based on the api version of the gitlab instance
-
-classifiers = {
+# Dictionary of classifiers for event types deduced from system notes.
+classifiers: Dict[str, List[str]] = {
 
     "change_epic": [
 
         r"^changed epic to &(?P<epic_iid>\d+)$",
         r"^changed epic to &(?P<epic_name>.+)$",
-        r"^changed epic to (?P<project_slug>.+)&(?P<epic_name>\d+)$",  # external epic
-        r"^changed epic to (?P<project_slug>.+)&(?P<epic_name>.+)$"    # external epic
+        r"^changed epic to (?P<project_slug>.+)&(?P<epic_name>\d+)$",
+        r"^changed epic to (?P<project_slug>.+)&(?P<epic_name>.+)$"
 
     ],
 
@@ -412,7 +410,7 @@ classifiers = {
 }
 
 
-import_patterns = [
+import_patterns: List[str] = [
 
     r"\*By (?P<original_author>.+) on " +
     r"(?P<original_creation_date>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}) " +
@@ -425,70 +423,95 @@ import_patterns = [
 ]
 
 
-def compile_pattern(reg_exp: Union[re.Pattern, str]) -> re.Pattern:
-    """
-    Wraps re.compile to allow for execution on already
-    compiled patterns by simply doing nothing when the pattern has been compiled.
+# Dictonary of classifiers with compiled patterns
+compiled_classifiers: Dict[str, List[Pattern[str]]] = {}
 
-    Exists only for the side effect of compilation.
-    Avoid pattern compilation at module import.
-    """
-    if isinstance(reg_exp, re.Pattern):
-        # assume compilation already happened
-        return reg_exp
 
-    return re.compile(reg_exp)
+# List of compiled import patterns
+compiled_import_patterns: List[Pattern[str]] = []
+
+
+def compile_regex(regex: str) -> Pattern[str]:
+    """
+    Wrap re.compile with singular str type rather than type AnyStr.
+
+    Hotfix for overloaded type signature of re.compile.
+    """
+    return re.compile(regex)
+
+
+def first_matching_pattern(patterns: List[Pattern[str]], string: str) -> Tuple[Optional[Pattern[str]], Optional[Match[str]]]:
+    """
+    Return the first pattern of *patterns* that matched *string*.
+    """
+    for pattern in patterns:
+        match = pattern.search(string)
+        if match:
+            # Matching pattern found
+            break
+    else:
+        # Did not find anything ...
+        return None, None
+
+    return pattern, match
+
+
+def compile_regular_expressions() -> None:
+    """
+    Compile regular expressions if they havn't been compiled yet.
+    """
+    global compiled_classifiers
+    global compiled_import_patterns
+
+    if not compiled_import_patterns:
+        compiled_import_patterns = list(map(compile_regex, import_patterns))
+
+    if not compiled_classifiers:
+        compiled_classifiers = {k: list(map(compile_regex, v)) for k, v in classifiers.items()}
 
 
 def classify(body: str) -> Dict[str, Any]:
     """
     Classify the event that a system note body denotes.
     """
-    global classifiers
-    global import_patterns
+    # Compile regular expressions of import patterns, classifiers
+    compile_regular_expressions()
 
-    # compile import patterns
-    import_patterns = list(map(compile_pattern, import_patterns))
+    # Import property label, default is not imported (imported = False)
+    import_information: Dict[str, Union[bool, str]] = {"imported": False}
 
-    # default is not imported
-    import_information = {"imported": False}
+    possible_events: List[Dict[str, Any]] = []
 
-    # pick the first that matches
-    for pattern in import_patterns:
-        match = pattern.search(body)
+    # Pick first matching pattern
+    pattern, match = first_matching_pattern(compiled_import_patterns, body)
+
+    if pattern and match:
+        # Pattern matched
+        # Strip import information from note body
+        body = pattern.split(body)[0].strip()
+        # Update import information with matched groups
+        import_information = {"imported": True, **match.groupdict()}
+
+    for event, patterns in compiled_classifiers.items():
+        # Pick first matching pattern
+        pattern, match = first_matching_pattern(patterns, body)
+
         if not match:
             continue
+        # Append to record of possible events
+        possible_events.append({"event": event, **match.groupdict()})
 
-        # update body by removing import part
-        body = pattern.split(body)[0].strip()
-
-        # compute import information for property label
-        import_information = {"imported": True, **match.groupdict()}
-        break
-
-    # compile classifier regex
-    classifiers = {k: list(map(compile_pattern, v)) for k, v in classifiers.items()}
-
-    possible_events = []  # record all events with matching classifiers
-
-    for event, patterns in classifiers.items():
-        # pick first matching pattern
-        for pattern in patterns:
-            match = pattern.search(body)
-
-            if not match:
-                continue
-
-            # match found
-            possible_events.append({"event": event, **match.groupdict()})
-            break
+    # Raise ValueError if no classifier matched
+    # Indicates faulty patterns or an unknown event type
 
     if not possible_events:
-        # no classifier matched
         raise ValueError(
             f"No classifier matched the following system note body:\n\n{body}\n\n" +
-            textwrap.wrap("Please open an issue on our GitHub page and copy this error message into the issue description.")
+            textwrap.fill("Please open an issue on our GitHub page and copy this error message into the issue description.")
         )
+
+    # Raise ValueError when more than one classifier matched
+    # Indicates faulty patterns or duplicated classifiers
 
     if len(possible_events) > 1:
         raise ValueError(
@@ -510,7 +533,7 @@ def classify(body: str) -> Dict[str, Any]:
             )
         )
 
-    # update winning event with import information
+    # Update classified event with import information
     possible_events[0].update(import_information)
 
     return possible_events[0]
