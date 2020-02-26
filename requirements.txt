@@ -3,3 +3,4 @@ pydot
 aiohttp
 prov-db-connector
 yarl
+py2neo
