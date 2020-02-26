@@ -606,7 +606,7 @@ class EventParser:
         event.initiator = award["user"]["name"]
         event.created_at = award["created_at"]
         event.label = {
-            PROV_TYPE: "resource_event",
+            PROV_TYPE: "event",
             "event": "award_emoji",
             "award_name": award["name"]
         }
@@ -631,7 +631,7 @@ class EventParser:
         event.initiator = note["author"]["name"]
         event.created_at = note["created_at"]
         event.label = {
-            PROV_TYPE: "resource_event",
+            PROV_TYPE: "event",
             "event": "note",
             "content": note["body"],
             "note_id": note["id"],
@@ -653,7 +653,7 @@ class EventParser:
         event.created_at = note["created_at"]
 
         event.label = {
-            PROV_TYPE: "resource_event",
+            PROV_TYPE: "event",
             "content": note["body"],
             "noteable_id": note["noteable_id"],
             "noteable_type": note["noteable_type"],
