@@ -49,7 +49,7 @@ class CommitPipeline:
 
         Precompute id's, activities, entities, agents and labels.
         """
-        processor = CommitProcessor()
+        processor = CommitProcessor(self.project_id)
         return processor.run(commits, diffs)
 
     def create_model(self, resources: List[CommitResource]) -> ProvDocument:
@@ -89,7 +89,7 @@ class CommitResourcePipeline:
 
         Precompute id's, activities, entities, agents and labels.
         """
-        processor = CommitResourceProcessor()
+        processor = CommitResourceProcessor(self.project_id)
         return processor.run(commits, event_candidates)
 
     def create_model(self, resources: List[Resource]) -> ProvDocument:
@@ -133,7 +133,7 @@ class IssueResourcePipeline:
 
         Precompute id's, activities, entities, agents and labels.
         """
-        processor = IssueResourceProcessor()
+        processor = IssueResourceProcessor(self.project_id)
         return processor.run(issues, event_candidates)
 
     def create_model(self, resources: List[Resource]) -> ProvDocument:
@@ -178,7 +178,7 @@ class MergeRequestResourcePipeline:
 
         Precompute id's, activities, entities, agents and labels.
         """
-        processor = MergeRequestResourceProcessor()
+        processor = MergeRequestResourceProcessor(self.project_id)
         return processor.run(merge_requests, event_candidates)
 
     def create_model(self, resources: List[Resource]) -> ProvDocument:
