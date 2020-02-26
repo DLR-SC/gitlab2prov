@@ -20,6 +20,7 @@ import asyncio
 import argparse
 from typing import List, Union
 from provdbconnector import Neo4jAdapter, ProvDb
+from py2neo import Graph
 from prov.model import ProvDocument
 from gl2p.config import get_config
 from gl2p.api.gitlab import GitLabProjectWrapper
@@ -78,14 +79,35 @@ def store_in_db(document: ProvDocument, config: argparse.Namespace) -> None:
     prov_api.save_document(document)
 
 
+def bundle_already_in_db(project_id, config: argparse.Namespace) -> bool:
+    """
+    Return whether a bundle for the given project_id is already in the graph.
+    """
+    g = Graph(
+        uri=f"bolt://{config.neo4j_host}:{config.neo4j_boltport}",
+        auth=(config.neo4j_user, config.neo4j_password)
+    )
+    return bool(g.run(
+        "MATCH (bundle:Entity)" +
+        "WHERE bundle.`meta:identifier` = " + f"'{project_id.replace('%2F', '-')}'" +
+        "RETURN bundle.`meta:identifier`"
+    ).forward())
+
+
 def main() -> None:
     """
     Main execution loop.
     """
     config = get_config()
+    project_id = url_encoded_path(config.project_url)
+
+    if config.neo4j:
+        if bundle_already_in_db(project_id, config):
+            print(f"Bundle for {project_id.replace('%2F', '-')} already exists.")
+            return
 
     api_client = GitLabProjectWrapper(config.project_url, config.token, config.rate_limit)
-    project_id = url_encoded_path(config.project_url)
+
 
     pipelines = [
         CommitPipeline(project_id, api_client),
