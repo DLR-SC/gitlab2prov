@@ -24,10 +24,12 @@
 #    See the documentation for each action used below for the recommended IAM policies for this IAM user,
 #    and best practices on handling the access key credentials.
 
-on:
-  release:
-    branches:
-      - master
+#on:
+#  release:
+#    branches:
+#      - master
+
+on: [push]
 
 name: Deploy to Amazon ECS
 
