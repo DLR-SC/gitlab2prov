@@ -1,12 +1,19 @@
 import argparse
 import os
-
 import prov.dot
 import prov.model
 
-# Git Commit Model
-# ---
 
+supported_formats = [
+    "bmp", "canon", "cmap", "cmapx", "cmapx_np", "dot", "dot_json", "eps", "fig", "gd",
+    "gd2", "gif", "gtk", "gv", "ico", "imap", "imap_np", "ismap", "jpe", "jpeg", "jpg",
+    "json", "json0", "mp", "pdf", "pic", "plain", "plain-ext", "png", "pov", "ps", "ps2",
+    "svg", "svgz", "tif", "tiff", "tk", "vdx", "vml", "vmlz","vrml", "wbmp", "webp", "x11",
+    "xdot", "xdot1.2", "xdot1.4", "xdot_json","xlib",
+]
+
+
+# Git Commit Model
 # add file
 document = prov.model.ProvDocument()
 document.set_default_namespace("gl2p:")
@@ -26,6 +33,7 @@ bundle.wasAssociatedWith("commit", "committer")
 bundle.specializationOf("file_v", "file")
 bundle.wasInformedBy("commit", "parent_commit")
 commit_add_file = document
+
 
 # modify file
 document = prov.model.ProvDocument()
@@ -49,6 +57,7 @@ bundle.wasAssociatedWith("commit", "author")
 bundle.wasAssociatedWith("commit", "committer")
 commit_modify_file = document
 
+
 # commit delete file
 document = prov.model.ProvDocument()
 document.set_default_namespace("gl2p:")
@@ -66,9 +75,8 @@ bundle.wasAssociatedWith("commit", "author")
 bundle.wasAssociatedWith("commit", "committer")
 commit_delete_file = document
 
-# Resources (Commits, Issues, Merge Requests)
-# ---
 
+# Resources (Commits, Issues, Merge Requests)
 # commit resource
 document = prov.model.ProvDocument()
 document.set_default_namespace("gl2p:")
@@ -88,6 +96,7 @@ bundle.wasGeneratedBy("resource_v", "resource_creation")
 bundle.wasInformedBy("resource_creation", "commit")
 resource_creation_commit = document
 
+
 # resource creation (Issue, Merge Request)
 document = prov.model.ProvDocument()
 document.set_default_namespace("gl2p:")
@@ -103,6 +112,7 @@ bundle.wasAttributedTo("resource_v", "creator")
 bundle.wasAssociatedWith("resource_creation", "creator")
 bundle.specializationOf("resource_v", "resource")
 resource_creation = document
+
 
 # resource event
 document = prov.model.ProvDocument()
@@ -125,8 +135,11 @@ bundle.wasAttributedTo("resource_v", "event_initiator")
 resource_event = document
 
 
-def style(dot):
-
+def stylize(dot):
+    """
+    Set edge color, edge font color and edge label font color to black.
+    Replace edge labels by abbreviations.
+    """
     abbreviate = {
         "wasGeneratedBy": "gen",
         "wasAttributedTo": "att",
@@ -148,91 +161,51 @@ def style(dot):
 
 
 def plot(title, document, directory, fmt):
+    """
+    Plot *document* to a file named *title* in *fmt* format.
+    Store in *directory*.
 
+    Create *directory* if it does not exist yet and user chooses to create it.
+    """
     if not os.path.isdir(directory):
-        raise Exception("Not a directory")
+        print(f"{directory}/ not found")
+
+        if input(f"Create directory {directory}/?\t[y/n]\n") == "y":
+            os.mkdir(directory)
+        else:
+            raise Exception("Faulty directory path.")
+
     if not directory.endswith("/"):
         directory = f"{directory}/"
 
-    dot = style(prov.dot.prov_to_dot(document, show_nary=False))
+    dot = stylize(prov.dot.prov_to_dot(document, show_nary=False))
 
     print(f"Plotting: {directory}{title}.{fmt}")
     dot.write(path=f"{directory}{title}.{fmt}", format=fmt)
 
 
-argparser = argparse.ArgumentParser(description="Plot PROV models.")
-argparser.add_argument("--format", type=str, help="output format (defaults to svg)")
-argparser.add_argument("directory", type=str, help="output file directory")
-args = argparser.parse_args()
-directory = args.directory
-fmt = args.format
+def main():
+    argparser = argparse.ArgumentParser(description="Plot PROV models.")
+    argparser.add_argument("-f", "--format", type=str, help="output format (defaults to svg)", required=True, default="svg")
+    argparser.add_argument("-d", "--directory", type=str, help="output file directory", default=".")
+    args = argparser.parse_args()
+    directory, fmt = args.directory, args.format
 
-supported_formats = [
-        "bmp",
-        "canon",
-        "cmap",
-        "cmapx",
-        "cmapx_np",
-        "dot",
-        "dot_json",
-        "eps",
-        "fig",
-        "gd",
-        "gd2",
-        "gif",
-        "gtk",
-        "gv",
-        "ico",
-        "imap",
-        "imap_np",
-        "ismap",
-        "jpe",
-        "jpeg",
-        "jpg",
-        "json",
-        "json0",
-        "mp",
-        "pdf",
-        "pic",
-        "plain",
-        "plain-ext",
-        "png",
-        "pov",
-        "ps",
-        "ps2",
-        "svg",
-        "svgz",
-        "tif",
-        "tiff",
-        "tk",
-        "vdx",
-        "vml",
-        "vmlz",
-        "vrml",
-        "wbmp",
-        "webp",
-        "x11",
-        "xdot",
-        "xdot1.2",
-        "xdot1.4",
-        "xdot_json",
-        "xlib",
-]
+    if fmt not in supported_formats:
+        raise Exception("Unsupported Format")
 
-if not fmt:
-    fmt = "svg"
+    try:
+        plot("commit-add-file", commit_add_file, directory, fmt)
+        plot("commit-modify-file", commit_modify_file, directory, fmt)
+        plot("commit-delete-file", commit_delete_file, directory, fmt)
+        plot("resource-creation-commit", resource_creation_commit, directory, fmt)
+        plot("resource-event", resource_event, directory, fmt)
+        plot("resource-creation", resource_creation, directory, fmt)
 
-if fmt not in supported_formats:
-    raise Exception("Unsupported Format")
+    except Exception as e:
+        print(e)
 
-try:
-    plot("commit-add-file", commit_add_file, directory, fmt)
-    plot("commit-modify-file", commit_modify_file, directory, fmt)
-    plot("commit-delete-file", commit_delete_file, directory, fmt)
-    plot("resource-creation-commit", resource_creation_commit, directory, fmt)
-    plot("resource-event", resource_event, directory, fmt)
-    plot("resource-creation", resource_creation, directory, fmt)
-except Exception as e:
-    print(e)
+    print("Done.")
 
-print("Done.")
+if __name__ == "__main__":
+    main()
