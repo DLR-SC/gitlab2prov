@@ -124,7 +124,7 @@ If the event is the first one occuring against the resource after the creation o
 
 GitLab displays events that can occur against resources on the pages of the respective resources. For example, if a resource was mentioned in the comment thread of another resource, this mention is displayed in the comment section of the mentioned target.
 
-![comment thread](issue-events.png)
+![comment thread](issue-thread.png)
 
 These events can be parsed from multiple sources that are provided by the official GitLab API. Sadly there is no dedicated endpoint for all events that are of interest. Especially events that connect resources are difficult to get. Here a quick summary of what data needs to be retrieved, how to parse it and the workarounds that we deployed to achieve a prototypical event parsing.
 
