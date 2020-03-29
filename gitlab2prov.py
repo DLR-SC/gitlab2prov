@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
 # Copyright (c) 2019-2020 German Aerospace Center (DLR/SC).
 # All rights reserved.
 #
@@ -10,24 +9,22 @@
 # You may obtain a copy of the License at:
 # https://opensource.org/licenses/MIT
 #
-# A command line tool to extract provenance data (PROV W3C)
+# GitLab2PROV is a command line tool to extract provenance data (W3C PROV)
 # from GitLab hosted repositories aswell as
 # to store the extracted data in a Neo4J database.
 #
 # code-author: Claas de Boer <claas.deboer@dlr.de>
-
 import asyncio
-import argparse
 from typing import List, Union
-from provdbconnector import Neo4jAdapter, ProvDb
-from py2neo import Graph
-from prov.model import ProvDocument
-from gl2p.config import get_config
-from gl2p.api.gitlab import GitLabProjectWrapper
-from gl2p.utils.helpers import url_encoded_path
-from gl2p.pipelines import (CommitPipeline, CommitResourcePipeline,
-                            IssueResourcePipeline, MergeRequestResourcePipeline)
 
+from prov.model import ProvDocument
+
+from gl2p.api import GitLabAPIClient
+from gl2p.config import ConfigurationError, get_config
+from gl2p.pipelines import (CommitPipeline, CommitResourcePipeline,
+                            IssueResourcePipeline,
+                            MergeRequestResourcePipeline)
+from gl2p.utils import serialize, store_in_db, unite, url_encoded_path
 
 Pipeline = Union[
     CommitPipeline,
@@ -37,93 +34,62 @@ Pipeline = Union[
 ]
 
 
-def unite_documents(documents: List[ProvDocument]) -> ProvDocument:
+def run_pipes(pipes: List[Pipeline]) -> List[ProvDocument]:
     """
-    Merge multiple prov documents into one.
-
-    Remove duplicated entries.
+    Execute pipeline workflow.
     """
-    d0 = documents[0]
-
-    for doc in documents[1:]:
-        d0.update(doc)
-
-    return d0.unified()
-
-
-def run_pipes(pipelines: List[Pipeline]) -> List[ProvDocument]:
-    """
-    Execute pipelines.
-    """
-    models = []
-
-    for pipe in pipelines:
+    models: List[ProvDocument] = []
+    for pipe in pipes:
         data = asyncio.run(pipe.fetch())
-        resources = pipe.process(*data)
-        models.append(pipe.create_model(resources))
-
+        pkgs = pipe.process(*data)
+        models.append(pipe.create_model(pkgs))
     return models
-
-
-def store_in_db(document: ProvDocument, config: argparse.Namespace) -> None:
-    """
-    Store prov document in neo4j instance.
-    """
-    auth_info = {
-        "user_name": config.neo4j_user,
-        "user_password": config.neo4j_password,
-        "host": f"{config.neo4j_host}:{config.neo4j_boltport}"
-        }
-
-    prov_api = ProvDb(adapter=Neo4jAdapter, auth_info=auth_info)
-    prov_api.save_document(document)
-
-
-def bundle_already_in_db(project_id, config: argparse.Namespace) -> bool:
-    """
-    Return whether a bundle for the given project_id is already in the graph.
-    """
-    g = Graph(
-        uri=f"bolt://{config.neo4j_host}:{config.neo4j_boltport}",
-        auth=(config.neo4j_user, config.neo4j_password)
-    )
-    return bool(g.run(
-        "MATCH (bundle:Entity)" +
-        "WHERE bundle.`meta:identifier` = " + f"'{project_id.replace('%2F', '-')}'" +
-        "RETURN bundle.`meta:identifier`"
-    ).forward())
 
 
 def main() -> None:
     """
-    Main execution loop.
+    Main execution entry point.
+
+    Workflow:
+    - create pipelines for commit, commit resource, issue resource and merge request resource models
+    - execute pipelines by fetching necessary data, processing data into packages and populating model graphs
+    - unite graphs into one and output serialization in configured format to stdout
+    - store graph in neo4j by passing it to prov-db-connector
     """
-    config = get_config()
-    project_id = url_encoded_path(config.project_url)
+    # retrieve configuration details
+    try:
+        config = get_config()
+    except ConfigurationError as ce:
+        raise ce
 
+    # url encoded project path (org/pslug) -> (org%2Fpslug)
+    pid = url_encoded_path(config.project_url)
+
+    # only one client to facilitate request caching
+    client = GitLabAPIClient(config.project_url, config.token, config.rate_limit)
+
+    pipes = [
+        CommitPipeline(pid, client),
+        CommitResourcePipeline(pid, client),
+        IssueResourcePipeline(pid, client),
+        MergeRequestResourcePipeline(pid, client)
+    ]
+
+    # execute pipelines
+    # unite model graphs
+    doc = unite(run_pipes(pipes))
+
+    # print serialization to stdout
+    if not config.quiet:
+        print(serialize(doc, config.format))
+
+    # store graph in neo4j
     if config.neo4j:
-        if bundle_already_in_db(project_id, config):
-            print(f"Bundle for {project_id.replace('%2F', '-')} already exists.")
-            return
-
-    api_client = GitLabProjectWrapper(config.project_url, config.token, config.rate_limit)
-
-
-    pipelines = [
-        CommitPipeline(project_id, api_client),
-        CommitResourcePipeline(project_id, api_client),
-        IssueResourcePipeline(project_id, api_client),
-        MergeRequestResourcePipeline(project_id, api_client)
-    ]  # type: List[Pipeline]
-
-    docs = run_pipes(pipelines)
-    doc = unite_documents(docs)
-
-    print(doc.serialize(format=config.format))
-
-    # store in neo4j, if flag is set
-    if config.neo4j:
-        store_in_db(doc, config)
+        try:
+            store_in_db(doc, config)
+        except KeyError as ke:
+            # indicates that graph already exists in neo4j
+            raise ke
 
 
 if __name__ == "__main__":
