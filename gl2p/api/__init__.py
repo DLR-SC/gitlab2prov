@@ -1,23 +1,20 @@
-"""
-Wrapper for GitLab project API.
-"""
-
 from __future__ import annotations
 
 import asyncio
-import collections
-from dataclasses import dataclass, InitVar
-from typing import (Any, Dict, Sequence, Tuple, Iterator, Optional,
-                    Iterable, List, TypeVar, Callable, cast, Coroutine)
+from collections import deque
+from dataclasses import InitVar, dataclass
+from typing import (Any, Callable, Coroutine, Dict, Iterable, Iterator, List,
+                    Optional, Sequence, Tuple, TypeVar, cast)
+
 from aiohttp import ClientSession
 from yarl import URL
-from gl2p.api.ratelimiter import RateLimiter
-from gl2p.utils.types import Commit, Issue, MergeRequest, Note, Diff, Award, Label
-from gl2p.utils.helpers import chunks, url_encoded_path
 
+from ..utils import chunks, url_encoded_path
+from ..utils.types import Award, Commit, Diff, Issue, Label, MergeRequest, Note
+from .ratelimiter import RateLimiter
 
-F = TypeVar("F", bound=Callable[..., Any])
 T = TypeVar("T")
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 def alru_cache(func: F) -> F:
@@ -28,11 +25,15 @@ def alru_cache(func: F) -> F:
     Cache the return value of a function F on it's first execution.
     Return that value for every call of F after the first.
     """
+    # TODO: create an alru_cache per instance not one globally.
     cache = dict()  # type: Dict[str, Any]
 
-    async def memoizer(self: GitLabProjectWrapper) -> Any:
+    async def memoizer(self: GitLabAPIClient) -> Any:
+        # use method name as cache key
         key = func.__name__
         if key not in cache:
+            # exec call on miss
+            # store result in cache
             cache[key] = await func(self)
         return cache[key]
 
@@ -40,7 +41,7 @@ def alru_cache(func: F) -> F:
 
 
 @dataclass
-class GitLabProjectWrapper:
+class GitLabAPIClient:
     """
     A wrapper for the GitLab project API.
     """
@@ -52,7 +53,7 @@ class GitLabProjectWrapper:
         self.url_builder = URLBuilder(purl)
         self.request_handler = RequestHandler(token, rate)
 
-    async def __aenter__(self) -> GitLabProjectWrapper:
+    async def __aenter__(self) -> GitLabAPIClient:
         """
         Open client session of request handler.
         """
@@ -73,7 +74,7 @@ class GitLabProjectWrapper:
         path = "repository/commits"
         url = self.url_builder.build(path)
 
-        commits = []  # type: List[Commit]
+        commits: List[Commit] = []
         for sublist in await self.request_handler.request(url):
             for commit in sublist:
                 commits.append(commit)
@@ -96,7 +97,7 @@ class GitLabProjectWrapper:
         inserts = [(c["id"],) for c in commits]
         urls = self.url_builder.build(path, inserts)
 
-        diffs = await self.request_handler.request(urls)  # type: List[Diff]
+        diffs: List[Diff] = await self.request_handler.request(urls)
         return diffs
 
     @alru_cache
@@ -114,7 +115,7 @@ class GitLabProjectWrapper:
         inserts = [(c["id"],) for c in commits]
         urls = self.url_builder.build(path, inserts)
 
-        commit_notes = []  # type: List[List[Note]]
+        commit_notes: List[List[Note]] = []
 
         for commit in await self.request_handler.request(urls):
             notes = [n for discussion in commit for n in discussion["notes"]]
@@ -129,7 +130,7 @@ class GitLabProjectWrapper:
         path = "issues"
         url = self.url_builder.build(path)
 
-        issues = []  # type: List[Issue]
+        issues: List[Issue] = []
         for sublist in await self.request_handler.request(url):
             for issue in sublist:
                 issues.append(issue)
@@ -231,7 +232,7 @@ class GitLabProjectWrapper:
         path = "merge_requests"
         url = self.url_builder.build(path)
 
-        merge_requests = []  # type: List[MergeRequest]
+        merge_requests: List[MergeRequest] = []
         for sublist in await self.request_handler.request(url):
             for merge_request in sublist:
                 merge_requests.append(merge_request)
@@ -468,7 +469,7 @@ class RequestHandler:
             tasks.extend(remaining)
 
         # collect remaining pages
-        remaining_pages = collections.deque(await self.gather_in_batches(tasks))
+        remaining_pages = deque(await self.gather_in_batches(tasks))
 
         if not remaining_pages:
             return [page for (page, _) in first_pages]
@@ -476,7 +477,7 @@ class RequestHandler:
         # extend first page of each request to
         # hold the entire content of all pages
 
-        results = []  # type: List[Any]
+        results: List[Any] = []
         for (page, page_count) in first_pages:
             for _ in range(2, page_count + 1):
                 page.extend(remaining_pages.popleft())
@@ -491,7 +492,7 @@ class RequestHandler:
 
         Prevent segfault when matching queries to their answers.
         """
-        result = []  # type: List[T]
+        result: List[T] = []
 
         for coroutine_batch in chunks(coroutines, 200):
             result.extend(await asyncio.gather(*coroutine_batch))
