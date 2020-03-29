@@ -1,696 +1,280 @@
-# Copyright (c) 2019 German Aerospace Center (DLR/SC).
-# All rights reserved.
-#
-# This file is part of gitlab2prov.
-# gitlab2prov is licensed under the terms of the MIT License.
-# SPDX short Identifier: MIT
-#
-# You may obtain a copy of the License at:
-# https://opensource.org/licenses/MIT
-#
-# A command line tool to extract provenance data (PROV W3C)
-# from GitLab hosted repositories aswell as
-# to store the extracted data in a Neo4J database.
-#
-# code-author: Claas de Boer <claas.deboer@dlr.de>
+from __future__ import annotations
 
-from typing import List, Optional, Union
-from dataclasses import dataclass
-from prov.constants import PROV_ROLE, PROV_TYPE
-from gl2p.eventparser import EventParser
-from gl2p.history import FileNameHistory
-from gl2p.utils.objects import (CommitResource, Event, Resource, Creation, Agent,
-                                Entity, Activity, CommitCreation, ParseableContainer,
-                                Candidates, Addition, Deletion, Modification)
-from gl2p.utils.types import Commit, Issue, MergeRequest, Diff
-from gl2p.utils.helpers import qname, ptime
+from collections import deque
+from typing import Deque, Dict, List, Union
+
+from gl2p.utils.types import Commit, Diff, Issue, MergeRequest
+
+from .history import FileNameHistory
+from .meta import (Addition, Author, Candidates, CommitCreationPackage,
+                   CommitModelPackage, Committer, CreationPackage, Creator,
+                   Deletion, EventPackage, File, FileVersion, MetaCommit,
+                   MetaCreation, MetaResource, MetaResourceVersion,
+                   Modification, ParseableContainer, ResourceModelPackage)
+from .parser import parse
 
 
-def author(project_id: str, commit: Commit) -> Agent:
-    """
-    Return the author of *commit* as a PROV agent.
-    """
-    return Agent(
-        id=qname(
-
-            f"{project_id}" + f"user-{commit['committer_name']}"
-
-        ),
-        label={
-            PROV_TYPE: "user",
-            PROV_ROLE: "committer",
-            "name": commit["committer_name"]
-        }
-    )
-
-
-def committer(project_id: str, commit: Commit) -> Agent:
-    """
-    Return the committer of *commit* as a PROV agent.
-    """
-    return Agent(
-        id=qname(
-
-            f"{project_id}" + f"user-{commit['committer_name']}"
-
-        ),
-        label={
-            PROV_TYPE: "user",
-            PROV_ROLE: "committer",
-            "name": commit["committer_name"]
-        }
-    )
-
-
-def commit_activity(project_id: str, commit: Commit) -> Activity:
-    """
-    Return the commit activity denoted by *commit*.
-    """
-    id_ = qname(f"{project_id}-commit-activity-{commit['id']}")
-
-    start = ptime(commit["authored_date"])
-    end = ptime(commit["committed_date"])
-
-    label = {
-        PROV_TYPE: "commit",
-        "sha": commit["id"],
-        "title": commit["title"],
-        "message": commit["message"]
-    }
-
-    return Activity(id_, start, end, label)
-
-
-def parents(project_id: str, commit: Commit, all_commits: List[Commit]) -> List[Activity]:
-    """
-    Return the parent commit activities of *commit*.
-
-    Build a lookup of all commits.
-    """
-    # TODO: cache the lookup, this is inefficient.
-    # NOTE: or outsource it, should be fine.
-    clookup = {c["id"]: c for c in all_commits}
-
-    # return list of parenting commit activities
-    return [commit_activity(project_id, clookup[pid]) for pid in commit["parent_ids"]]
-
-
-@dataclass
 class CommitProcessor:
     """
-    Preprocess commit data before dumping into PROV model.
+    Converts commits and diffs to commit model packages.
+    Link between model implementation and API resources.
     """
-    project_id: str
-    history: FileNameHistory = FileNameHistory()
-
-    def run(self, commits: List[Commit], diffs: List[Diff]) -> List[CommitResource]:
-        """
-        """
+    def __init__(self, commits: List[Commit], diffs: List[Diff]) -> None:
+        self.diffs = diffs
+        self.commits = commits
+        self.lookup: Dict[str, Commit] = {commit["id"]: commit for commit in commits}
+        self.history: FileNameHistory = FileNameHistory()
         self.history.compute(commits, diffs)
 
-        processed = []
+    def run(self) -> List[CommitModelPackage]:
+        pkgs: List[CommitModelPackage] = []
 
-        for commit, diff in zip(commits, diffs):
-            processed.append(
-                CommitResource(**{
-                    "author": author(self.project_id, commit),
-                    "committer": committer(self.project_id, commit),
-                    "commit": commit_activity(self.project_id, commit),
-                    "parents": parents(self.project_id, commit, commits),
-                    "changes": self.changes(commit, diff)
-                })
+        for commit, diff in zip(self.commits, self.diffs):
+            # fetch the parents of the current commit
+            parents = [self.lookup[psha] for psha in commit["parent_ids"]]
+
+            pkg = CommitModelPackage(
+                # compute author of the current commit
+                Author.from_commit(commit).atomize(),
+                # compute committer of the current commit
+                Committer.from_commit(commit).atomize(),
+                # compute commit activity for the current commit
+                MetaCommit.from_commit(commit).atomize(),
+                # compute commit activities
+                # for all parent commits to the current commit
+                [MetaCommit.from_commit(parent).atomize() for parent in parents],
+                # compute the change set
+                self.compute_change_set(commit, diff)
             )
-        return processed
+            # add commit model package to package list
+            pkgs.append(pkg)
+        return pkgs
 
-    def changes(self, commit: Commit, diff: Diff) -> List[Union[Addition, Deletion, Modification]]:
+    def compute_change_set(self, commit: Commit, diff: Diff) -> List[Union[Addition, Deletion, Modification]]:
         """
-        Return diff entries parsed as FileChanges.
         """
-        changes: List[Union[Addition, Deletion, Modification]] = []
+        change_set: List[Union[Addition, Deletion, Modification]] = []
 
         for entry in diff:
+            sha = commit["id"]
+            new_path = entry["new_path"]
+            old_path = entry["old_path"]
 
-            # get original file name of file denoted in diff entry
-            original = self.history.get(commit["id"], entry["new_path"])
+            # determine original file name
+            # use this name in the identifier of subsequent versions
+            origin = self.history.get(sha, new_path)
 
-            f = Entity(id=qname(f"{self.project_id}-file-{original}"), label={PROV_TYPE: "file"})
-            f_version = Entity(
-                id=qname(f"{self.project_id}-file-{original}-{commit['id']}"),
-                label={
-                    PROV_TYPE: "file_version",
-                    "old_path": entry["old_path"],
-                    "new_path": entry["new_path"]
-                }
-            )
+            # compute file entity for the original file
+            f_origin = File.create(origin).atomize()
 
+            # compute file version entity for the current file
+            f_curr = FileVersion.create(origin, old_path, new_path, sha).atomize()
+
+            # compute file version entities based on
+            # the naive assumption that the versions
+            # of directly preceeding commits where used
+
+            # therefore create a file version for each preceeding commit
+            # this can be faulty as this could assign a file version
+            # to a branch that didn't include the file in the first place
+
+            # this also bares the side effect that the provenance graph
+            # will hold more file version entities than versions a file
+            # ever existed
+            f_prevs = [
+                FileVersion.create(origin, old_path, new_path, psha).atomize()
+                for psha in commit["parent_ids"]
+            ]
+
+            # based on what action the diff entry describes
+            # choose the appropriate context subpackage
             if entry["new_file"]:
-                changes.append(Addition(f, f_version))
-
+                # added new file -> Addition
+                change_set.append(Addition(f_origin, f_curr))
+                continue
             elif entry["deleted_file"]:
-                changes.append(Deletion(f, f_version))
-
-            elif entry["new_path"] != entry["old_path"]:
-                previous_f_versions = [
-                    Entity(
-                        id=qname(f"{self.project_id}-file-{original}-{pid}"),
-                        label={PROV_TYPE: "file_version"}
-                    )
-                    for pid in commit["parent_ids"]
-                ]
-                changes.append(Modification(f, f_version, previous_f_versions))
-
-        return changes
+                # deleted file   -> Deletion
+                change_set.append(Deletion(f_origin, f_curr))
+                continue
+            else:
+                # modified file  -> Modification
+                change_set.append(Modification(f_origin, f_curr, f_prevs))
+                continue
+        # return list of file change packages (change set)
+        return change_set
 
 
-@dataclass
 class CommitResourceProcessor:
     """
-    Preprocess commit resource data before handing over to model population.
+    Converts commits, and notes to resource model packages.
+    Link between model implementation and API resources.
     """
-    project_id: str
-    eventparser: EventParser = EventParser()
+    def __init__(self, commits: List[Commit], parseables: ParseableContainer) -> None:
+        self.commits: List[Commit] = commits
+        self.parseables: ParseableContainer = parseables
 
-    def run(self, commits: List[Commit], parsables: ParseableContainer) -> List[Resource]:
-        """
-        Return list of PROV-DM commit resources.
-        """
-        processed = []
+    def run(self) -> List[ResourceModelPackage]:
+        pkgs: List[ResourceModelPackage] = []
 
-        for commit, candidates in zip(commits, parsables):
-
-            processed.append(
-                Resource(
-                    self.creation(commit),
-                    self.events(commit, candidates)
-                )
+        for commit, candidates in zip(self.commits, self.parseables):
+            # creation subpackage
+            creation = CommitCreationPackage(
+                # extract committer
+                Committer.from_commit(commit).atomize(),
+                # extract commit activity
+                MetaCommit.from_commit(commit).atomize(),
+                # extract creation activity
+                MetaCreation.from_commit(commit).atomize(),
+                # compute commit resource
+                MetaResource.from_commit(commit).atomize(),
+                # compute commit resource version
+                MetaResourceVersion.from_commit(commit).atomize()
             )
+            # event chain subpackage
+            event_chain = self.compute_event_chain(commit, candidates)
 
-        return processed
+            # prepend package to event chain
+            # that represents the creation of the resource
+            event_chain.appendleft(EventPackage(
+                creation.committer,
+                creation.commit,
+                creation.resource,
+                creation.resource_version
+            ))
+            # combine subpackages to resource package
+            # add resource package to list of computed packages
+            pkgs.append(ResourceModelPackage(creation, event_chain))
+        return pkgs
 
-    def creation(self, commit: Commit) -> CommitCreation:
-        """
-        Return PROV-DM creation grouping for *commit*.
-        """
-        return CommitCreation(**{
-            "committer": committer(self.project_id, commit),
+    def compute_event_chain(self, commit: Commit, candidates: Candidates) -> Deque[EventPackage]:
+        chain: Deque[EventPackage] = deque()
+        # parser returns events ordered by date ascending
+        # (from earliest to latest, past to present)
 
-            "commit": commit_activity(self.project_id, commit),
-
-            "creation": Activity(
-                id=qname(f"{self.project_id}-commit-creation-{commit['id']}"),
-                start=ptime(commit["committed_date"]),
-                end=ptime(commit["committed_date"]),
-                label={PROV_TYPE: "commit_creation"}
-            ),
-
-            "resource": Entity(
-                id=qname(f"{self.project_id}-commit-{commit['id']}"),
-                label={
-                    PROV_TYPE: "commit",
-                    "id": commit["id"],
-                    "short_id": commit["short_id"],
-                    "title": commit["title"],
-                    "message": commit["message"]
-                }
-            ),
-
-            "resource_version": Entity(
-                id=qname(f"{self.project_id}-commit-version-{commit['id']}"),
-                label={PROV_TYPE: "commit_version"}
+        for meta_event in parse(candidates):
+            # event package creation
+            pkg = EventPackage(
+                # extract initiator from parsed meta_event
+                meta_event.initiator.atomize(),
+                # convert meta event to PROV activity
+                meta_event.atomize(),
+                # compute original resource
+                MetaResource.from_commit(commit).atomize(),
+                # compute commit resource version
+                MetaResourceVersion.from_commit(commit, meta_event).atomize()
             )
-        })
-
-    def events(self, commit: Commit, candidates: Candidates) -> List[Event]:
-        """
-        Return list of events parsed from *notes* in chronological order.
-        """
-        prev_event: Optional[Activity] = None
-        prev_version: Optional[Entity] = None
-
-        events: List[Event] = []
-
-        for event in self.eventparser.parse(candidates):
-
-            if not prev_event:
-                prev_event = Activity(
-                    id=qname(f"{self.project_id}-commit-creation-{commit['id']}"),
-                    start=None,
-                    end=None,
-                    label={}
-                )
-            if not prev_version:
-                prev_version = Entity(
-                    id=qname(f"{self.project_id}-commit-version-{commit['id']}"),
-                    label={}
-                )
-
-            events.append(
-                Event(**{
-                    "initiator": Agent(
-                        id=qname(f"{self.project_id}-user-{event.initiator}"),
-                        label={
-                            PROV_TYPE: "user",
-                            PROV_ROLE: "initiator",
-                            "name": event.initiator
-                        }
-                    ),
-                    "event": Activity(
-                        id=qname(f"{self.project_id}-commit-event-{commit['id']}-{event.id}"),
-                        start=event.created_at,
-                        end=event.created_at,
-                        label=event.label
-                    ),
-                    "previous_event": prev_event,
-                    "resource": Entity(
-                        id=qname(f"{self.project_id}-commit-{commit['id']}"),
-                        label={}
-                    ),
-                    "resource_version": Entity(
-                        id=qname(f"{self.project_id}-commit-version-{commit['id']}-{event.id}"),
-                        label={PROV_TYPE: "commit_version"}
-                    ),
-                    "previous_resource_version": prev_version
-                })
-            )
-
-            # update prev_event
-            prev_event = Activity(
-                id=qname(f"{self.project_id}-commit-event-{commit['id']}-{event.id}"),
-                start=None,
-                end=None,
-                label={}
-            )
-            # update prev version
-            prev_version = Entity(
-                id=qname(f"{self.project_id}-commit-version-{commit['id']}-{event.id}"),
-                label={PROV_TYPE: "commit_version"}
-            )
-
-        return events
+            # add package to package chain
+            chain.append(pkg)
+        return chain
 
 
-@dataclass
 class IssueResourceProcessor:
+    """
+    Converts issues, notes, label events and award emoji to resource model packages.
+    Link between model implementation and API resources.
+    """
+    def __init__(self, issues: List[Issue], parseables: ParseableContainer) -> None:
+        self.issues: List[Issue] = issues
+        self.parseables: ParseableContainer = parseables
 
-    project_id: str
-    eventparser: EventParser = EventParser()
+    def run(self) -> List[ResourceModelPackage]:
+        pkgs: List[ResourceModelPackage] = []
 
-    def run(self, issues: List[Issue], eventables: ParseableContainer) -> List[Resource]:
-        """
-        Return list of resource life cycles for issues.
-        """
-        processed = []
-        for issue, candidates in zip(issues, eventables):
-
-            processed.append(
-                Resource(
-                    self.creation(issue),
-                    self.events(issue, candidates)
-                )
+        for issue, candidates in zip(self.issues, self.parseables):
+            # creation subpackage
+            creation = CreationPackage(
+                # compute creator for current issue
+                Creator.from_issue(issue).atomize(),
+                # compute creation activity for current issue
+                MetaCreation.from_issue(issue).atomize(),
+                # compute issue original for current issue
+                MetaResource.from_issue(issue).atomize(),
+                # compute first resource version for current issue
+                MetaResourceVersion.from_issue(issue).atomize()
             )
+            # event chain
+            event_chain = self.compute_event_chain(issue, candidates)
+            # prepend event package representing
+            # the creation of the resource to the event chain
+            event_chain.appendleft(EventPackage(
+                creation.creator,
+                creation.creation,
+                creation.resource,
+                creation.resource_version
+            ))
+            # add resource package to package list
+            pkgs.append(ResourceModelPackage(creation, event_chain))
+        return pkgs
 
-        return processed
+    def compute_event_chain(self, issue: Issue, candidates: Candidates) -> Deque[EventPackage]:
+        chain: Deque[EventPackage] = deque()
 
-    def creation(self, issue: Issue) -> Creation:
-        """
-        Return creation pack of activities, entities, etc.
-        """
-        return Creation(**{
-
-            "creator": Agent(
-                id=qname(f"{self.project_id}-user-{issue['author']['name']}"),
-                label={
-                    PROV_TYPE: "user",
-                    PROV_ROLE: "creator",
-                    "name": issue["author"]["name"]
-                }
-            ),
-
-            "creation": Activity(
-                id=qname(f"{self.project_id}-issue-creation-{issue['id']}"),
-                start=ptime(issue["created_at"]),
-                end=ptime(issue["created_at"]),
-                label={PROV_TYPE: "issue_creation"}
-            ),
-
-            "resource": Entity(
-                id=qname(f"{self.project_id}-issue-{issue['id']}"),
-                label={
-                    PROV_TYPE: "issue",
-                    "id": issue["id"],
-                    "iid": issue["iid"],
-                    "title": issue["title"],
-                    "description": issue["description"],
-                }
-            ),
-
-            "resource_version": Entity(
-                id=qname(f"{self.project_id}-issue-version-{issue['id']}"),
-                label={PROV_TYPE: "issue_version"}
+        for meta_event in parse(candidates):
+            pkg = EventPackage(
+                # extract initiator from parsed meta event
+                meta_event.initiator.atomize(),
+                # convert parsed meta event to PROV activity
+                meta_event.atomize(),
+                # compute issue resource original
+                MetaResource.from_issue(issue).atomize(),
+                # compute issue resource version
+                MetaResourceVersion.from_issue(issue, meta_event).atomize()
             )
-        })
-
-    def events(self, issue: Issue, eventables: Candidates) -> List[Event]:
-        """
-        Return list of events that occured on *issue* in chronological order, beginning at it's creation.
-        """
-        events: List[Event] = [
-            Event(**{
-                "initiator": Agent(
-                    id=qname(f"{self.project_id}-user-{issue['author']['name']}"),
-                    label={
-                        PROV_TYPE: "user",
-                        PROV_ROLE: "initiator",
-                        "name": issue["author"]["name"]
-                    }
-                ),
-
-                "event": Activity(
-                    id=qname(f"{self.project_id}-issue-event-{issue['id']}-open"),
-                    start=ptime(issue["created_at"]),
-                    end=ptime(issue["created_at"]),
-                    label={
-                        PROV_TYPE: "event",
-                        "event": "open"
-                    }
-                ),
-
-                "previous_event": Activity(
-                    id=qname(f"{self.project_id}-issue-creation-{issue['id']}"),
-                    start=ptime(issue["created_at"]),
-                    end=ptime(issue["created_at"]),
-                    label={}
-                ),
-
-                "resource": Entity(
-                    id=qname(f"{self.project_id}-issue-{issue['id']}"),
-                    label={
-                        PROV_TYPE: "issue",
-                        "id": issue["id"],
-                        "iid": issue["iid"],
-                        "title": issue["title"],
-                        "description": issue["description"],
-                    }
-                ),
-
-                "resource_version": Entity(
-                    id=qname(f"{self.project_id}-issue-version-{issue['id']}-open"),
-                    label={PROV_TYPE: "issue_version"}
-                ),
-
-                "previous_resource_version": Entity(
-                    id=qname(f"{self.project_id}-issue-version-{issue['id']}"),
-                    label={}
-                )
-            })
-        ]
-
-        # add remaining events
-        events.extend(self.event_chain(issue, eventables))
-
-        return events
-
-    def event_chain(self, issue, eventables) -> List[Event]:
-        """
-        Return list of events that occured on *issue* in chronological order.
-        """
-        prev_event: Optional[Activity] = None
-        prev_version: Optional[Entity] = None
-
-        event_chain: List[Event] = []
-
-        for event in self.eventparser.parse(eventables):
-
-            # Open event was previous event
-            if not prev_event:
-                prev_event = Activity(
-                    id=qname(f"{self.project_id}-issue-event-{issue['id']}-open"),
-                    start=ptime(issue["created_at"]),
-                    end=ptime(issue["created_at"]),
-                    label={}
-                )
-
-            # Latest version was the one after open event got applied
-            if not prev_version:
-                prev_version = Entity(
-                    id=qname(f"{self.project_id}-issue-version-{issue['id']}-open"),
-                    label={}
-                )
-
-            event_chain.append(
-                Event(**{
-                    "previous_event": prev_event,
-                    "previous_resource_version": prev_version,
-                    "initiator": Agent(
-                        id=qname(f"{self.project_id}-user-{issue['author']['name']}"),
-                        label={
-                            PROV_TYPE: "user",
-                            PROV_ROLE: "initiator",
-                            "name": issue["author"]["name"]
-                        }
-                    ),
-                    "event": Activity(
-                        id=qname(f"{self.project_id}-issue-event-{issue['id']}-{event.id}"),
-                        start=ptime(event.created_at),
-                        end=ptime(event.created_at),
-                        label=event.label
-                    ),
-                    "resource": Entity(
-                        id=qname(f"{self.project_id}-issue-{issue['id']}"),
-                        label={}
-                    ),
-                    "resource_version": Entity(
-                        id=qname(f"{self.project_id}-issue-version-{issue['id']}-{event.id}"),
-                        label={PROV_TYPE: "issue_version"}
-                    ),
-                })
-            )
-
-            # Update previous event
-            prev_event = Activity(
-                id=qname(f"{self.project_id}-issue-event-{issue['id']}-{event.id}"),
-                start=None,
-                end=None,
-                label={}
-            )
-
-            # Update previous version
-            prev_version = Entity(
-                id=qname(f"{self.project_id}-issue-version-{issue['id']}-{event.id}"),
-                label={PROV_TYPE: "issue_version"}
-            )
-
-        return event_chain
+            # add event package to event chain
+            chain.append(pkg)
+        return chain
 
 
-@dataclass
 class MergeRequestResourceProcessor:
+    """
+    Converts merge requests, notes, label events and award emoji to resource model packages.
+    Link between model implementation and API resources.
+    """
+    def __init__(self, merge_requests: List[MergeRequest], parseables: ParseableContainer) -> None:
+        self.merge_requests: List[MergeRequest] = merge_requests
+        self.parseables: ParseableContainer = parseables
 
-    project_id: str
-    eventparser: EventParser = EventParser()
+    def run(self) -> List[ResourceModelPackage]:
+        pkgs: List[ResourceModelPackage] = []
 
-    def run(self, merge_requests: List[MergeRequest], eventables: ParseableContainer) -> List[Resource]:
-        """
-        Return the resource life cycle of each merge request in
-        *merge_requests*.
-
-        Parse labels, awards, notes and note awards as eventables.
-        """
-        processed: List[Resource] = []
-
-        for mr, candidates in zip(merge_requests, eventables):
-            processed.append(
-                Resource(
-                    self.creation(mr),
-                    self.events(mr, candidates)
-                )
+        for merge_request, candidates in zip(self.merge_requests, self.parseables):
+            creation = CreationPackage(
+                # compute merge request creator
+                Creator.from_merge_request(merge_request).atomize(),
+                # compute merge request creation activity
+                MetaCreation.from_merge_request(merge_request).atomize(),
+                # compute merge request resource original
+                MetaResource.from_merge_request(merge_request).atomize(),
+                # compute merge request resource version
+                MetaResourceVersion.from_merge_request(merge_request).atomize()
             )
+            # compute event chain
+            event_chain = self.compute_event_chain(merge_request, candidates)
 
-        return processed
+            # prepend event package representing
+            # the creation of the resource to the event chain
+            event_chain.appendleft(EventPackage(
+                creation.creator,
+                creation.creation,
+                creation.resource,
+                creation.resource_version
+            ))
+            pkgs.append(ResourceModelPackage(creation, event_chain))
+        return pkgs
 
-    def creation(self, merge_request: MergeRequest) -> Creation:
-        """
-        Return creation pack for *merge_request*.
-        """
-        return Creation(**{
+    def compute_event_chain(self, merge_request: MergeRequest, candidates: Candidates) -> Deque[EventPackage]:
+        chain: Deque[EventPackage] = deque()
 
-            "creator": Agent(
-                id=qname(f"{self.project_id}-user-{merge_request['author']['name']}"),
-                label={
-                    PROV_TYPE: "user",
-                    PROV_ROLE: "creator",
-                    "name": merge_request["author"]["name"]
-                }
-            ),
-
-            "creation": Activity(
-                id=qname(f"{self.project_id}-merge-request-creation-{merge_request['id']}"),
-                start=ptime(merge_request["created_at"]),
-                end=ptime(merge_request["created_at"]),
-                label={PROV_TYPE: "merge_request_creation"}
-            ),
-
-            "resource": Entity(
-                id=qname(f"{self.project_id}-merge-request-{merge_request['id']}"),
-                label={
-                    PROV_TYPE: "merge_request",
-                    "id": merge_request["id"],
-                    "iid": merge_request["iid"],
-                    "title": merge_request["title"],
-                    "description": merge_request["description"],
-                    "source_project_id": merge_request["source_project_id"],
-                    "target_project_id": merge_request["target_project_id"],
-                    "source_branch": merge_request["source_branch"],
-                    "target_branch": merge_request["target_branch"]
-                }
-            ),
-
-            "resource_version": Entity(
-                id=qname(f"{self.project_id}-merge-request-version-{merge_request['id']}"),
-                label={PROV_TYPE: "merge_request_version"}
+        for meta_event in parse(candidates):
+            pkg = EventPackage(
+                # extract initiator from meta event
+                meta_event.initiator.atomize(),
+                # convert meta event to PROV activity
+                meta_event.atomize(),
+                # compute merge request resource original
+                MetaResource.from_merge_request(merge_request).atomize(),
+                # compute merge request resource version
+                MetaResourceVersion.from_merge_request(merge_request, meta_event).atomize()
             )
-        })
-
-    def events(self, merge_request: MergeRequest, eventables: Candidates) -> List[Event]:
-        """
-        Return list of events for *merge_request* from *eventables* in
-        chronological order.
-        """
-        events: List[Event] = [
-            Event(**{
-                "initiator": Agent(
-                    id=qname(f"{self.project_id}-user-{merge_request['author']['name']}"),
-                    label={
-                        PROV_TYPE: "user",
-                        PROV_ROLE: "initiator",
-                        "name": merge_request["author"]["name"]
-                    }
-                ),
-
-                "event": Activity(
-                    id=qname(f"{self.project_id}-merge-request-event-{merge_request['id']}-open"),
-                    start=ptime(merge_request["created_at"]),
-                    end=ptime(merge_request["created_at"]),
-                    label={
-                        PROV_TYPE: "event",
-                        "event": "open"
-                    }
-                ),
-
-                "previous_event": Activity(
-                    id=qname(f"{self.project_id}-merge-request-creation-{merge_request['id']}"),
-                    start=None,
-                    end=None,
-                    label={}
-                ),
-
-                "resource": Entity(
-                    id=qname(f"{self.project_id}-merge-request-{merge_request['id']}"),
-                    label={
-                        PROV_TYPE: "merge_request",
-                        "id": merge_request["id"],
-                        "iid": merge_request["iid"],
-                        "title": merge_request["title"],
-                        "description": merge_request["description"],
-                        "source_project_id": merge_request["source_project_id"],
-                        "target_project_id": merge_request["target_project_id"],
-                        "source_branch": merge_request["source_branch"],
-                        "target_branch": merge_request["target_branch"]
-                    }
-                ),
-
-                "resource_version": Entity(
-                    id=qname(f"{self.project_id}-merge-request-version-{merge_request['id']}-open"),
-                    label={PROV_TYPE: "merge_request_version"}
-                ),
-
-                "previous_resource_version": Entity(
-                    id=qname(f"{self.project_id}-merge-request-version-{merge_request['id']}"),
-                    label={}
-                )
-            })
-        ]
-
-        # add remaining events
-        events.extend(self.event_chain(merge_request, eventables))
-
-        return events
-
-    def event_chain(self, merge_request: MergeRequest, eventables: Candidates) -> List[Event]:
-        """
-        Parse events and return chain of events in chronological order.
-
-        Hint: to relate to previous_events or previous_versions
-        you only need to fill the id field.
-        """
-        prev_event: Optional[Activity] = None
-        prev_version: Optional[Entity] = None
-
-        event_chain: List[Event] = []
-
-        for event in self.eventparser.parse(eventables):
-
-            # Open event was previous event
-            if not prev_event:
-                prev_event = Activity(
-                    id=qname(f"{self.project_id}-merge-request-event-{merge_request['id']}-open"),
-                    start=None,
-                    end=None,
-                    label={}
-                )
-
-            # Latest version was the one after open event got applied
-            if not prev_version:
-                prev_version = Entity(
-                    id=qname(f"{self.project_id}-merge-request-version-{merge_request['id']}-open"),
-                    label={}
-                )
-
-            event_chain.append(
-                Event(**{
-                    "previous_event": prev_event,
-                    "previous_resource_version": prev_version,
-                    "initiator": Agent(
-                        # Initiator of event
-                        id=qname(f"{self.project_id}-user-{merge_request['author']['name']}"),
-                        label={
-                            PROV_TYPE: "user",
-                            PROV_ROLE: "initiator",
-                            "name": merge_request["author"]["name"]
-                        }
-                    ),
-                    "event": Activity(
-                        # Event activity
-                        id=qname(f"{self.project_id}-merge-request-event-{merge_request['id']}-{event.id}"),
-                        start=ptime(event.created_at),
-                        end=ptime(event.created_at),
-                        label=event.label
-                    ),
-                    "resource": Entity(
-                        # Original entity of merge request
-                        id=qname(f"{self.project_id}-merge-request-{merge_request['id']}"),
-                        label={}
-                    ),
-                    "resource_version": Entity(
-                        # Merge Request state after latest event got appplied
-                        id=qname(f"{self.project_id}-merge-request-version-{merge_request['id']}-{event.id}"),
-                        label={PROV_TYPE: "merge_request_version"}
-                    ),
-                })
-            )
-
-            # Update previous event
-            prev_event = Activity(
-                id=qname(f"{self.project_id}-merge-request-event-{merge_request['id']}-{event.id}"),
-                start=None,
-                end=None,
-                label={}
-            )
-
-            # Update previous version
-            prev_version = Entity(
-                id=qname(f"{self.project_id}-merge-request-version-{merge_request['id']}-{event.id}"),
-                label={PROV_TYPE: "merge_request_version"}
-            )
-
-        return event_chain
+            chain.append(pkg)
+        return chain
