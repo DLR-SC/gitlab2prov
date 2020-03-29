@@ -8,10 +8,10 @@ Session can make per second.
 """
 
 import asyncio
-import aiohttp
 import time
-
 from typing import Any
+
+import aiohttp
 
 
 class RateLimiter:
