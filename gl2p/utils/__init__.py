@@ -1,27 +1,77 @@
-# Copyright (c) 2019 German Aerospace Center (DLR/SC).
-# All rights reserved.
-#
-# This file is part of gitlab2prov.
-# gitlab2prov is licensed under the terms of the MIT License.
-# SPDX short Identifier: MIT
-#
-# You may obtain a copy of the License at:
-# https://opensource.org/licenses/MIT
-#
-# A command line tool to extract provenance data (PROV W3C)
-# from GitLab hosted repositories aswell as to store the extracted data in a Neo4J database.
-#
-# code-author: Claas de Boer <claas.deboer@dlr.de>
-"""
-Helper functions.
-"""
-
-
+import argparse
 import datetime
 import urllib.parse
 import uuid
 from typing import Any, Iterator, List
-from gl2p.utils.objects import GL2PEvent
+
+from prov.dot import prov_to_dot
+from prov.model import ProvDocument
+from provdbconnector import Neo4jAdapter, ProvDb
+from py2neo import Graph
+
+
+def serialize(doc: ProvDocument, fmt: str) -> str:
+    """
+    Return serialization according to format string.
+    Allow for dot serialization.
+    """
+    if fmt == "dot":
+        return str(prov_to_dot(doc))
+    return str(doc.serialize(format=fmt))
+
+
+def bundle_exists(config: argparse.Namespace) -> bool:
+    """
+    Return whether a bundle for the given project_id is already in the graph.
+    """
+    project_id = url_encoded_path(config.project_url)
+    g = Graph(
+        uri=f"bolt://{config.neo4j_host}:{config.neo4j_boltport}",
+        auth=(config.neo4j_user, config.neo4j_password)
+    )
+    return bool(g.run(
+        "MATCH (bundle:Entity)" +
+        "WHERE bundle.`meta:identifier` = " + f"'{project_id.replace('%2F', '-')}'" +
+        "RETURN bundle.`meta:identifier`"
+    ).forward())
+
+
+def store_in_db(doc: ProvDocument, config: argparse.Namespace) -> None:
+    """
+    Store prov document in neo4j instance.
+    """
+    if bundle_exists(config):
+        raise KeyError(
+            f"Graph for {url_encoded_path(config.project_url).replace('%2F', '-')} already exists in neo4j."
+        )
+
+    auth = {
+        "user_name": config.neo4j_user,
+        "user_password": config.neo4j_password,
+        "host": f"{config.neo4j_host}:{config.neo4j_boltport}"
+    }
+    api = ProvDb(adapter=Neo4jAdapter, auth_info=auth)
+    api.save_document(doc)
+
+
+def dot_to_file(doc: ProvDocument, file: str) -> None:
+    """
+    Write PROV graph in dot representation to a file.
+    """
+    with open(file, "w") as dot:
+        print(prov_to_dot(doc), file=dot)
+
+
+def unite(docs: List[ProvDocument]) -> ProvDocument:
+    """
+    Merge multiple prov documents into one.
+
+    Remove duplicated entries.
+    """
+    d0 = docs[0]
+    for doc in docs[1:]:
+        d0.update(doc)
+    return d0.unified()
 
 
 def ptime(string: str) -> datetime.datetime:
@@ -33,16 +83,6 @@ def ptime(string: str) -> datetime.datetime:
 
     fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
     return datetime.datetime.strptime(string, fmt)
-
-
-def by_date(event: GL2PEvent) -> datetime.datetime:
-    """
-    Parse value of attribute 'created_at' of resource to datetime object.
-    """
-    if not isinstance(event, GL2PEvent):
-        raise TypeError(f"Parameter event: Expected type GL2PEvent, got type {type(event)}.")
-
-    return ptime(event.created_at)
 
 
 def chunks(L: List[Any], chunk_size: int) -> Iterator[List[Any]]:
@@ -70,7 +110,7 @@ def url_encoded_path(url: str) -> str:
         raise TypeError(f"Parameter url: Expected type str, got type {type(url)}.")
 
     path = urllib.parse.urlparse(url).path
-    
+
     if not path:
         raise ValueError(f"Could not parse path from {url}.")
 
@@ -86,7 +126,7 @@ def url_encoded_path(url: str) -> str:
 def qname(string: str) -> str:
     """
     Return string representation of uuid5 of *string*.
-    
+
     Creates unique identifiers.
     """
     if not isinstance(string, str):
