@@ -1,28 +1,15 @@
-# Copyright (c) 2019 German Aerospace Center (DLR/SC).
-# All rights reserved.
-#
-# This file is part of gitlab2prov.
-# gitlab2prov is licensed under the terms of the MIT License.
-# SPDX short Identifier: MIT
-#
-# You may obtain a copy of the License at:
-# https://opensource.org/licenses/MIT
-#
-# A command line tool to extract provenance data (PROV W3C)
-# from GitLab hosted repositories aswell as
-# to store the extracted data in a Neo4J database.
-#
-# code-author: Claas de Boer <claas.deboer@dlr.de>
-
-from typing import List, Tuple
 from dataclasses import dataclass
+from typing import List, Tuple
+
 from prov.model import ProvDocument
-from gl2p.api.gitlab import GitLabProjectWrapper
-from gl2p.processor import (CommitProcessor, CommitResourceProcessor,
-                            IssueResourceProcessor, MergeRequestResourceProcessor)
-from gl2p.models import CommitModel, CommitResourceModel, ResourceModel
-from gl2p.utils.objects import Resource, ParseableContainer, CommitResource
-from gl2p.utils.types import Commit, Issue, MergeRequest, Diff
+
+from .api import GitLabAPIClient
+from .models import CommitModel, CommitResourceModel, ResourceModel
+from .procs import (CommitProcessor, CommitResourceProcessor,
+                    IssueResourceProcessor, MergeRequestResourceProcessor)
+from .procs.meta import (CommitModelPackage, ParseableContainer,
+                         ResourceModelPackage)
+from .utils.types import Commit, Diff, Issue, MergeRequest
 
 
 @dataclass
@@ -31,31 +18,28 @@ class CommitPipeline:
     Pipeline that fetches, processes and models git commits of a project.
     """
     project_id: str
-    api_client: GitLabProjectWrapper
+    client: GitLabAPIClient
 
     async def fetch(self) -> Tuple[List[Commit], List[Diff]]:
         """
         Retrieve commits and their diffs from the project API wrapper.
         """
-        async with self.api_client as client:
-            commits = await client.commits()
-            diffs = await client.commit_diffs()
+        async with self.client as clt:
+            commits = await clt.commits()
+            diffs = await clt.commit_diffs()
 
         return commits, diffs
 
-    def process(self, commits: List[Commit], diffs: List[Diff]) -> List[CommitResource]:
+    def process(self, commits: List[Commit], diffs: List[Diff]) -> List[CommitModelPackage]:
         """
-        Return list of internal PROV-DM groupings.
+        Return list of commit model packages.
+        """
+        proc = CommitProcessor(commits, diffs)
+        return proc.run()
 
-        Precompute id's, activities, entities, agents and labels.
+    def create_model(self, resources: List[CommitModelPackage]) -> ProvDocument:
         """
-        processor = CommitProcessor(self.project_id)
-        return processor.run(commits, diffs)
-
-    def create_model(self, resources: List[CommitResource]) -> ProvDocument:
-        """
-        Return PROV document containing commit model populated with
-        PROV-DM groupings.
+        Return populated PROV graph for resource model.
         """
         model = CommitModel(self.project_id)
 
@@ -71,31 +55,28 @@ class CommitResourcePipeline:
     Pipeline that fetches, processes and models project commits.
     """
     project_id: str
-    api_client: GitLabProjectWrapper
+    client: GitLabAPIClient
 
     async def fetch(self) -> Tuple[List[Commit], ParseableContainer]:
         """
         Retrieve commits and their notes from the project API wrapper.
         """
-        async with self.api_client as client:
-            commits = await client.commits()
-            notes = await client.commit_notes()
+        async with self.client as clt:
+            commits = await clt.commits()
+            notes = await clt.commit_notes()
 
         return commits, ParseableContainer(notes=notes)
 
-    def process(self, commits: List[Commit], event_candidates: ParseableContainer) -> List[Resource]:
+    def process(self, commits: List[Commit], parseables: ParseableContainer) -> List[ResourceModelPackage]:
         """
-        Return list of internal PROV-DM groupings.
+        Return list of resource model packages.
+        """
+        proc = CommitResourceProcessor(commits, parseables)
+        return proc.run()
 
-        Precompute id's, activities, entities, agents and labels.
+    def create_model(self, resources: List[ResourceModelPackage]) -> ProvDocument:
         """
-        processor = CommitResourceProcessor(self.project_id)
-        return processor.run(commits, event_candidates)
-
-    def create_model(self, resources: List[Resource]) -> ProvDocument:
-        """
-        Return PROV document containing commit resource model populated
-        with PROV-DM groupings.
+        Return populated PROV graph for resource model.
         """
         model = CommitResourceModel(self.project_id)
 
@@ -111,35 +92,32 @@ class IssueResourcePipeline:
     Pipeline that fetches, processes and models project issues.
     """
     project_id: str
-    api_client: GitLabProjectWrapper
+    client: GitLabAPIClient
 
     async def fetch(self) -> Tuple[List[Issue], ParseableContainer]:
         """
         Retrieve issues, their labels, their awards, their notes and
         the awards of all notes from the project API wrapper.
         """
-        async with self.api_client as client:
-            issues = await client.issues()
-            labels = await client.issue_labels()
-            awards = await client.issue_awards()
-            notes = await client.issue_notes()
-            note_awards = await client.issue_note_awards()
+        async with self.client as clt:
+            issues = await clt.issues()
+            labels = await clt.issue_labels()
+            awards = await clt.issue_awards()
+            notes = await clt.issue_notes()
+            note_awards = await clt.issue_note_awards()
 
         return issues, ParseableContainer(labels, awards, notes, note_awards)
 
-    def process(self, issues: List[Issue], event_candidates: ParseableContainer) -> List[Resource]:
+    def process(self, issues: List[Issue], parseables: ParseableContainer) -> List[ResourceModelPackage]:
         """
-        Return list of PROV-DM groupings.
+        Return list of resource model packages.
+        """
+        proc = IssueResourceProcessor(issues, parseables)
+        return proc.run()
 
-        Precompute id's, activities, entities, agents and labels.
+    def create_model(self, resources: List[ResourceModelPackage]) -> ProvDocument:
         """
-        processor = IssueResourceProcessor(self.project_id)
-        return processor.run(issues, event_candidates)
-
-    def create_model(self, resources: List[Resource]) -> ProvDocument:
-        """
-        Return PROV document containing the issue resource model
-        populated with PROV-DM groupings.
+        Return populated PROV graph for resource model.
         """
         model = ResourceModel(self.project_id)
 
@@ -154,37 +132,33 @@ class MergeRequestResourcePipeline:
     """
     Pipeline that fetches, processes and models project merge requests.
     """
-
     project_id: str
-    api_client: GitLabProjectWrapper
+    client: GitLabAPIClient
 
     async def fetch(self) -> Tuple[List[MergeRequest], ParseableContainer]:
         """
         Retrieve merge requests, their labels, their awards, their
         notes and all awards for each note from the project API wrapper.
         """
-        async with self.api_client as client:
-            merge_requests = await client.merge_requests()
-            labels = await client.merge_request_labels()
-            awards = await client.merge_request_awards()
-            notes = await client.merge_request_notes()
-            note_awards = await client.merge_request_note_awards()
+        async with self.client as clt:
+            merge_requests = await clt.merge_requests()
+            labels = await clt.merge_request_labels()
+            awards = await clt.merge_request_awards()
+            notes = await clt.merge_request_notes()
+            note_awards = await clt.merge_request_note_awards()
 
         return merge_requests, ParseableContainer(labels, awards, notes, note_awards)
 
-    def process(self, merge_requests: List[MergeRequest], event_candidates: ParseableContainer) -> List[Resource]:
+    def process(self, merge_requests: List[MergeRequest], parseables: ParseableContainer) -> List[ResourceModelPackage]:
         """
-        Return list of PROV-DM groupings.
+        Return list of resource model packages.
+        """
+        proc = MergeRequestResourceProcessor(merge_requests, parseables)
+        return proc.run()
 
-        Precompute id's, activities, entities, agents and labels.
+    def create_model(self, resources: List[ResourceModelPackage]) -> ProvDocument:
         """
-        processor = MergeRequestResourceProcessor(self.project_id)
-        return processor.run(merge_requests, event_candidates)
-
-    def create_model(self, resources: List[Resource]) -> ProvDocument:
-        """
-        Return PROV document containing the merge request resource model
-        populated with PROV-DM groupings.
+        Return populated PROV graph for resource model.
         """
         model = ResourceModel(self.project_id)
 
