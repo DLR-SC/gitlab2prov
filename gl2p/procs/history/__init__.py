@@ -1,16 +1,12 @@
-"""Compute the file name history from the commit tree."""
-
-
 from __future__ import annotations
 
-import collections
-from copy import deepcopy
-from typing import Dict, List, Any, Set, Tuple
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
+from typing import Dict, List, Set, Tuple
 
+from gl2p.utils.types import Commit, Diff
 
-Diff = List[Dict[str, Any]]
-Commit = Dict[str, Any]
+from .nametable import NameTable
 
 
 @dataclass
@@ -34,7 +30,7 @@ class FileNameHistory:
         tree = self.commit_tree(commits)
         orphans = self.orphans(commits)
 
-        q = collections.deque(orphans)
+        q = deque(orphans)
 
         while q:
             sha = q.popleft()
@@ -106,7 +102,7 @@ class FileNameHistory:
         Tree represented as mapping of commit id's to set's of children
         commit id's.
         """
-        tree = collections.defaultdict(set)  # type: Dict[str, Set[str]]
+        tree = defaultdict(set)  # type: Dict[str, Set[str]]
 
         for c in commits:
             c_id = c["id"]  # type: str
@@ -120,84 +116,3 @@ class FileNameHistory:
     def orphans(self, commits: List[Commit]) -> List[str]:
         """Return list of commits that do not have parents."""
         return [c["id"] for c in commits if not c["parent_ids"]]
-
-
-@dataclass
-class NameTable:
-    """
-    A mapping of filenames to the names that they had when they got added.
-    Suffices for just one commit n.
-    """
-
-    data: Dict[str, str] = field(default_factory=dict)
-
-    @classmethod
-    def from_diff(cls, diff: Diff) -> NameTable:
-        """
-        Return NameTable instance created from *diff*.
-
-        Create an empty NameTable and apply *diff* to it.
-        """
-        return cls().apply(diff)
-
-    def get(self, name: str, default: str = "") -> str:
-        """
-        Return NameTable entry for key name.
-
-        Return default if key is not in self.data.
-        """
-        return self.data.get(name, default)
-
-    def merge(self, other: NameTable) -> NameTable:
-        """
-        Return NameTable resulting from merge of *self* with *other*.
-
-        Merge two NameTable's (*self* and *other*) by updating the
-        entries of *self* with the entries of *other*.
-        """
-        if not isinstance(other, NameTable):
-            raise TypeError(f"Expected type NameTable, got {type(other)}")
-
-        copy = deepcopy(self.data)
-        copy.update(other.data)
-
-        return NameTable(copy)
-
-    def apply(self, diff: Diff) -> NameTable:
-        """
-        Return copy of *self* with diff applied.
-
-        We can compute the NameTable NT of commit n+1 given *diff* and
-        *self* as follows:
-
-        for each entry ...
-            ... let NT be a copy of NameTable *self*
-            ... let NEW be the new file path of f
-            ... let OLD be the old file path of f
-
-            ,if
-                ... entry denotes that f has been added,
-                    - add NT entry NEW -> OLD
-
-                ... NEW != OLD and OLD has an entry in NT,
-                    - add NT entry NEW -> NT[OLD]
-
-                ... NEW still not in NT,
-                    - add NT entry NEW -> OLD
-        """
-        copy = deepcopy(self.data)
-
-        for entry in diff:
-            new = entry["new_path"]  # type: str
-            old = entry["old_path"]  # type: str
-
-            if entry["new_file"]:
-                copy[new] = old
-
-            if new != old and old in copy:
-                copy[new] = copy[old]
-
-            if new not in copy:
-                copy[new] = old
-
-        return NameTable(copy)
