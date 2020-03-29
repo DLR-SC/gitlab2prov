@@ -5,8 +5,7 @@ As of yet, the typing resolution does not cover
 the type of dictionary keys.
 """
 
-from typing import Dict, Any, List
-
+from typing import Any, Dict, List, Union
 
 # A commit resource as returned by the GitLab
 # API is a dictionary mapping from keys to values.
