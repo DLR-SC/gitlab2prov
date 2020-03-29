@@ -1,25 +1,11 @@
-# Copyright (c) 2019 German Aerospace Center (DLR/SC).
-# All rights reserved.
-#
-# This file is part of gitlab2prov.
-# gitlab2prov is licensed under the terms of the MIT License.
-# SPDX short Identifier: MIT
-#
-# You may obtain a copy of the License at:
-# https://opensource.org/licenses/MIT
-#
-# A command line tool to extract provenance data (PROV W3C)
-# from GitLab hosted repositories aswell as
-# to store the extracted data in a Neo4J database.
-#
-# code-author: Claas de Boer <claas.deboer@dlr.de>
-
-
 from dataclasses import InitVar, dataclass, field
-from typing import Any, Set, Union, Tuple, List
+from typing import Any, Deque, Set, Tuple, Union
+
 from prov.model import ProvDocument
-from gl2p.utils.objects import (Addition, Deletion, Creation, CommitCreation, Event,
-                                Modification, Resource, CommitResource)
+
+from gl2p.procs.meta import (Addition, CommitCreationPackage,
+                             CommitModelPackage, CreationPackage, Deletion,
+                             EventPackage, Modification, ResourceModelPackage)
 
 
 @dataclass
@@ -28,6 +14,7 @@ class Model:
     Abstract base class for a model.
     """
     project_id: InitVar[str]
+    relation_store: Set[Tuple[str, str]] = field(default_factory=set)
 
     def __post_init__(self, project_id: str) -> None:
         """
@@ -40,7 +27,7 @@ class Model:
         self.__doc.set_default_namespace("gl2p:")
         self._bundle = self.__doc.bundle(self.project_id)
 
-    def push(self, resource: Union[Resource, CommitResource]) -> None:
+    def push(self, resource: Union[ResourceModelPackage, CommitModelPackage]) -> None:
         """
         Abstract method to push a resource/commit into the model.
         """
@@ -52,20 +39,30 @@ class Model:
         """
         return self.__doc.unified()
 
+    def unique_specialization_of(self, start: str, target: str) -> bool:
+        """
+        Return whether nodes *start* and *target* are already related by a specializationOf relation.
+
+        *start* and *target* are id strings representing a node.
+        """
+        tp = (start, target)
+        if tp not in self.relation_store:
+            self.relation_store.add(tp)
+            return True
+        return False
+
 
 @dataclass
 class CommitModel(Model):
     """
     Model implementation for commit model.
     """
-    relation_store: Set[Tuple[str, str]] = field(default_factory=set)
-
-    def push(self, resource: Union[Resource, CommitResource]) -> None:
+    def push(self, resource: Union[ResourceModelPackage, CommitModelPackage]) -> None:
         """
         Add a resource to the model.
         """
         # TODO: fix
-        if isinstance(resource, Resource):
+        if isinstance(resource, ResourceModelPackage):
             raise TypeError
 
         _, _, commit, parents, files = resource
@@ -76,7 +73,7 @@ class CommitModel(Model):
         for f in files:
             self._add_file(resource, f)
 
-    def _add_commit(self, resource: CommitResource) -> None:
+    def _add_commit(self, resource: CommitModelPackage) -> None:
         """
         Add commit nodes and relations of *resource* to *bundle*.
         """
@@ -87,7 +84,7 @@ class CommitModel(Model):
         self._bundle.wasAssociatedWith(commit.id, author.id)
         self._bundle.wasAssociatedWith(commit.id, committer.id)
 
-    def _add_parent(self, resource: CommitResource, parent: Any) -> None:
+    def _add_parent(self, resource: CommitModelPackage, parent: Any) -> None:
         """
         Add parent nodes and relations of *parent* to *bundle*.
         """
@@ -95,7 +92,7 @@ class CommitModel(Model):
         self._bundle.activity(*parent)
         self._bundle.wasInformedBy(commit.id, parent.id)
 
-    def _add_file(self, resource: CommitResource, file_: Union[Addition, Modification, Deletion]) -> None:
+    def _add_file(self, resource: CommitModelPackage, file_: Union[Addition, Modification, Deletion]) -> None:
         """
         Add file relations and nodes stemming from *f* to *bundle*.
         """
@@ -110,7 +107,7 @@ class CommitModel(Model):
         if isinstance(file_, Deletion):
             self._add_deletion(resource, file_)
 
-    def _add_addition(self, resource: CommitResource, addition: Addition) -> None:
+    def _add_addition(self, resource: CommitModelPackage, addition: Addition) -> None:
         """
         Add file change addition relations and nodes to the model.
         """
@@ -126,7 +123,7 @@ class CommitModel(Model):
         if self.unique_specialization_of(fv.id, f.id):
             self._bundle.specializationOf(fv.id, f.id)
 
-    def _add_modification(self, resource: CommitResource, modification: Modification) -> None:
+    def _add_modification(self, resource: CommitModelPackage, modification: Modification) -> None:
         """
         Add file change modification relations and nodes to the model.
         """
@@ -146,7 +143,7 @@ class CommitModel(Model):
             if self.unique_specialization_of(fv_1.id, f.id):
                 self._bundle.specializationOf(fv_1.id, f.id)
 
-    def _add_deletion(self, resource: CommitResource, deletion: Deletion) -> None:
+    def _add_deletion(self, resource: CommitModelPackage, deletion: Deletion) -> None:
         """
         Add file change deletion relations and nodes to the model.
         """
@@ -159,43 +156,30 @@ class CommitModel(Model):
             self._bundle.specializationOf(fv.id, f.id)
         self._bundle.wasInvalidatedBy(fv.id, commit.id)
 
-    def unique_specialization_of(self, start: str, target: str) -> bool:
-        """
-        Return whether nodes *start* and *target* are already related by a specializationOf relation.
-
-        *start* and *target* are id strings representing a node.
-        """
-        tp = (start, target)
-        if tp not in self.relation_store:
-            self.relation_store.add(tp)
-            return True
-        return False
-
 
 @dataclass
 class ResourceModel(Model):
     """
     Resource Model.
     """
-
-    def push(self, resource: Union[Resource, CommitResource]) -> None:
+    def push(self, resource: Union[ResourceModelPackage, CommitModelPackage]) -> None:
         """
         Push resource into model document.
         """
         # TODO: fix
-        if isinstance(resource, CommitResource):
+        if isinstance(resource, CommitModelPackage):
             raise TypeError
 
         creation, events = resource
         self._add_creation(creation)
         self._add_event_chain(events)
 
-    def _add_creation(self, creation_bundle: Union[Creation, CommitCreation]) -> None:
+    def _add_creation(self, creation_bundle: Union[CreationPackage, CommitCreationPackage]) -> None:
         """
         Resource creation.
         """
         # TODO: fix
-        if isinstance(creation_bundle, CommitCreation):
+        if isinstance(creation_bundle, CommitCreationPackage):
             raise TypeError
         creator, creation, r, rv = creation_bundle
 
@@ -209,29 +193,41 @@ class ResourceModel(Model):
         self._bundle.wasAttributedTo(rv.id, creator.id)
         self._bundle.wasGeneratedBy(r.id, creation.id)
         self._bundle.wasGeneratedBy(rv.id, creation.id)
-        self._bundle.specializationOf(rv.id, r.id)
+        if self.unique_specialization_of(rv.id, r.id):
+            self._bundle.specializationOf(rv.id, r.id)
 
-    def _add_event_chain(self, events: List[Event]) -> None:
+    def _add_event_chain(self, events: Deque[EventPackage]) -> None:
         """
         Resource event chain.
+
+        First package in chain denotes the creation activity.
         """
+        eprev = rv_1 = None
+
         for event in events:
-            user, e, eprev, r, rv, rv_1 = event
+            user, e, r, rv = event
 
             self._bundle.entity(*r)
             self._bundle.entity(*rv)
-            self._bundle.entity(*rv_1)
             self._bundle.activity(*e)
-            self._bundle.activity(*eprev)
             self._bundle.agent(*user)
-
-            self._bundle.specializationOf(rv.id, r.id)
-            self._bundle.used(e.id, rv_1.id)
-            self._bundle.wasInformedBy(e.id, eprev.id)
             self._bundle.wasAssociatedWith(e.id, user.id)
-            self._bundle.wasDerivedFrom(rv.id, rv_1.id)
             self._bundle.wasAttributedTo(rv.id, user.id)
-            self._bundle.wasGeneratedBy(rv.id, e.id)
+            if self.unique_specialization_of(rv.id, r.id):
+                self._bundle.specializationOf(rv.id, r.id)
+
+            # add following relations for all after the first element
+            if eprev and rv_1:
+                self._bundle.wasGeneratedBy(rv.id, e.id)
+                self._bundle.activity(*eprev)
+                self._bundle.entity(*rv_1)
+                self._bundle.used(e.id, rv_1.id)
+                self._bundle.wasDerivedFrom(rv.id, rv_1.id)
+                self._bundle.wasInformedBy(e.id, eprev.id)
+
+            # udpate cached previous event
+            # and previous resource version
+            eprev, rv_1 = e, rv
 
 
 @dataclass
@@ -239,13 +235,12 @@ class CommitResourceModel(ResourceModel):
     """
     Commit resource model.
     """
-
-    def _add_creation(self, creation_bundle: Union[Creation, CommitCreation]) -> None:
+    def _add_creation(self, creation_bundle: Union[CreationPackage, CommitCreationPackage]) -> None:
         """
         Commit resource creation.
         """
         # TODO: fix
-        if isinstance(creation_bundle, Creation):
+        if isinstance(creation_bundle, CreationPackage):
             raise TypeError
 
         committer, commit, creation, r, rv = creation_bundle
@@ -263,4 +258,5 @@ class CommitResourceModel(ResourceModel):
         self._bundle.wasAttributedTo(rv.id, committer.id)
         self._bundle.wasGeneratedBy(r.id, creation.id)
         self._bundle.wasGeneratedBy(rv.id, creation.id)
-        self._bundle.specializationOf(rv.id, r.id)
+        if self.unique_specialization_of(rv.id, r.id):
+            self._bundle.specializationOf(rv.id, r.id)
