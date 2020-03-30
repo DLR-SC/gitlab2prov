@@ -27,59 +27,9 @@ class ConfigurationError(Exception):
     pass
 
 
-def underconfigured(args: argparse.Namespace) -> str:
-    """
-    Return string of missing keys if there are any.
-    """
-    necessary = ["project_url", "token", "format"]
-    neo4j = ["neo4j_user", "neo4j_host", "neo4j_password", "neo4j_boltport"]
-
-    if args.neo4j:
-        necessary.extend(neo4j)
-
-    missing = ""
-    for key in necessary:
-        if not getattr(args, key):
-            missing = ", ".join((missing, f"'{key}'"))
-    return missing[2:]
-
-
-def patch(args: argparse.Namespace) -> argparse.Namespace:
-    """
-    Try to patch missing flag values with values from config file.
-    """
-    for key, val in config_items(args.config_file):
-        try:
-            if not getattr(args, key) and val:
-                setattr(args, key, val)
-        except AttributeError as ae:
-            raise ConfigurationError(
-                f"Config file key '{key}' is not a valid configuration option.")
-
-    args.neo4j = bool(strtobool(args.neo4j))
-    args.quiet = bool(strtobool(args.quiet))
-    args.rate_limit = int(args.rate_limit)
-
-    return args
-
-
-def config_items(path: str) -> List[Tuple[str, Any]]:
-    """
-    Return config file option, value pairs.
-    """
-    config = configparser.ConfigParser()
-    config.read(path)
-
-    res = []
-    for section in config.sections():
-        for opt, val in config.items(section):
-            res.append((opt, val))
-    return res
-
-
 def get_config() -> argparse.Namespace:
     """
-    Return configuration Namespace.
+    Return configuration namespace.
     """
     args = parse_args()
 
@@ -96,12 +46,6 @@ def get_config() -> argparse.Namespace:
 
     print_config_summary(args)
     return args
-
-
-def print_config_summary(args: argparse.Namespace) -> None:
-    print("Config summary:", file=sys.stderr)
-    for key, val in vars(args).items():
-        print(f"{key:14} -> {val}", file=sys.stderr)
 
 
 def parse_args() -> argparse.Namespace:
@@ -148,3 +92,58 @@ def parse_args() -> argparse.Namespace:
                        help="neo4j bolt protocol port",
                        metavar="PORT")
     return parser.parse_args()
+
+
+def patch(args: argparse.Namespace) -> argparse.Namespace:
+    """
+    Try to patch missing flag values with values from config file.
+    """
+    for key, val in config_items(args.config_file):
+        try:
+            if not getattr(args, key) and val:
+                setattr(args, key, val)
+        except AttributeError as ae:
+            raise ConfigurationError(f"Config file key '{key}' is not a valid configuration option.\n")
+
+    args.neo4j = bool(strtobool(str(args.neo4j)))
+    args.quiet = bool(strtobool(str(args.quiet)))
+    args.rate_limit = int(args.rate_limit)
+
+    return args
+
+
+def underconfigured(args: argparse.Namespace) -> str:
+    """
+    Return string of missing keys if there are any.
+    """
+    necessary = ["project_url", "token", "format"]
+    neo4j = ["neo4j_user", "neo4j_host", "neo4j_password", "neo4j_boltport"]
+
+    if args.neo4j:
+        necessary.extend(neo4j)
+
+    missing = ""
+    for key in necessary:
+        if not getattr(args, key):
+            missing = ", ".join((missing, f"'{key}'"))
+    return missing[2:]
+
+
+def config_items(path: str) -> List[Tuple[str, Any]]:
+    """
+    Return config file option, value pairs.
+    """
+    config = configparser.ConfigParser()
+    config.read(path)
+
+    res = []
+    for section in config.sections():
+        for opt, val in config.items(section):
+            res.append((opt, val))
+    return res
+
+
+def print_config_summary(args: argparse.Namespace) -> None:
+    print("Config summary:", file=sys.stderr)
+    for key, val in vars(args).items():
+        print(f"{key:14} -> {val}", file=sys.stderr)
