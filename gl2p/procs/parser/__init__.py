@@ -11,43 +11,45 @@ def parse_label(label_event: Label) -> MetaEvent:
     """
     Parse a single label.
     """
-    event_id = label_event["id"]
-    initiator = Initiator.from_label_event(label_event)
+    label = {}
     created_at = label_event["created_at"]
-    label_info = label_event["label"] if label_event.get("label", {}) else {}
-    label = {
-        "event": "add_label" if label_event["action"] == "add" else "remove_label",
-        "label_name": label_info.get("name"),
-        "label_id": label_info.get("id"),
-        "label_color": label_info.get("color"),
-        "label_description": label_info.get("description")
-    }
-    return MetaEvent.create(event_id, initiator, created_at, label)
+    initiator = Initiator.from_label_event(label_event)
+
+    if label_event["label"]:
+        info = {f"label_{key}": val for key, val in label_event["label"].items()}
+        label.update(info)
+    if label_event["action"] == "add":
+        label["event"] = "added_label"
+    else:
+        label["event"] = "removed_label"
+    label["event_id"] = label_event["id"]
+
+    return MetaEvent.create(initiator, created_at, label)
 
 
 def parse_award(award: Award) -> MetaEvent:
     """
     Parse a single award.
     """
-    event_id = award["id"]
     initiator = Initiator.from_award_emoji(award)
     created_at = award["created_at"]
     label = {
         "event": "award_emoji",
+        "event_id": award["id"],
         "award_name": award["name"]
     }
-    return MetaEvent.create(event_id, initiator, created_at, label)
+    return MetaEvent.create(initiator, created_at, label)
 
 
 def parse_note(note: Note) -> MetaEvent:
     """
     Parse a single non system note.
     """
-    event_id = note["id"]
     initiator = Initiator.from_note(note)
     created_at = note["created_at"]
     label = {
         "event": "note",
+        "event_id": note["id"],
         "content": note["body"],
         "note_id": note["id"],
         "noteable_type": note["noteable_type"],
@@ -55,7 +57,7 @@ def parse_note(note: Note) -> MetaEvent:
         "noteable_id": note["noteable_id"],
         "attachment": note["attachment"]
     }
-    return MetaEvent.create(event_id, initiator, created_at, label)
+    return MetaEvent.create(initiator, created_at, label)
 
 
 def parse_system_note(note: Note) -> MetaEvent:
@@ -63,17 +65,17 @@ def parse_system_note(note: Note) -> MetaEvent:
     Parse a single system note.
     Hand over event type determination to SystemNoteClassifier.
     """
-    event_id = note["id"]
     initiator = Initiator.from_note(note)
     created_at = note["created_at"]
     label = {
+        "event_id": note["id"],
         "content": note["body"],
         "noteable_id": note["noteable_id"],
         "noteable_type": note["noteable_type"],
         "system_note_id": note["id"],
         **classify(note["body"])
     }
-    return MetaEvent.create(event_id, initiator, created_at, label)
+    return MetaEvent.create(initiator, created_at, label)
 
 
 def parse_labels(labels: List[Label]) -> List[MetaEvent]:

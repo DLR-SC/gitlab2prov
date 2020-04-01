@@ -262,15 +262,15 @@ class MetaEvent(MetaActivity):
     initiator: Initiator = Initiator("", "")  # simple dummy on init
 
     @classmethod
-    def create(cls, identifier: str, initiator: Initiator, created_at: str, label: Dict[str, Any]) -> MetaEvent:
+    def create(cls, initiator: Initiator, created_at: str, label: Dict[str, Any]) -> MetaEvent:
         """
-        Create meta event from a parsed data.
+        Create meta event from parsed event data.
 
-        Used as a constructor by the event parser.
-        As we interpret events, such as awarding an emoji to a note,
-        to take effect immidiatly and to have no duration, we
-        define the start date of the event to also be its end date.
+        Used by the event paser as an object constructor.
+        We define events to occur instantaneously, thus
+        the event start date is also the event end date.
         """
+        identifier = f"{label['event']}-{label['event_id']}"  # id creation as placeholder before uri usage.
         return cls("event", identifier, created_at, created_at, label, initiator)
 
 
