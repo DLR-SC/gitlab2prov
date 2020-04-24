@@ -528,7 +528,7 @@ class CommitCreationPackage(NamedTuple):
     resource_version: Entity
 
 
-class CreationPackage(NamedTuple):
+class ResourceCreationPackage(NamedTuple):
     """
     Represents the creation of issue- or merge request resources.
 
@@ -556,7 +556,7 @@ class ResourceModelPackage(NamedTuple):
     """
     Package for resource model implementation.
     """
-    creation: Union[CreationPackage, CommitCreationPackage]
+    creation: Union[ResourceCreationPackage, CommitCreationPackage]
     event_chain: Deque[EventPackage]
 
 

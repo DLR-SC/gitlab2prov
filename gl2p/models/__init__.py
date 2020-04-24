@@ -1,262 +1,173 @@
-from dataclasses import InitVar, dataclass, field
-from typing import Any, Deque, Set, Tuple, Union
-
 from prov.model import ProvDocument
-
-from gl2p.procs.meta import (Addition, CommitCreationPackage,
-                             CommitModelPackage, CreationPackage, Deletion,
-                             EventPackage, Modification, ResourceModelPackage)
+from ..procs.meta import Addition, CommitCreationPackage, CommitModelPackage, ResourceCreationPackage, Deletion, EventPackage, \
+    Modification, ResourceModelPackage
 
 
-@dataclass
-class Model:
+def create_graph(packages):
+    graph = ProvDocument()
+    graph.set_default_namespace("gitlab2prov")
+    if not packages:
+        return graph
+    model = {
+        CommitModelPackage: commit_package_model,
+        ResourceModelPackage: resource_package_model,
+    }[type(packages[0])]  # choose model according to package type
+    graph = model(graph, packages)
+    return graph
+    # return remove_duplicates(graph)
+
+
+def remove_duplicates(graph: ProvDocument):
+    """Remove all duplicate nodes by identifier.
+
+    Enforces cardinality constraint of at most one specializationOf relation
+    per node to remove relations that have been duplicated by mistake.
     """
-    Abstract base class for a model.
-    """
-    project_id: InitVar[str]
-    relation_store: Set[Tuple[str, str]] = field(default_factory=set)
-
-    def __post_init__(self, project_id: str) -> None:
-        """
-        Create a new prov document to store the model in.
-
-        Decode url encoded project id.
-        """
-        self.project_id = project_id.replace("%2F", "-")
-        self.__doc = ProvDocument()
-        self.__doc.set_default_namespace("gl2p:")
-        self._bundle = self.__doc.bundle(self.project_id)
-
-    def push(self, resource: Union[ResourceModelPackage, CommitModelPackage]) -> None:
-        """
-        Abstract method to push a resource/commit into the model.
-        """
-        raise NotImplementedError
-
-    def document(self) -> ProvDocument:
-        """
-        Return the model document.
-        """
-        return self.__doc.unified()
-
-    def unique_specialization_of(self, start: str, target: str) -> bool:
-        """
-        Return whether nodes *start* and *target* are already related by a specializationOf relation.
-
-        *start* and *target* are id strings representing a node.
-        """
-        tp = (start, target)
-        if tp not in self.relation_store:
-            self.relation_store.add(tp)
-            return True
-        return False
+    unified = graph.unified()
+    records = set(unified.get_records())
+    duplicates_removed = ProvDocument(records)
+    return duplicates_removed
 
 
-@dataclass
-class CommitModel(Model):
-    """
-    Model implementation for commit model.
-    """
-    def push(self, resource: Union[ResourceModelPackage, CommitModelPackage]) -> None:
-        """
-        Add a resource to the model.
-        """
-        # TODO: fix
-        if isinstance(resource, ResourceModelPackage):
-            raise TypeError
-
-        _, _, commit, parents, files = resource
-
-        self._add_commit(resource)
-        for parent in parents:
-            self._add_parent(resource, parent)
-        for f in files:
-            self._add_file(resource, f)
-
-    def _add_commit(self, resource: CommitModelPackage) -> None:
-        """
-        Add commit nodes and relations of *resource* to *bundle*.
-        """
-        author, committer, commit, *_ = resource
-        self._bundle.agent(*author)
-        self._bundle.agent(*committer)
-        self._bundle.activity(*commit)
-        self._bundle.wasAssociatedWith(commit.id, author.id)
-        self._bundle.wasAssociatedWith(commit.id, committer.id)
-
-    def _add_parent(self, resource: CommitModelPackage, parent: Any) -> None:
-        """
-        Add parent nodes and relations of *parent* to *bundle*.
-        """
-        _, _, commit, *_ = resource
-        self._bundle.activity(*parent)
-        self._bundle.wasInformedBy(commit.id, parent.id)
-
-    def _add_file(self, resource: CommitModelPackage, file_: Union[Addition, Modification, Deletion]) -> None:
-        """
-        Add file relations and nodes stemming from *f* to *bundle*.
-        """
-        author, committer, commit, *_ = resource
-
-        if isinstance(file_, Addition):
-            self._add_addition(resource, file_)
-
-        if isinstance(file_, Modification):
-            self._add_modification(resource, file_)
-
-        if isinstance(file_, Deletion):
-            self._add_deletion(resource, file_)
-
-    def _add_addition(self, resource: CommitModelPackage, addition: Addition) -> None:
-        """
-        Add file change addition relations and nodes to the model.
-        """
-        author, committer, commit, *_ = resource
-
-        f, fv = addition
-        self._bundle.entity(*f)
-        self._bundle.entity(*fv)
-        self._bundle.wasGeneratedBy(f.id, commit.id)
-        self._bundle.wasGeneratedBy(fv.id, commit.id)
-        self._bundle.wasAttributedTo(f.id, author.id)
-        self._bundle.wasAttributedTo(fv.id, author.id)
-        if self.unique_specialization_of(fv.id, f.id):
-            self._bundle.specializationOf(fv.id, f.id)
-
-    def _add_modification(self, resource: CommitModelPackage, modification: Modification) -> None:
-        """
-        Add file change modification relations and nodes to the model.
-        """
-        author, committer, commit, *_ = resource
-
-        f, fv, fv_1s = modification
-        self._bundle.entity(*f)
-        self._bundle.entity(*fv)
-        self._bundle.wasAttributedTo(fv.id, author.id)
-        self._bundle.wasGeneratedBy(fv.id, commit.id)
-        if self.unique_specialization_of(fv.id, f.id):
-            self._bundle.specializationOf(fv.id, f.id)
-        for fv_1 in fv_1s:
-            self._bundle.entity(*fv_1)
-            self._bundle.used(commit.id, fv_1.id)
-            self._bundle.wasDerivedFrom(fv.id, fv_1.id)
-            if self.unique_specialization_of(fv_1.id, f.id):
-                self._bundle.specializationOf(fv_1.id, f.id)
-
-    def _add_deletion(self, resource: CommitModelPackage, deletion: Deletion) -> None:
-        """
-        Add file change deletion relations and nodes to the model.
-        """
-        author, committer, commit, *_ = resource
-
-        f, fv = deletion
-        self._bundle.entity(*f)
-        self._bundle.entity(*fv)
-        if self.unique_specialization_of(fv.id, f.id):
-            self._bundle.specializationOf(fv.id, f.id)
-        self._bundle.wasInvalidatedBy(fv.id, commit.id)
+def commit_package_model(graph, packages):
+    for pkg in packages:
+        graph = add_commit(graph, pkg)
+        graph = add_parents(graph, pkg)
+        graph = add_diffs(graph, pkg)
+    return graph
 
 
-@dataclass
-class ResourceModel(Model):
-    """
-    Resource Model.
-    """
-    def push(self, resource: Union[ResourceModelPackage, CommitModelPackage]) -> None:
-        """
-        Push resource into model document.
-        """
-        # TODO: fix
-        if isinstance(resource, CommitModelPackage):
-            raise TypeError
-
-        creation, events = resource
-        self._add_creation(creation)
-        self._add_event_chain(events)
-
-    def _add_creation(self, creation_bundle: Union[CreationPackage, CommitCreationPackage]) -> None:
-        """
-        Resource creation.
-        """
-        # TODO: fix
-        if isinstance(creation_bundle, CommitCreationPackage):
-            raise TypeError
-        creator, creation, r, rv = creation_bundle
-
-        self._bundle.activity(*creation)
-        self._bundle.entity(*r)
-        self._bundle.entity(*rv)
-        self._bundle.agent(*creator)
-
-        self._bundle.wasAssociatedWith(creation.id, creator.id)
-        self._bundle.wasAttributedTo(r.id, creator.id)
-        self._bundle.wasAttributedTo(rv.id, creator.id)
-        self._bundle.wasGeneratedBy(r.id, creation.id)
-        self._bundle.wasGeneratedBy(rv.id, creation.id)
-        if self.unique_specialization_of(rv.id, r.id):
-            self._bundle.specializationOf(rv.id, r.id)
-
-    def _add_event_chain(self, events: Deque[EventPackage]) -> None:
-        """
-        Resource event chain.
-
-        First package in chain denotes the creation activity.
-        """
-        eprev = rv_1 = None
-
-        for event in events:
-            user, e, r, rv = event
-
-            self._bundle.entity(*r)
-            self._bundle.entity(*rv)
-            self._bundle.activity(*e)
-            self._bundle.agent(*user)
-            self._bundle.wasAssociatedWith(e.id, user.id)
-            self._bundle.wasAttributedTo(rv.id, user.id)
-            if self.unique_specialization_of(rv.id, r.id):
-                self._bundle.specializationOf(rv.id, r.id)
-
-            # add following relations for all after the first element
-            if eprev and rv_1:
-                self._bundle.wasGeneratedBy(rv.id, e.id)
-                self._bundle.activity(*eprev)
-                self._bundle.entity(*rv_1)
-                self._bundle.used(e.id, rv_1.id)
-                self._bundle.wasDerivedFrom(rv.id, rv_1.id)
-                self._bundle.wasInformedBy(e.id, eprev.id)
-
-            # udpate cached previous event
-            # and previous resource version
-            eprev, rv_1 = e, rv
+def add_commit(graph, pkg):
+    author, committer, commit = pkg.author, pkg.committer, pkg.commit
+    graph.agent(*author)
+    graph.agent(*committer)
+    graph.activity(*commit)
+    graph.wasAssociatedWith(commit.id, author.id)
+    graph.wasAssociatedWith(commit.id, committer.id)
+    return graph
 
 
-@dataclass
-class CommitResourceModel(ResourceModel):
-    """
-    Commit resource model.
-    """
-    def _add_creation(self, creation_bundle: Union[CreationPackage, CommitCreationPackage]) -> None:
-        """
-        Commit resource creation.
-        """
-        # TODO: fix
-        if isinstance(creation_bundle, CreationPackage):
-            raise TypeError
+def add_parents(graph, pkg):
+    commit = pkg.commit
+    for parent in pkg.parent_commits:
+        graph.activity(*parent)
+        graph.activity(*commit)
+        graph.wasInformedBy(commit.id, parent.id)
+    return graph
 
-        committer, commit, creation, r, rv = creation_bundle
 
-        self._bundle.activity(*commit)
-        self._bundle.activity(*creation)
-        self._bundle.agent(*committer)
-        self._bundle.entity(*r)
-        self._bundle.entity(*rv)
+def add_diffs(graph, pkg):
+    # distinguish between addition, modification, deletion
+    for action in pkg.file_changes:
+        action_model = {
+            Addition: addition,
+            Deletion: deletion,
+            Modification: modification
+        }[type(action)]
+        graph = action_model(graph, pkg, action)
+    return graph
 
-        self._bundle.wasAssociatedWith(commit.id, committer.id)
-        self._bundle.wasAssociatedWith(creation.id, committer.id)
-        self._bundle.wasAttributedTo(r.id, committer.id)
-        self._bundle.wasInformedBy(creation.id, commit.id)
-        self._bundle.wasAttributedTo(rv.id, committer.id)
-        self._bundle.wasGeneratedBy(r.id, creation.id)
-        self._bundle.wasGeneratedBy(rv.id, creation.id)
-        if self.unique_specialization_of(rv.id, r.id):
-            self._bundle.specializationOf(rv.id, r.id)
+
+def addition(graph, pkg, action):
+    file, file_version = action
+    author, commit = pkg.author, pkg.commit
+    graph.entity(*file)
+    graph.entity(*file_version)
+    graph.wasGeneratedBy(file.id, commit.id)
+    graph.wasGeneratedBy(file_version.id, commit.id)
+    graph.wasAttributedTo(file.id, author.id)
+    graph.wasAttributedTo(file_version.id, author.id)
+    graph.specializationOf(file_version.id, file.id)
+    return graph
+
+
+def deletion(graph, pkg, action):
+    file, file_version = action
+    author, commit = pkg.author, pkg.commit
+    graph.entity(*file)
+    graph.entity(*file_version)
+    graph.specializationOf(file_version.id, file.id)
+    graph.wasInvalidatedBy(file_version.id, commit.id)
+    return graph
+
+
+def modification(graph, pkg, action):
+    file, file_version, previous_versions = action
+    author, commit = pkg.author, pkg.commit
+    graph.entity(*file)
+    graph.entity(*file_version)
+    graph.wasAttributedTo(file_version.id, author.id)
+    graph.wasGeneratedBy(file_version.id, commit.id)
+    graph.specializationOf(file_version.id, file.id)
+    for version in previous_versions:
+        graph.entity(*version)
+        graph.used(commit.id, version.id)
+        graph.wasDerivedFrom(file_version.id, version.id)
+        graph.specializationOf(version.id, file.id)
+    return graph
+
+
+def resource_package_model(graph, packages):
+    for pkg in packages:
+        add_creation = {
+            CommitCreationPackage:  add_commit_creation,
+            ResourceCreationPackage: add_resource_creation,
+        }[type(pkg.creation)]
+        graph = add_creation(graph, pkg)
+        graph = add_event_chain(graph, pkg)
+    return graph
+
+
+def add_commit_creation(graph, pkg):
+    committer, commit, creation, resource, resource_version = pkg.creation
+    graph.activity(*commit)
+    graph.activity(*creation)
+    graph.agent(*committer)
+    graph.entity(*resource)
+    graph.entity(*resource_version)
+    graph.wasAssociatedWith(commit.id, committer.id)
+    graph.wasAssociatedWith(creation.id, committer.id)
+    graph.wasAttributedTo(resource.id, committer.id)
+    graph.wasGeneratedBy(resource.id, creation.id)
+    graph.wasGeneratedBy(resource_version.id, creation.id)
+    graph.specializationOf(resource_version.id, resource.id)
+    graph.wasInformedBy(creation.id, commit.id)
+    return graph
+
+
+def add_resource_creation(graph, pkg):
+    creator, creation, resource, resource_version = pkg.creation
+    graph.activity(*creation)
+    graph.entity(*resource)
+    graph.entity(*resource_version)
+    graph.agent(*creator)
+    graph.wasAssociatedWith(creation.id, creator.id)
+    graph.wasAttributedTo(resource.id, creator.id)
+    graph.wasAttributedTo(resource_version.id, creator.id)
+    graph.wasGeneratedBy(resource.id, creation.id)
+    graph.wasGeneratedBy(resource_version.id, creation.id)
+    graph.specializationOf(resource_version.id, resource.id)
+    return graph
+
+
+def add_event_chain(graph, pkg):
+    previous_event = previous_resource_version = None
+    for chain_link in pkg.event_chain:
+        user, event, resource, resource_version = chain_link
+        graph.entity(*resource)
+        graph.entity(*resource_version)
+        graph.activity(*event)
+        graph.agent(*user)
+        graph.wasAssociatedWith(event.id, user.id)
+        graph.wasAttributedTo(resource_version.id, user.id)
+        graph.specializationOf(resource_version.id, resource.id)
+        if previous_event is not None and previous_resource_version is not None:
+            graph.entity(*previous_resource_version)
+            graph.activity(*previous_event)
+            graph.wasGeneratedBy(resource_version.id, event.id)
+            graph.used(event.id, previous_resource_version.id)
+            graph.wasDerivedFrom(resource_version.id, previous_resource_version.id)
+            graph.wasInformedBy(event.id, previous_event.id)
+        previous_event = event
+        previous_resource_version = resource_version
+    return graph

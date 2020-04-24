@@ -4,7 +4,7 @@ from typing import List, Tuple
 from prov.model import ProvDocument
 
 from .api import GitLabAPIClient
-from .models import CommitModel, CommitResourceModel, ResourceModel
+from .models import create_graph
 from .procs import (CommitProcessor, CommitResourceProcessor,
                     IssueResourceProcessor, MergeRequestResourceProcessor)
 from .procs.meta import (CommitModelPackage, ParseableContainer,
@@ -27,26 +27,22 @@ class CommitPipeline:
         async with self.client as clt:
             commits = await clt.commits()
             diffs = await clt.commit_diffs()
-
         return commits, diffs
 
     def process(self, commits: List[Commit], diffs: List[Diff]) -> List[CommitModelPackage]:
         """
         Return list of commit model packages.
         """
-        proc = CommitProcessor(commits, diffs)
-        return proc.run()
+        processor = CommitProcessor(commits, diffs)
+        packages = processor.run()
+        return packages
 
-    def create_model(self, resources: List[CommitModelPackage]) -> ProvDocument:
+    def create_model(self, packages: List[CommitModelPackage]) -> ProvDocument:
         """
         Return populated PROV graph for resource model.
         """
-        model = CommitModel(self.project_id)
-
-        for resource in resources:
-            model.push(resource)
-
-        return model.document()
+        model = create_graph(packages)
+        return model
 
 
 @dataclass
@@ -64,26 +60,22 @@ class CommitResourcePipeline:
         async with self.client as clt:
             commits = await clt.commits()
             notes = await clt.commit_notes()
-
         return commits, ParseableContainer(notes=notes)
 
     def process(self, commits: List[Commit], parseables: ParseableContainer) -> List[ResourceModelPackage]:
         """
         Return list of resource model packages.
         """
-        proc = CommitResourceProcessor(commits, parseables)
-        return proc.run()
+        processor = CommitResourceProcessor(commits, parseables)
+        packages = processor.run()
+        return packages
 
-    def create_model(self, resources: List[ResourceModelPackage]) -> ProvDocument:
+    def create_model(self, packages: List[ResourceModelPackage]) -> ProvDocument:
         """
         Return populated PROV graph for resource model.
         """
-        model = CommitResourceModel(self.project_id)
-
-        for resource in resources:
-            model.push(resource)
-
-        return model.document()
+        model = create_graph(packages)
+        return model
 
 
 @dataclass
@@ -105,26 +97,22 @@ class IssueResourcePipeline:
             awards = await clt.issue_awards()
             notes = await clt.issue_notes()
             note_awards = await clt.issue_note_awards()
-
         return issues, ParseableContainer(labels, awards, notes, note_awards)
 
     def process(self, issues: List[Issue], parseables: ParseableContainer) -> List[ResourceModelPackage]:
         """
         Return list of resource model packages.
         """
-        proc = IssueResourceProcessor(issues, parseables)
-        return proc.run()
+        processor = IssueResourceProcessor(issues, parseables)
+        packages = processor.run()
+        return packages
 
-    def create_model(self, resources: List[ResourceModelPackage]) -> ProvDocument:
+    def create_model(self, packages: List[ResourceModelPackage]) -> ProvDocument:
         """
         Return populated PROV graph for resource model.
         """
-        model = ResourceModel(self.project_id)
-
-        for resource in resources:
-            model.push(resource)
-
-        return model.document()
+        model = create_graph(packages)
+        return model
 
 
 @dataclass
@@ -146,23 +134,19 @@ class MergeRequestResourcePipeline:
             awards = await clt.merge_request_awards()
             notes = await clt.merge_request_notes()
             note_awards = await clt.merge_request_note_awards()
-
         return merge_requests, ParseableContainer(labels, awards, notes, note_awards)
 
     def process(self, merge_requests: List[MergeRequest], parseables: ParseableContainer) -> List[ResourceModelPackage]:
         """
         Return list of resource model packages.
         """
-        proc = MergeRequestResourceProcessor(merge_requests, parseables)
-        return proc.run()
+        processor = MergeRequestResourceProcessor(merge_requests, parseables)
+        packages = processor.run()
+        return packages
 
-    def create_model(self, resources: List[ResourceModelPackage]) -> ProvDocument:
+    def create_model(self, packages: List[ResourceModelPackage]) -> ProvDocument:
         """
         Return populated PROV graph for resource model.
         """
-        model = ResourceModel(self.project_id)
-
-        for resource in resources:
-            model.push(resource)
-
-        return model.document()
+        model = create_graph(packages)
+        return model

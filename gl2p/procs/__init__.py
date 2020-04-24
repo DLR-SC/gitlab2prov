@@ -7,7 +7,7 @@ from gl2p.utils.types import Commit, Diff, Issue, MergeRequest
 
 from .history import FileNameHistory
 from .meta import (Addition, Author, Candidates, CommitCreationPackage,
-                   CommitModelPackage, Committer, CreationPackage, Creator,
+                   CommitModelPackage, Committer, ResourceCreationPackage, Creator,
                    Deletion, EventPackage, File, FileVersion, MetaCommit,
                    MetaCreation, MetaResource, MetaResourceVersion,
                    Modification, ParseableContainer, ResourceModelPackage)
@@ -182,7 +182,7 @@ class IssueResourceProcessor:
 
         for issue, candidates in zip(self.issues, self.parseables):
             # creation subpackage
-            creation = CreationPackage(
+            creation = ResourceCreationPackage(
                 # compute creator for current issue
                 Creator.from_issue(issue).atomize(),
                 # compute creation activity for current issue
@@ -238,7 +238,7 @@ class MergeRequestResourceProcessor:
         pkgs: List[ResourceModelPackage] = []
 
         for merge_request, candidates in zip(self.merge_requests, self.parseables):
-            creation = CreationPackage(
+            creation = ResourceCreationPackage(
                 # compute merge request creator
                 Creator.from_merge_request(merge_request).atomize(),
                 # compute merge request creation activity
