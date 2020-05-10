@@ -66,10 +66,10 @@ bar = project_bar_url
 ### Usage
 ```
 ❯ python gitlab2prov.py -h
-usage: gitlab2prov.py [-h] [-p URL] [-t TOKEN] [-r LIMIT] [-c CONFIG]
-                      [-f {provn,json,rdf,xml}] [--neo4j]
-                      [--neo4j-user USERNAME] [--neo4j-password PASSWORD]
-                      [--neo4j-host HOST] [--neo4j-boltport PORT]
+usage: GitLab2PROV [-h] [-p <string> [<string> ...]] [-t <string>] [-r <int>]
+                   [-c <string>] [-f {provn,json,rdf,xml,dot}] [-q] [--neo4j]
+                   [--neo4j-user <string>] [--neo4j-password <string>]
+                   [--neo4j-host <string>] [--neo4j-boltport <string>]
 
 Extract provenance information from GitLab projects.
 
@@ -77,25 +77,27 @@ optional arguments:
   -h, --help            show this help message and exit
 
 BASIC CONFIG:
-  -p URL, --project-url URL
-                        gitlab project url
-  -t TOKEN, --token TOKEN
+  -p <string> [<string> ...], --project-urls <string> [<string> ...]
+                        gitlab project urls
+  -t <string>, --token <string>
                         gitlab api access token
-  -r LIMIT, --rate-limit LIMIT
+  -r <int>, --rate-limit <int>
                         api client rate limit (in req/s)
-  -c CONFIG, --config-file CONFIG
+  -c <string>, --config-file <string>
                         config file path
-  -f {provn,json,rdf,xml}, --format {provn,json,rdf,xml}
+  -f {provn,json,rdf,xml,dot}, --format {provn,json,rdf,xml,dot}
                         provenance output format
+  -q, --quiet           suppress output to stdout
 
 NEO4J CONFIG:
   --neo4j               enable neo4j storage
-  --neo4j-user USERNAME
+  --neo4j-user <string>
                         neo4j username
-  --neo4j-password PASSWORD
+  --neo4j-password <string>
                         neo4j password
-  --neo4j-host HOST     neo4j host
-  --neo4j-boltport PORT
+  --neo4j-host <string>
+                        neo4j host
+  --neo4j-boltport <string>
                         neo4j bolt protocol port
 
 Consider visiting GitLab2PROV on GitHub: https://github.com/DLR-SC/gitlab2prov
