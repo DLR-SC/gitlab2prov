@@ -46,14 +46,20 @@ An example of a configuration file can be found at `config/example.ini`.
 Excerpt from `config/example.ini`
 ```ini
 [GITLAB2PROV]
-project_url = project_url
 token = token
+quiet = False
+format = json
 rate_limit = 10
-format = provn
+
+neo4j = False
 neo4j_user = username
-neo4j_password = password
 neo4j_host = localhost
 neo4j_boltport = 7687
+neo4j_password = password
+
+[PROJECTS]
+foo = project_foo_url
+bar = project_bar_url
 ```
 **Note:** Command line flags will take precedence over values provided by the config file.
 
