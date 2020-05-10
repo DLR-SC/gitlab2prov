@@ -1,133 +1,116 @@
 import datetime
 from typing import List
 
-from ...utils import ptime
+from ...utils import p_time
 from ...utils.types import Award, Label, Note
-from ..meta import Candidates, Initiator, MetaEvent
+from ..meta import Initiator, MetaEvent
 from .classifier import classify
 
 
-def parse_label(label_event: Label) -> MetaEvent:
+def parse(notes=None, labels=None, awards=None, note_awards=None) -> List[MetaEvent]:
+    """
+    Parse events from labels, awards and notes.
+    """
+    if labels is None:
+        labels = []
+    if awards is None:
+        awards = []
+    if notes is None:
+        notes = []
+    if note_awards is None:
+        note_awards = []
+
+    s_notes = [n for n in notes if n["system"]]
+    n_notes = [n for n in notes if not n["system"]]
+
+    parsed = []
+    parsed.extend(map(parse_note, n_notes))
+    parsed.extend(map(parse_label, labels))
+    parsed.extend(map(parse_award, awards))
+    parsed.extend(map(parse_award, note_awards))
+    parsed.extend(map(parse_system_note, s_notes))
+
+    sorted_parsed = list(sorted(parsed, key=by_date))
+    return sorted_parsed
+
+
+def by_date(meta_event: MetaEvent) -> datetime.datetime:
+    """
+    Return parsed datetime object from datetime string.
+    """
+    return p_time(meta_event.started_at)
+
+
+def parse_label(label: Label) -> MetaEvent:
     """
     Parse a single label.
     """
-    label = {}
-    created_at = label_event["created_at"]
-    initiator = Initiator.from_label_event(label_event)
+    attributes = {}
+    attributes["event_id"] = label["id"]
+    attributes["event"] = "added_label" if label["action"] == "add" else "removed_label"
 
-    if label_event["label"]:
-        info = {f"label_{key}": val for key, val in label_event["label"].items()}
-        label.update(info)
-    if label_event["action"] == "add":
-        label["event"] = "added_label"
-    else:
-        label["event"] = "removed_label"
-    label["event_id"] = label_event["id"]
+    initiator = Initiator.from_label(label)
 
-    return MetaEvent.create(initiator, created_at, label)
+    description = label["label"]
+
+    if not description:
+        return MetaEvent.create(initiator, label["created_at"], attributes)
+
+    for key, value in description.items():
+        attributes[f"label_{key}"] = value
+
+    return MetaEvent.create(initiator, label["created_at"], attributes)
 
 
 def parse_award(award: Award) -> MetaEvent:
     """
     Parse a single award.
     """
-    initiator = Initiator.from_award_emoji(award)
-    created_at = award["created_at"]
-    label = {
-        "event": "award_emoji",
-        "event_id": award["id"],
-        "award_name": award["name"]
-    }
-    return MetaEvent.create(initiator, created_at, label)
+    attributes = {}
+    attributes["event"] = "award_emoji"
+    attributes["event_id"] = award["id"]
+    attributes["award_name"] = award["name"]
+
+    initiator = Initiator.from_award(award)
+
+    return MetaEvent.create(initiator, award["created_at"], attributes)
 
 
 def parse_note(note: Note) -> MetaEvent:
     """
     Parse a single non system note.
     """
+    attributes = {}
+    attributes["event"] = "note"
+    attributes["note_id"] = note["id"]
+    attributes["content"] = note["body"]
+    attributes["event_id"] = note["id"]
+    attributes["noteable_id"] = note["noteable_id"]
+    attributes["noteable_iid"] = note["noteable_iid"]
+    attributes["noteable_type"] = note["noteable_type"]
+    attributes["attachment"] = note["attachment"]
+
     initiator = Initiator.from_note(note)
-    created_at = note["created_at"]
-    label = {
-        "event": "note",
-        "event_id": note["id"],
-        "content": note["body"],
-        "note_id": note["id"],
-        "noteable_type": note["noteable_type"],
-        "noteable_iid": note["noteable_iid"],
-        "noteable_id": note["noteable_id"],
-        "attachment": note["attachment"]
-    }
-    return MetaEvent.create(initiator, created_at, label)
+
+    return MetaEvent.create(initiator, note["created_at"], attributes)
 
 
 def parse_system_note(note: Note) -> MetaEvent:
     """
     Parse a single system note.
-    Hand over event type determination to SystemNoteClassifier.
+
+    Event classification handled by classifier.
     """
+    attributes = {}
+    attributes["event_id"] = note["id"]
+    attributes["body"] = note["body"]
+    attributes["noteable_id"] = note["noteable_id"]
+    attributes["noteable_type"] = note["noteable_type"]
+    attributes["system_node_id"] = note["id"]
+
+    event_attributes = classify(note)
+    attributes.update(event_attributes)
+
     initiator = Initiator.from_note(note)
-    created_at = note["created_at"]
-    label = {
-        "event_id": note["id"],
-        "content": note["body"],
-        "noteable_id": note["noteable_id"],
-        "noteable_type": note["noteable_type"],
-        "system_note_id": note["id"],
-        **classify(note["body"])
-    }
-    return MetaEvent.create(initiator, created_at, label)
 
-
-def parse_labels(labels: List[Label]) -> List[MetaEvent]:
-    """
-    Parse events from labels.
-    """
-    res = []
-    for label in labels:
-        if label:
-            res.append(parse_label(label))
-    return res
-
-
-def parse_awards(awards: List[Award]) -> List[MetaEvent]:
-    """
-    Parse events from awards.
-    """
-    res = []
-    for award in awards:
-        if award:
-            res.append(parse_award(award))
-    return res
-
-
-def parse_notes(notes: List[Note]) -> List[MetaEvent]:
-    """
-    Parse notes, differentiate between system and non system notes.
-    """
-    res = []
-    for note in notes:
-        if not note:
-            continue
-        if note["system"]:
-            res.append(parse_system_note(note))
-        else:
-            res.append(parse_note(note))
-    return res
-
-
-def parse(candidates: Candidates) -> List[MetaEvent]:
-    """
-    Parse events from labels, awards and notes.
-    """
-    labels, awards, notes, note_awards = candidates
-
-    les = parse_labels(labels)
-    aes = parse_awards([*awards, *note_awards])
-    nes = parse_notes(notes)
-
-    def by_date(me: MetaEvent) -> datetime.datetime:
-        return ptime(me.start_str)
-
-    # sort parsed meta events by start time ascending
-    events = sorted([*les, *aes, *nes], key=by_date)
-    return events
+    return MetaEvent.create(initiator, note["created_at"], attributes)

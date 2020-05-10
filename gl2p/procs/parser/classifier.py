@@ -1,8 +1,9 @@
 import re
-import textwrap
-from typing import Any, Dict, List, Match, Optional, Pattern, Tuple, Union
+from functools import lru_cache
+from typing import Any, Dict, List, Pattern
+from ...utils.types import Note
 
-# dictionary of classifiers for event types deduced from system notes.
+
 classifiers: Dict[str, List[str]] = {
 
     "change_epic": [
@@ -104,7 +105,7 @@ classifiers: Dict[str, List[str]] = {
     "add_commits": [
 
         r"added " +
-        r"(?P<number_of_commits>\d+)\scommit\n\n" +
+        r"(?P<number_of_commits>\d+)\scommit[s]?\n\n" +
         r".+(?P<short_sha>[a-z0-9]{8}) - (?P<title>.+?)<.*",
 
     ],
@@ -379,6 +380,18 @@ classifiers: Dict[str, List[str]] = {
         r"^mentioned in issue #(?P<issue_iid>\d+)$"
 
     ],
+
+    "resolve_threads": [
+
+        r"^resolved all threads$"
+
+    ],
+
+    "approve_merge_request": [
+
+        r"^approved this merge request$"
+
+    ],
 }
 
 
@@ -395,115 +408,103 @@ import_patterns: List[str] = [
 ]
 
 
-# dictonary of classifiers with compiled patterns
-compiled_classifiers: Dict[str, List[Pattern[str]]] = {}
-
-
-# list of compiled import patterns
-compiled_import_patterns: List[Pattern[str]] = []
-
-
-def compile_regex(regex: str) -> Pattern[str]:
+@lru_cache()
+def compiled_import_patterns() -> List[Pattern[str]]:
     """
-    Wrap re.compile with singular str type rather than type AnyStr.
+    Compile import patterns on first call.
 
-    Hotfix for overloaded type signature of re.compile.
+    All successive calls get the cached return value of the first call.
     """
-    return re.compile(regex)
+    compiled = []
+    for pattern in import_patterns:
+        compiled.append(re.compile(pattern))
+    return compiled
 
 
-def first_matching_pattern(patterns: List[Pattern[str]], string: str) -> Tuple[Optional[Pattern[str]], Optional[Match[str]]]:
+@lru_cache()
+def compiled_classifiers() -> Dict[str, List[Pattern[str]]]:
     """
-    Return the first pattern of *patterns* that matched *string*.
+    Compile classifier patterns on first call.
+
+    All successive calls get the cached return value of the first call.
     """
-    for pattern in patterns:
-        match = pattern.search(string)
-        if match:
-            # matching pattern found
+    compiled = {}
+    for event, patterns in classifiers.items():
+        compiled[event] = [re.compile(pattern) for pattern in patterns]
+    return compiled
+
+
+def classify(note: Note) -> Dict[str, Any]:
+    """
+    Return attributes for a note by running it through classifiers.
+    """
+    if note["type"] == "DiffNote":
+        return diff_note_attributes(note)
+
+    matches = event_attributes(note["body"])
+
+    if not matches:
+        raise Exception()
+    if len(matches) > 2:
+        raise Exception()
+
+    attributes = {}
+    attributes.update(matches[0])
+    attributes.update(import_attributes(note["body"]))
+
+    return attributes
+
+
+def diff_note_attributes(note: Note) -> Dict[str, Any]:
+    """
+    Return attributes for a diff note.
+    """
+    attributes = {}
+    attributes["event"] = "changed_lines"
+
+    position = note["position"]
+    attributes["position_type"] = position["position_type"]
+    attributes["position_base_sha"] = position["base_sha"]
+    attributes["position_new_line"] = position["new_line"]
+    attributes["position_old_line"] = position["old_line"]
+    attributes["position_head_sha"] = position["head_sha"]
+    attributes["position_old_path"] = position["old_path"]
+    attributes["position_new_path"] = position["new_path"]
+    attributes["position_start_sha"] = position["start_sha"]
+
+    return attributes
+
+
+def event_attributes(body: str) -> List[Dict[str, Any]]:
+    """
+    Run all patterns against the note body.
+
+    Record all that match and return their event type aswell as the matched groups.
+    """
+    attribute_list = []
+    for event_name, regex_list in compiled_classifiers().items():
+        for regex in regex_list:
+            match_found = regex.search(body)
+            if not match_found:
+                continue
+            attributes = {"event": event_name}
+            attributes.update(match_found.groupdict())
+            attribute_list.append(attributes)
+            break
+    return attribute_list
+
+
+def import_attributes(body: str) -> Dict[str, Any]:
+    """
+    Match note body against import patterns to find out whether it was imported or not.
+    """
+    attributes = {}
+    for import_regex in compiled_import_patterns():
+        match_found = import_regex.search(body)
+        if match_found:
+            attributes["imported"] = True
+            attributes.update(match_found.groupdict())
             break
     else:
-        # did not find anything ...
-        return None, None
-
-    return pattern, match
-
-
-def compile_regular_expressions() -> None:
-    """
-    Compile regular expressions if they havn't been compiled yet.
-    """
-    global compiled_classifiers
-    global compiled_import_patterns
-
-    if not compiled_import_patterns:
-        compiled_import_patterns = list(map(compile_regex, import_patterns))
-
-    if not compiled_classifiers:
-        compiled_classifiers = {k: list(map(compile_regex, v)) for k, v in classifiers.items()}
-
-
-def classify(body: str) -> Dict[str, Any]:
-    """
-    Classify the event that a system note body denotes.
-    """
-    # compile regular expressions of import patterns, classifiers
-    compile_regular_expressions()
-
-    # import property label, default is not imported (imported = False)
-    import_information: Dict[str, Union[bool, str]] = {"imported": False}
-
-    possible_events: List[Dict[str, Any]] = []
-
-    # pick first matching pattern
-    pattern, match = first_matching_pattern(compiled_import_patterns, body)
-
-    if pattern and match:
-        # pattern matched
-        # strip import information from note body
-        body = pattern.split(body)[0].strip()
-        # update import information with matched groups
-        import_information = {"imported": True, **match.groupdict()}
-
-    for event, patterns in compiled_classifiers.items():
-        # pick first matching pattern
-        pattern, match = first_matching_pattern(patterns, body)
-
-        if not match:
-            continue
-        # append to record of possible events
-        possible_events.append({"event": event, **match.groupdict()})
-
-    # raise value error if no classifier matched
-    # indicates faulty patterns or an unknown event type
-    if not possible_events:
-        raise ValueError(
-            f"No classifier matched the following system note body:\n\n{body}\n\n" +
-            textwrap.fill("Please open an issue on our GitHub page and copy this error message into the issue description.")
-        )
-
-    # raise value error when more than one classifier matches
-    # indicates faulty patterns or duplicated classifiers
-    if len(possible_events) > 1:
-        raise ValueError(
-            f"Too many event classifiers matched the following system note body:\n\n{body}\n\n" +
-            "The following classifiers matched:\n" +
-
-            "\n".join(
-                [
-                    f"\t-> {event['event'].upper()} classifier with these groups:\n" +
-                    "\n".join(
-                        [
-                            "\t\tGroup Name: {}\t\tValue: {}".format(k, v)
-                            for k, v in event.items()
-                            if k != "event"
-                        ]
-                    )
-                    for event in possible_events
-                ]
-            )
-        )
-
-    # update classified event with import information
-    possible_events[0].update(import_information)
-
-    return possible_events[0]
+        attributes["imported"] = False
+    return attributes

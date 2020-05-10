@@ -1,9 +1,15 @@
+from typing import List, Union
 from prov.model import ProvDocument
-from ..procs.meta import Addition, CommitCreationPackage, CommitModelPackage, ResourceCreationPackage, Deletion, EventPackage, \
+from ..procs.meta import Addition, CommitCreationPackage, CommitModelPackage, ResourceCreationPackage, Deletion, \
     Modification, ResourceModelPackage
 
 
-def create_graph(packages):
+def create_graph(packages: List[Union[CommitModelPackage, ResourceModelPackage]]) -> ProvDocument:
+    """Create graph from list of packages.
+
+    Choose graph model according to package type.
+    Remove duplicated specializationOf relations.
+    """
     graph = ProvDocument()
     graph.set_default_namespace("gitlab2prov")
     if not packages:
@@ -11,13 +17,12 @@ def create_graph(packages):
     model = {
         CommitModelPackage: commit_package_model,
         ResourceModelPackage: resource_package_model,
-    }[type(packages[0])]  # choose model according to package type
+    }[type(packages[0])]
     graph = model(graph, packages)
     return graph
-    # return remove_duplicates(graph)
 
 
-def remove_duplicates(graph: ProvDocument):
+def remove_duplicates(graph: ProvDocument) -> ProvDocument:
     """Remove all duplicate nodes by identifier.
 
     Enforces cardinality constraint of at most one specializationOf relation
@@ -29,16 +34,18 @@ def remove_duplicates(graph: ProvDocument):
     return duplicates_removed
 
 
-def commit_package_model(graph, packages):
-    for pkg in packages:
-        graph = add_commit(graph, pkg)
-        graph = add_parents(graph, pkg)
-        graph = add_diffs(graph, pkg)
+def commit_package_model(graph: ProvDocument, packages: List[CommitModelPackage]) -> ProvDocument:
+    """Commit model implementation."""
+    for package in packages:
+        graph = add_commit(graph, package)
+        graph = add_parents(graph, package)
+        graph = add_diffs(graph, package)
     return graph
 
 
-def add_commit(graph, pkg):
-    author, committer, commit = pkg.author, pkg.committer, pkg.commit
+def add_commit(graph: ProvDocument, package: CommitModelPackage) -> ProvDocument:
+    """Add commit activity, agents for author and committer, relations between agents and activity."""
+    author, committer, commit = package.author, package.committer, package.commit
     graph.agent(*author)
     graph.agent(*committer)
     graph.activity(*commit)
@@ -47,30 +54,32 @@ def add_commit(graph, pkg):
     return graph
 
 
-def add_parents(graph, pkg):
-    commit = pkg.commit
-    for parent in pkg.parent_commits:
+def add_parents(graph: ProvDocument, package: CommitModelPackage) -> ProvDocument:
+    """Add link between commit activities and their parents."""
+    commit = package.commit
+    for parent in package.parent_commits:
         graph.activity(*parent)
         graph.activity(*commit)
         graph.wasInformedBy(commit.id, parent.id)
     return graph
 
 
-def add_diffs(graph, pkg):
-    # distinguish between addition, modification, deletion
-    for action in pkg.file_changes:
+def add_diffs(graph: ProvDocument, package: CommitModelPackage) -> ProvDocument:
+    """Add file change models according to their type."""
+    for action in package.file_changes:
         action_model = {
             Addition: addition,
             Deletion: deletion,
             Modification: modification
         }[type(action)]
-        graph = action_model(graph, pkg, action)
+        graph = action_model(graph, package, action)
     return graph
 
 
-def addition(graph, pkg, action):
+def addition(graph: ProvDocument, package: CommitModelPackage, action: Addition) -> ProvDocument:
+    """Add model for a newly added file."""
     file, file_version = action
-    author, commit = pkg.author, pkg.commit
+    author, commit = package.author, package.commit
     graph.entity(*file)
     graph.entity(*file_version)
     graph.wasGeneratedBy(file.id, commit.id)
@@ -81,9 +90,10 @@ def addition(graph, pkg, action):
     return graph
 
 
-def deletion(graph, pkg, action):
+def deletion(graph: ProvDocument, package: CommitModelPackage, action: Deletion) -> ProvDocument:
+    """Add model for a deleted file."""
     file, file_version = action
-    author, commit = pkg.author, pkg.commit
+    commit = package.commit
     graph.entity(*file)
     graph.entity(*file_version)
     graph.specializationOf(file_version.id, file.id)
@@ -91,9 +101,10 @@ def deletion(graph, pkg, action):
     return graph
 
 
-def modification(graph, pkg, action):
+def modification(graph: ProvDocument, package: CommitModelPackage, action: Modification) -> ProvDocument:
+    """Add model for a modified file."""
     file, file_version, previous_versions = action
-    author, commit = pkg.author, pkg.commit
+    author, commit = package.author, package.commit
     graph.entity(*file)
     graph.entity(*file_version)
     graph.wasAttributedTo(file_version.id, author.id)
@@ -107,19 +118,24 @@ def modification(graph, pkg, action):
     return graph
 
 
-def resource_package_model(graph, packages):
-    for pkg in packages:
+def resource_package_model(graph: ProvDocument, packages: List[ResourceModelPackage]) -> ProvDocument:
+    """Resource model implementation.
+
+    Choose model for creation according to the type of the creation package.
+    """
+    for package in packages:
         add_creation = {
             CommitCreationPackage:  add_commit_creation,
             ResourceCreationPackage: add_resource_creation,
-        }[type(pkg.creation)]
-        graph = add_creation(graph, pkg)
-        graph = add_event_chain(graph, pkg)
+        }[type(package.creation)]
+        graph = add_creation(graph, package)
+        graph = add_event_chain(graph, package)
     return graph
 
 
-def add_commit_creation(graph, pkg):
-    committer, commit, creation, resource, resource_version = pkg.creation
+def add_commit_creation(graph: ProvDocument, package: ResourceModelPackage) -> ProvDocument:
+    """Add model for commit creation."""
+    committer, commit, creation, resource, resource_version = package.creation
     graph.activity(*commit)
     graph.activity(*creation)
     graph.agent(*committer)
@@ -135,8 +151,9 @@ def add_commit_creation(graph, pkg):
     return graph
 
 
-def add_resource_creation(graph, pkg):
-    creator, creation, resource, resource_version = pkg.creation
+def add_resource_creation(graph: ProvDocument, package: ResourceModelPackage) -> ProvDocument:
+    """Add model for resource creation."""
+    creator, creation, resource, resource_version = package.creation
     graph.activity(*creation)
     graph.entity(*resource)
     graph.entity(*resource_version)
@@ -150,9 +167,10 @@ def add_resource_creation(graph, pkg):
     return graph
 
 
-def add_event_chain(graph, pkg):
+def add_event_chain(graph: ProvDocument, package: ResourceModelPackage) -> ProvDocument:
+    """Add chain of events beginning at the creation event."""
     previous_event = previous_resource_version = None
-    for chain_link in pkg.event_chain:
+    for chain_link in package.event_chain:
         user, event, resource, resource_version = chain_link
         graph.entity(*resource)
         graph.entity(*resource_version)

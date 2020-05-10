@@ -24,7 +24,8 @@ from gl2p.config import ConfigurationError, get_config
 from gl2p.pipelines import (CommitPipeline, CommitResourcePipeline,
                             IssueResourcePipeline,
                             MergeRequestResourcePipeline)
-from gl2p.utils import serialize, store_in_db, unite, url_encoded_path
+from gl2p.utils import serialize, store_in_db, unite, prepare_project_graph, remove_duplicates
+
 
 Pipeline = Union[
     CommitPipeline,
@@ -34,16 +35,44 @@ Pipeline = Union[
 ]
 
 
-def run_pipes(pipes: List[Pipeline]) -> List[ProvDocument]:
+def run_pipes(pipes: List[Pipeline], client: GitLabAPIClient) -> List[ProvDocument]:
     """
     Execute pipeline workflow.
     """
-    models: List[ProvDocument] = []
+    graphs: List[ProvDocument] = []
     for pipe in pipes:
-        data = asyncio.run(pipe.fetch())
-        pkgs = pipe.process(*data)
-        models.append(pipe.create_model(pkgs))
-    return models
+        data = asyncio.run(pipe.fetch(client))
+        packages = pipe.process(*data)
+        graphs.append(pipe.create_model(packages))
+    return graphs
+
+
+def compute_graphs(projects: List[str], token: str, rate_limit: int) -> List[ProvDocument]:
+    """
+    Compute graph for each project url.
+    Apply agent mapping to each graph.
+    Add project name to node attributes.
+    """
+    pipes = [CommitPipeline(), CommitResourcePipeline(), IssueResourcePipeline(), MergeRequestResourcePipeline()]
+    graphs = []
+    for url in projects:
+        client = GitLabAPIClient(url, token, rate_limit)
+        models = run_pipes(pipes, client)
+        united_model = unite(models)
+        project_graph = prepare_project_graph(united_model, project_url=url, agent_mapping={})
+        graphs.append(project_graph)
+    return graphs
+
+
+def unite_project_graphs(graphs: List[ProvDocument]) -> ProvDocument:
+    """
+    Unite multiple project graphs into one.
+    """
+    acc = graphs[0]
+    for graph in graphs[1:]:
+        acc.update(graph)
+    cleaned = remove_duplicates(acc)
+    return cleaned
 
 
 def main() -> None:
@@ -51,42 +80,32 @@ def main() -> None:
     Main execution entry point.
 
     Workflow:
+    - get config details
     - create pipelines for commit, commit resource, issue resource and merge request resource models
     - execute pipelines by fetching necessary data, processing data into packages and populating model graphs
     - unite graphs into one and output serialization in configured format to stdout
     - store graph in neo4j by passing it to prov-db-connector
     """
-    # retrieve configuration details
     try:
         config = get_config()
     except ConfigurationError as ce:
         raise ce
 
-    # url encoded project path (org/pslug) -> (org%2Fpslug)
-    pid = url_encoded_path(config.project_url)
+    # compute graph for each project url
+    # apply agent mapping
+    project_graphs = compute_graphs(config.project_urls, config.token, config.rate_limit)
 
-    # only one client to facilitate request caching
-    client = GitLabAPIClient(config.project_url, config.token, config.rate_limit)
-
-    pipes = [
-        CommitPipeline(pid, client),
-        CommitResourcePipeline(pid, client),
-        IssueResourcePipeline(pid, client),
-        MergeRequestResourcePipeline(pid, client)
-    ]
-
-    # execute pipelines
-    # unite model graphs
-    doc = unite(run_pipes(pipes))
+    # unite project graphs
+    graph = unite_project_graphs(project_graphs)
 
     # print serialization to stdout
     if not config.quiet:
-        print(serialize(doc, config.format))
+        print(serialize(graph, config.format))
 
     # store graph in neo4j
     if config.neo4j:
         try:
-            store_in_db(doc, config)
+            store_in_db(graph, config)
         except KeyError as ke:
             # indicates that graph already exists in neo4j
             raise ke

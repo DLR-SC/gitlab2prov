@@ -20,31 +20,29 @@ F = TypeVar("F", bound=Callable[..., Any])
 def alru_cache(func: F) -> F:
     """
     Typed lru cache decorator wrapping async coroutines.
+    Creates a cache entry for each wrapped instance.
 
     Preserve the type signature of the wrapped function.
     Cache the return value of a function F on it's first execution.
     Return that value for every call of F after the first.
     """
-    # TODO: create an alru_cache per instance not one globally.
-    cache = dict()  # type: Dict[str, Any]
+    cache: Dict[str, Any] = dict()
 
-    async def memoizer(self: GitLabAPIClient) -> Any:
-        # use method name as cache key
-        key = func.__name__
+    async def memorized(self: GitLabAPIClient) -> Any:
+        # use method name and instance id as cache key
+        key = func.__name__ + str(id(self))
         if key not in cache:
             # exec call on miss
             # store result in cache
             cache[key] = await func(self)
         return cache[key]
 
-    return cast(F, memoizer)
+    return cast(F, memorized)
 
 
 @dataclass
 class GitLabAPIClient:
-    """
-    A wrapper for the GitLab project API.
-    """
+    """A wrapper for the GitLab project API."""
     purl: InitVar[str]
     token: InitVar[str]
     rate: InitVar[int]
@@ -93,11 +91,25 @@ class GitLabAPIClient:
         if not commits:
             return []
 
-        path = "repository/commits/{}/diff"
-        inserts = [(c["id"],) for c in commits]
-        urls = self.url_builder.build(path, inserts)
+        path_default = "repository/commits/{}/diff"
+        path_compare = "repository/compare?from={}&to={}"
 
-        diffs: List[Diff] = await self.request_handler.request(urls)
+        urls = []
+        for commit in commits:
+            id_ = commit["id"]
+            parent_ids = commit["parent_ids"]
+            if not parent_ids:
+                urls.append(list(self.url_builder.build(path_default, [(id_,)]))[0])
+            else:
+                urls.append(list(self.url_builder.build(path_compare, [(parent_ids[0], id_)]))[0])
+
+        diffs = []
+        for diff in await self.request_handler.request(urls):
+            cut_diff = []
+            for entry in diff["diffs"] if isinstance(diff, dict) else diff:
+                del entry["diff"]
+                cut_diff.append(entry)
+            diffs.append(cut_diff)
         return diffs
 
     @alru_cache
@@ -334,14 +346,14 @@ class URLBuilder:
     """
     URL formatting and path building.
     """
-    purl: InitVar[str]
+    project_url: InitVar[str]
     base: URL = URL()
 
-    def __post_init__(self, purl: str) -> None:
-        if not purl:
+    def __post_init__(self, project_url: str) -> None:
+        if not project_url:
             raise ValueError
 
-        url = URL(purl)
+        url = URL(project_url)
 
         if not url.scheme:
             raise ValueError
@@ -361,29 +373,40 @@ class URLBuilder:
 
         if path and not path.startswith("/"):
             path = "/" + path
+        query = None
+        if len(path.split("?")) == 2:
+            path, query = path.split("?")
 
         if not inserts:
             if path.count("{}"):
                 # blanks in path but insert list empty
                 raise ValueError("Blanks exist. No values to insert.")
-
             url = self.base.origin().with_path(self.base.raw_path + path)
-            yield url.update_query({"per_page": 50})
+            ret = url.update_query({"per_page": 50})
+            yield ret
 
-        for vals in inserts:
-            if len(vals) != path.count("{}"):
+        for values in inserts:
+            if len(values) != (path.count("{}") if not query else path.count("{}") + query.count("{}")):
                 # blank count doesn't match count of insert values
                 raise ValueError("Unequal amount of blanks and insert values.")
 
-            fmt = path.format(*vals)
+            fmt = path.format(*values[:path.count("{}")])
+            if query:
+                fmt_query = {
+                    val.split("=")[0]: val.split("=")[1]
+                    for val in query.format(*values[path.count("{}"):]).split("&")}
+            else:
+                fmt_query = {}
+
             url = self.base.origin().with_path(self.base.raw_path + fmt)
-            yield url.update_query({"per_page": 50})
+            ret = url.update_query({**fmt_query, "per_page": 50})
+            yield ret
 
 
 @dataclass
 class RequestHandler:
     """
-    Dispatch requests ansynchronously, though adhere to rate limiting.
+    Dispatch requests asynchronously, though adhere to rate limiting.
     """
     token: str
     rate: int = 10
@@ -416,7 +439,7 @@ class RequestHandler:
 
         async with await self.session.get(url) as resp:
             json = await resp.json()
-            page_count = int(resp.headers["x-total-pages"])
+            page_count = int(resp.headers.get("x-total-pages", 1))
 
         return json, page_count
 
@@ -452,7 +475,6 @@ class RequestHandler:
 
         5. Return as one big page for all urls.
         """
-        # hotfix for generator exhaustion
         urls = list(urls)
 
         # create tasks for first pages

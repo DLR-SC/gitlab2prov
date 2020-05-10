@@ -16,7 +16,7 @@ import argparse
 import configparser
 import os
 from distutils.util import strtobool
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 
 prog = "GitLab2PROV"
 description = "Extract provenance information from GitLab projects."
@@ -28,100 +28,81 @@ class ConfigurationError(Exception):
 
 
 def get_config() -> argparse.Namespace:
-    """
-    Return configuration namespace.
-    """
+    """Return configuration namespace."""
     args = parse_args()
 
     if os.path.exists(args.config_file):
         args = patch(args)
 
-    if underconfigured(args):
-        keys = underconfigured(args)
+    if is_under_configured(args):
+        keys = is_under_configured(args)
         pick = [
             ("option", "has"),
             ("options", "have")
         ][min(1, len(keys.split())-1)]
         raise ConfigurationError(f"Necessary config {pick[0]} {keys} {pick[1]} not been provided.")
 
-    print_config_summary(args)
     return args
 
 
 def parse_args() -> argparse.Namespace:
-    """
-    Parse command line arguments.
-    """
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(prog, None, description, epilog)
 
     basic = parser.add_argument_group("BASIC CONFIG")
     neo4j = parser.add_argument_group("NEO4J CONFIG")
-    basic.add_argument("-p", "--project-url",
-                       help="gitlab project url",
-                       metavar="URL")
+    basic.add_argument("-p", "--project-urls",
+                       help="gitlab project urls", nargs="+", metavar="<string>")
     basic.add_argument("-t", "--token",
-                       help="gitlab api access token",
-                       metavar="TOKEN")
+                       help="gitlab api access token", metavar="<string>")
     basic.add_argument("-r", "--rate-limit",
-                       help="api client rate limit (in req/s)",
-                       metavar="LIMIT",
-                       type=int)
+                       help="api client rate limit (in req/s)", metavar="<int>", type=int)
     basic.add_argument("-c", "--config-file",
-                       help="config file path",
-                       default="config/config.ini",
-                       metavar="CONFIG")
+                       help="config file path", default="config/config.ini", metavar="<string>")
     basic.add_argument("-f", "--format",
-                       help="provenance output format",
-                       choices=["provn", "json", "rdf", "xml", "dot"])
+                       help="provenance output format", choices=["provn", "json", "rdf", "xml", "dot"])
     basic.add_argument("-q", "--quiet",
-                       help="suppress output to stdout",
-                       action="store_true")
+                       help="suppress output to stdout", action="store_true")
     neo4j.add_argument("--neo4j",
-                       help="enable neo4j storage",
-                       action="store_true")
+                       help="enable neo4j storage", action="store_true")
     neo4j.add_argument("--neo4j-user",
-                       help="neo4j username",
-                       metavar="USERNAME")
+                       help="neo4j username", metavar="<string>")
     neo4j.add_argument("--neo4j-password",
-                       help="neo4j password",
-                       metavar="PASSWORD")
+                       help="neo4j password", metavar="<string>")
     neo4j.add_argument("--neo4j-host",
-                       help="neo4j host",
-                       metavar="HOST")
+                       help="neo4j host", metavar="<string>")
     neo4j.add_argument("--neo4j-boltport",
-                       help="neo4j bolt protocol port",
-                       metavar="PORT")
+                       help="neo4j bolt protocol port", metavar="<string>")
     return parser.parse_args()
 
 
 def patch(args: argparse.Namespace) -> argparse.Namespace:
-    """
-    Try to patch missing flag values with values from config file.
-    """
-    for key, val in config_items(args.config_file):
+    """Try to patch missing flag values with values from config file."""
+    projects = []
+    for (section, key), value in config_items(args.config_file):
         try:
-            if not getattr(args, key) and val:
-                setattr(args, key, val)
-        except AttributeError as ae:
+            if section == "PROJECTS":
+                projects.append(value)
+                continue
+            elif not getattr(args, key) and value:
+                setattr(args, key, value)
+        except AttributeError:
             raise ConfigurationError(f"Config file key '{key}' is not a valid configuration option.\n")
 
+    if not getattr(args, "project_urls"):
+        setattr(args, "project_urls", projects)
     args.neo4j = bool(strtobool(str(args.neo4j)))
     args.quiet = bool(strtobool(str(args.quiet)))
     args.rate_limit = int(args.rate_limit)
-
     return args
 
 
-def underconfigured(args: argparse.Namespace) -> str:
-    """
-    Return string of missing keys if there are any.
-    """
-    necessary = ["project_url", "token", "format"]
+def is_under_configured(args: argparse.Namespace) -> str:
+    """Return string of missing keys if there are any."""
+    necessary = ["project_urls", "token", "format"]
     neo4j = ["neo4j_user", "neo4j_host", "neo4j_password", "neo4j_boltport"]
-
     if args.neo4j:
         necessary.extend(neo4j)
-
     missing = ""
     for key in necessary:
         if not getattr(args, key):
@@ -129,17 +110,15 @@ def underconfigured(args: argparse.Namespace) -> str:
     return missing[2:]
 
 
-def config_items(path: str) -> List[Tuple[str, Any]]:
-    """
-    Return config file option, value pairs.
-    """
+def config_items(path: str) -> List[Tuple[Tuple[str, str], Any]]:
+    """Return config file option, value pairs."""
     config = configparser.ConfigParser()
     config.read(path)
 
     res = []
     for section in config.sections():
         for opt, val in config.items(section):
-            res.append((opt, val))
+            res.append(((section, opt), val))
     return res
 
 
