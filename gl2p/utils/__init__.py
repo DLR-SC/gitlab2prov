@@ -130,26 +130,6 @@ def prepare_project_graph(graph: ProvDocument, project_url: str, agent_mapping=N
     return ProvDocument(processed)
 
 
-def remove_duplicates(graph: ProvDocument) -> ProvDocument:
-    """
-    Remove duplicate relations that have the same type, source and target.
-    """
-    new_records = list(graph.get_records(ProvElement))
-    duplicates = defaultdict(set)  # type -> set(tuple(source, target))
-
-    for relation in graph.get_records(ProvRelation):
-        (_, source), (_, target) = relation.formal_attributes[:2]
-        if type(relation) in duplicates:
-            if (source, target) not in duplicates[type(relation)]:
-                # no relation of this type between source and target before
-                # therefore add this relation to the graph
-                new_records.append(relation)
-        else:
-            new_records.append(relation)
-        duplicates[type(relation)].add((source, target))  # add rel to record of duplicate
-    return ProvDocument(new_records)
-
-
 def p_time(string: str) -> datetime.datetime:
     """
     Parse datetime string to datetime object.

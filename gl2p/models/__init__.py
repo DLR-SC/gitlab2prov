@@ -1,5 +1,5 @@
 from typing import List, Union
-from prov.model import ProvDocument
+from prov.model import ProvDocument, ProvElement, ProvRelation
 from ..procs.meta import Addition, CommitCreationPackage, CommitModelPackage, ResourceCreationPackage, Deletion, \
     Modification, ResourceModelPackage
 
@@ -12,26 +12,47 @@ def create_graph(packages: List[Union[CommitModelPackage, ResourceModelPackage]]
     """
     graph = ProvDocument()
     graph.set_default_namespace("gitlab2prov")
+
     if not packages:
         return graph
+
     model = {
         CommitModelPackage: commit_package_model,
         ResourceModelPackage: resource_package_model,
     }[type(packages[0])]
+
     graph = model(graph, packages)
+    graph = enforce_uniqueness_constraints(graph)
     return graph
 
 
-def remove_duplicates(graph: ProvDocument) -> ProvDocument:
-    """Remove all duplicate nodes by identifier.
+def enforce_uniqueness_constraints(graph: ProvDocument) -> ProvDocument:
+    """Enforce model uniqueness constraints.
 
-    Enforces cardinality constraint of at most one specializationOf relation
-    per node to remove relations that have been duplicated by mistake.
+    Remove node duplicates:
+        - ProvDocument.unified takes care of this by removing nodes with
+        the same id.
+
+    Remove relation duplicates:
+        - Allow only one relation of a certain type between two nodes.
+
+    Enforcing this constraint after having populated the model instead of
+    during population simplifies the model creation.
     """
-    unified = graph.unified()
-    records = set(unified.get_records())
-    duplicates_removed = ProvDocument(records)
-    return duplicates_removed
+    records, known = [], set()
+
+    for relation in graph.get_records(ProvRelation):
+        (_, source), (_, target) = relation.formal_attributes[:2]
+        rel_tuple = (type(relation), source, target)
+        if rel_tuple in known:
+            continue
+        known.add(rel_tuple)
+        records.append(relation)
+
+    records.extend(graph.get_records(ProvElement))
+
+    g = ProvDocument(records)
+    return g.unified()
 
 
 def commit_package_model(graph: ProvDocument, packages: List[CommitModelPackage]) -> ProvDocument:

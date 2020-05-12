@@ -24,7 +24,7 @@ from gl2p.config import ConfigurationError, get_config
 from gl2p.pipelines import (CommitPipeline, CommitResourcePipeline,
                             IssueResourcePipeline,
                             MergeRequestResourcePipeline)
-from gl2p.utils import serialize, store_in_db, unite, prepare_project_graph, remove_duplicates
+from gl2p.utils import serialize, store_in_db, unite, prepare_project_graph
 
 
 Pipeline = Union[
