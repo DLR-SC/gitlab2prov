@@ -26,7 +26,8 @@ def main():
     projects = [glp.compute_graph(project) for project in config.project_urls]
     graph = glp.unite_graphs(projects)
 
-    print(glp.serialize(graph, fmt=config.format))
+    if not config.quiet:
+        print(glp.serialize(graph, fmt=config.format))
 
 
 if __name__ == "__main__":
