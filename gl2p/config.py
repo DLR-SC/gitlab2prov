@@ -11,10 +11,10 @@ Config strategy:
 - Check if minimum configuration has been provided
 - Return configuration namespace
 """
-import sys
 import argparse
 import configparser
 import os
+import sys
 from distutils.util import strtobool
 from typing import Any, List, Tuple
 

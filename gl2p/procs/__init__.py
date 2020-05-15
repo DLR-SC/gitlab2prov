@@ -4,11 +4,10 @@ from typing import Dict, List, Union, Any, Set
 
 from gl2p.utils.types import Commit, Diff, Issue, MergeRequest, Label, Note, Award
 
-from .history import FileNameHistory
-from .meta import Addition, Deletion, Modification, \
-    CommitCreationPackage, ResourceCreationPackage, CommitModelPackage, \
-    ResourceModelPackage, File, FileVersion, MetaEvent, EventPackage
-from .parser import parse
+from gl2p.procs.history import FileNameHistory
+from gl2p.procs.meta import Addition, Deletion, Modification, CommitCreationPackage, ResourceCreationPackage, \
+    CommitModelPackage, ResourceModelPackage, File, FileVersion, MetaEvent, EventPackage
+from gl2p.procs.parser import parse
 
 
 class CommitProcessor:
