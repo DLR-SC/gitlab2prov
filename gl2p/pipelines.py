@@ -2,12 +2,13 @@ from typing import List, Tuple
 
 from prov.model import ProvDocument
 
-from .api import GitLabAPIClient
-from .models import create_graph
-from .procs import (CommitProcessor, CommitResourceProcessor,
-                    IssueResourceProcessor, MergeRequestResourceProcessor)
-from .procs.meta import (CommitModelPackage, ResourceModelPackage)
-from .utils.types import Commit, Diff, Issue, MergeRequest, Note, Award, Label
+from gl2p.api import GitlabAPIClient
+from gl2p.models import create_graph
+from gl2p.procs import (CommitProcessor, CommitResourceProcessor,
+                        IssueResourceProcessor, MergeRequestResourceProcessor)
+from gl2p.procs.meta import CommitModelPackage, ResourceModelPackage
+from gl2p.utils.types import (Award, Commit, Diff, Issue, Label, MergeRequest,
+                              Note)
 
 
 class CommitPipeline:
@@ -15,7 +16,7 @@ class CommitPipeline:
     Pipeline that fetches, processes and models git commits of a project.
     """
     @staticmethod
-    async def fetch(client: GitLabAPIClient) -> Tuple[List[Commit], List[Diff]]:
+    async def fetch(client: GitlabAPIClient) -> Tuple[List[Commit], List[Diff]]:
         """
         Retrieve commits and their diffs from the project API wrapper.
         """
