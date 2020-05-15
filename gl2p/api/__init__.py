@@ -9,9 +9,9 @@ from typing import (Any, Callable, Coroutine, Dict, Iterable, Iterator, List,
 from aiohttp import ClientSession
 from yarl import URL
 
-from ..utils import chunks, url_encoded_path
-from ..utils.types import Award, Commit, Diff, Issue, Label, MergeRequest, Note
-from .ratelimiter import RateLimiter
+from gl2p.utils import chunks, url_encoded_path
+from gl2p.utils.types import Award, Commit, Diff, Issue, Label, MergeRequest, Note
+from gl2p.api.ratelimiter import RateLimiter
 
 T = TypeVar("T")
 F = TypeVar("F", bound=Callable[..., Any])
@@ -28,7 +28,7 @@ def alru_cache(func: F) -> F:
     """
     cache: Dict[str, Any] = dict()
 
-    async def memorized(self: GitLabAPIClient) -> Any:
+    async def memorized(self: GitlabAPIClient) -> Any:
         # use method name and instance id as cache key
         key = func.__name__ + str(id(self))
         if key not in cache:
@@ -41,7 +41,7 @@ def alru_cache(func: F) -> F:
 
 
 @dataclass
-class GitLabAPIClient:
+class GitlabAPIClient:
     """A wrapper for the GitLab project API."""
     purl: InitVar[str]
     token: InitVar[str]
@@ -51,7 +51,7 @@ class GitLabAPIClient:
         self.url_builder = URLBuilder(purl)
         self.request_handler = RequestHandler(token, rate)
 
-    async def __aenter__(self) -> GitLabAPIClient:
+    async def __aenter__(self) -> GitlabAPIClient:
         """
         Open client session of request handler.
         """
