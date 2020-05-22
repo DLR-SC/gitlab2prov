@@ -76,7 +76,10 @@ class FileNameHistory:
         for entry in diff:
             old, new = entry["old_path"], entry["new_path"]
             if new != old:  # renamed
-                ret_mapping[new] = ret_mapping[old]
+                if old in ret_mapping:
+                    ret_mapping[new] = ret_mapping[old]
+                    continue
+                ret_mapping[new] = old
             elif entry["new_file"]:  # added
                 # check whether this path has been used before,
                 # if so update the max id for the path
