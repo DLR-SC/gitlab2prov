@@ -7,3 +7,4 @@ __pycache__/
 *.egg-info
 out.provn
 *.code-workspace
+config/
