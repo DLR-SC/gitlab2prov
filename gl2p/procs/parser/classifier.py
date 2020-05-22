@@ -108,6 +108,8 @@ classifiers: Dict[str, List[str]] = {
         r"(?P<number_of_commits>\d+)\scommit[s]?\n\n" +
         r".+(?P<short_sha>[a-z0-9]{8}) - (?P<title>.+?)<.*",
 
+        r"^added (?P<number_of_commits>\d+) commit[s]?(?:.*\n?)*$",
+
     ],
 
     "address_in_merge_request": [
@@ -256,11 +258,12 @@ classifiers: Dict[str, List[str]] = {
     "change_time_estimate": [
 
         r"^changed time estimate to" +
-        r"(?:\s(?P<months>\d+)mo)?" +
-        r"(?:\s(?P<weeks>\d+)w)?" +
-        r"(?:\s(?P<days>\d+)d)?" +
-        r"(?:\s(?P<hours>\d+)h)?" +
-        r"(?:\s(?P<minutes>\d+)m)?$"
+        r"(?:\s(?P<months>[-]?\d+)mo)?" +
+        r"(?:\s(?P<weeks>[-]?\d+)w)?" +
+        r"(?:\s(?P<days>[-]?\d+)d)?" +
+        r"(?:\s(?P<hours>[-]?\d+)h)?" +
+        r"(?:\s(?P<minutes>[-]?\d+)m)?" +
+        r"(?:\s(?P<seconds>[-]?\d+)m)?$"
 
     ],
 
@@ -335,7 +338,8 @@ classifiers: Dict[str, List[str]] = {
 
     "unassign_user": [
 
-        r"^unassigned @(?P<user_name>.*)$"
+        r"^unassigned @(?P<user_name>.*)$",
+        r"^remove assignee$",
 
     ],
 
@@ -392,6 +396,42 @@ classifiers: Dict[str, List[str]] = {
         r"^approved this merge request$"
 
     ],
+
+    "resolve_all_discussions": [
+
+        r"^resolved all discussions$"
+
+    ],
+
+    "unapprove_merge_request": [
+
+        r"^unapproved this merge request$"
+
+    ],
+
+    "enable_automatic_merge_on_pipeline_completion": [
+
+        r"^enabled an automatic merge when the pipeline for (?P<pipeline_commit_sha>[0-9a-z]+) succeeds$"
+
+    ],
+
+    "abort_automatic_merge": [
+
+        r"^aborted the automatic merge because (?P<abort_reason>[a-z\s]+)$"
+
+    ],
+
+    "cancel_automatic_merge": [
+
+        r"^canceled the automatic merge$"
+
+    ],
+
+    "create_issue_from_discussion": [
+
+        r"^created #(?P<issue_iid>\d+) to continue this discussion$"
+
+    ],
 }
 
 
@@ -444,9 +484,9 @@ def classify(note: Note) -> Dict[str, Any]:
     matches = event_attributes(note["body"])
 
     if not matches:
-        raise Exception()
+        raise Exception(f"No match found for body: '{note['body']}' of note: <{note}>.")
     if len(matches) > 2:
-        raise Exception()
+        raise Exception(f"More than one match for body : '{note['body']}' of note: <{note}>.")
 
     attributes = {}
     attributes.update(matches[0])

@@ -1,5 +1,5 @@
 import datetime
-from typing import List
+from typing import List, Optional
 
 from gl2p.utils import p_time
 from gl2p.utils.types import Award, Label, Note
@@ -29,6 +29,8 @@ def parse(notes=None, labels=None, awards=None, note_awards=None) -> List[MetaEv
     parsed.extend(map(parse_award, awards))
     parsed.extend(map(parse_award, note_awards))
     parsed.extend(map(parse_system_note, s_notes))
+
+    parsed = [event for event in parsed if event is not None]
 
     sorted_parsed = list(sorted(parsed, key=by_date))
     return sorted_parsed
@@ -95,12 +97,18 @@ def parse_note(note: Note) -> MetaEvent:
     return MetaEvent.create(initiator, note["created_at"], attributes)
 
 
-def parse_system_note(note: Note) -> MetaEvent:
+def parse_system_note(note: Note) -> Optional[MetaEvent]:
     """
     Parse a single system note.
 
     Event classification handled by classifier.
     """
+    if "label" in note["body"]:
+        # ignore all label related notes
+        # as they get parsed in label events
+        # this avoids duplicated label events
+        return None
+
     attributes = {}
     attributes["event_id"] = note["id"]
     attributes["body"] = note["body"]
