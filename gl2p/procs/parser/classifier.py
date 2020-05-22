@@ -339,7 +339,8 @@ classifiers: Dict[str, List[str]] = {
     "unassign_user": [
 
         r"^unassigned @(?P<user_name>.*)$",
-        r"^remove assignee$",
+
+        r"^removed assignee$",
 
     ],
 
