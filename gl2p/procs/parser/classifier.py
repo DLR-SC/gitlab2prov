@@ -263,7 +263,7 @@ classifiers: Dict[str, List[str]] = {
         r"(?:\s(?P<days>[-]?\d+)d)?" +
         r"(?:\s(?P<hours>[-]?\d+)h)?" +
         r"(?:\s(?P<minutes>[-]?\d+)m)?" +
-        r"(?:\s(?P<seconds>[-]?\d+)m)?$"
+        r"(?:\s(?P<seconds>[-]?\d+)s)?$"
 
     ],
 
