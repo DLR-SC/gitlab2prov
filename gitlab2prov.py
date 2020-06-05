@@ -23,8 +23,9 @@ def main():
     config = get_config()
 
     glp = Gitlab2Prov(config.token, config.rate_limit)
-    projects = [glp.compute_graph(project) for project in config.project_urls]
-    graph = glp.unite_graphs(projects)
+
+    project_graphs = [glp.compute_graph(project, config.aliases, config.pseudonymize) for project in config.project_urls]
+    graph = glp.unite_graphs(project_graphs)
 
     if not config.quiet:
         print(glp.serialize(graph, fmt=config.format))
