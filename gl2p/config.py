@@ -63,6 +63,10 @@ def parse_args() -> argparse.Namespace:
                        help="provenance output format", choices=["provn", "json", "rdf", "xml", "dot"])
     basic.add_argument("-q", "--quiet",
                        help="suppress output to stdout", action="store_true")
+    basic.add_argument("--aliases", metavar="<string>",
+                       help="path to agent alias mapping json file")
+    basic.add_argument("--pseudonymize", action="store_true",
+                       help="pseudonymize agents")
     neo4j.add_argument("--neo4j",
                        help="enable neo4j storage", action="store_true")
     neo4j.add_argument("--neo4j-user",
