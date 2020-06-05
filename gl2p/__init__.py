@@ -13,10 +13,13 @@
 # to store the extracted data in a Neo4J database.
 #
 # code-author: Claas de Boer <claas.deboer@dlr.de>
+import re
+import json
 import asyncio
-from typing import List, Dict, Optional
+from collections import namedtuple
+from typing import List, Dict, Optional, Type, Tuple, Any
 
-from prov.model import ProvDocument, ProvElement, PROV_REC_CLS, ProvActivity, ProvEntity
+from prov.model import ProvDocument, PROV_REC_CLS, ProvActivity, ProvEntity, ProvRecord, ProvAgent, ProvRelation
 from prov.identifier import QualifiedName
 from prov.dot import prov_to_dot
 
@@ -54,72 +57,94 @@ class Gitlab2Prov:
             return str(prov_to_dot(graph))
         return str(graph.serialize(format=fmt))
 
-    def compute_graph(self, url: str, agent_mapping: Optional[Dict[str, List[str]]] = None) -> ProvDocument:
+    @staticmethod
+    def unite_graphs(graphs: List[ProvDocument]) -> ProvDocument:
+        """
+        Unite graphs by updating accumulator with records from others.
+        """
+        acc = graphs[0]
+        for sub_graph in graphs[1:]:
+            acc.update(sub_graph)
+        graph = enforce_uniqueness_constraints(acc)
+        return graph
+
+    @staticmethod
+    def read_alias_mapping(fp: str) -> Dict[str, str]:
+        """
+        Read alias mapping at file path *fp*.    (name: alias1, alias2, ...)
+        Rebuild as a mapping from alias to name: (alias1: name; alias2: name; ...)
+        """
+        if not fp:
+            return {}
+        with open(fp, "r") as mapping:
+            data = mapping.read()
+            obj = json.loads(data)
+        aliases = {v: k for k, vs in obj.items() for v in vs}
+        return aliases
+
+    @staticmethod
+    def clean_attrs(attributes: Dict[Any, Any], mapping: Dict[str, str]) -> Dict[Any, Any]:
+        """
+        Remove name mentions from strings.
+        """
+        pattern = r'@[a-z_]+'  # matches user mentions such as @foo_bar
+
+        def replace(math_object):
+            match = match_object.group().replace("\\", "")[1:]
+            replacement = mapping.get(match, match)
+            return replacement
+
+        cleaned = {}
+        aliases = sorted(mapping.keys(), key=len, reverse=True)
+        for key, value in attributes.items():
+            if not isinstance(value, str):
+                cleaned[key] = value
+                continue
+            value = re.sub(pattern, replace, value)
+
+            for alias in aliases:
+                value = value.replace(alias, mapping[alias])
+            cleaned[key] = value
+        return cleaned
+
+    @staticmethod
+    def _update_aliases(g: ProvDocument, aliases: Dict[str, str]) -> Dict[str, str]:
+        """
+        Update mapping with agents that aren't present in the initial mapping.
+        """
+        for agent in g.get_records(ProvAgent):
+            attrs = {k.localpart: v for k, v in agent.attributes}
+            name = attrs["user_name"]
+            if name not in aliases:
+                aliases[name] = name
+        return aliases
+
+    @staticmethod
+    def _pseudonymize_aliases(aliases: Dict[str, str]) -> Dict[str, str]:
+        """
+        Pseudonymize alias mapping by enumeration.
+        """
+        enum = {value: str(n) for n, value in enumerate(set(aliases.values()))}
+        pseudonymized = {}
+        for key, value in aliases.items():
+            pseudonymized[key] = enum[value]
+        return pseudonymized
+
+    def compute_graph(self,
+                      url: str,
+                      alias_mapping_fp: str = "",
+                      pseudonymize: bool = False) -> ProvDocument:
         """
         Compute gitlab2prov provenance graph for project at *url*.
 
         Unify and merge agents according to *agent_mapping*.
         """
-        if agent_mapping is None:
-            agent_mapping = {}
+        aliases = self.read_alias_mapping(alias_mapping_fp)
+
         sub_graphs = self._run_pipes(url)
         graph = self.unite_graphs(sub_graphs)
-        graph = self._unite_agents(graph, agent_mapping)
-        graph = self._project_unique_ids(graph, url)
+        graph = self.postprocess_graph(graph, url, aliases, pseudonymize)
         return graph
-
-    def _unite_agents(self, graph: ProvDocument, agent_mapping: Dict[str, List[str]]) -> ProvDocument:
-        """
-        Compute and apply id mapping to unite agents according to *agent_mapping.*
-        """
-        id_mapping = {}
-        for node in graph.get_records(ProvElement):
-            name = agent_mapping.get({k.localpart: v for k, v in node.attributes}.get("user_name"))
-            if name is None:
-                id_mapping[node.identifier] = node.identifier
-                continue
-            namespace = node.identifier.namespace
-            localpart = f"user-{name}"
-            id_mapping[node.identifier] = QualifiedName(namespace, q_name(localpart))
-        graph = self._apply_id_mapping(graph, id_mapping)
-        return graph
-
-    def _project_unique_ids(self, graph: ProvDocument, url: str) -> ProvDocument:
-        """
-        Compute and apply id mapping for project unique ids for entities and activities.
-        """
-        project = url_encoded_path(url).replace("%2F", "/")
-        id_mapping = {}
-        for record in graph.get_records(ProvElement):
-            if not isinstance(record, (ProvActivity, ProvEntity)):
-                id_mapping[record.identifier] = record.identifier
-                continue
-            namespace = record.identifier.namespace
-            localpart = f"{project}-{record.identifier.localpart}"
-            id_mapping[record.identifier] = QualifiedName(namespace, q_name(localpart))
-        graph = self._apply_id_mapping(graph, id_mapping)
-        return graph
-
-    @staticmethod
-    def _apply_id_mapping(graph: ProvDocument, id_mapping: Dict[QualifiedName, QualifiedName]) -> ProvDocument:
-        """
-        Compute prov graph where node id's have been updated with the provided by the id mapping.
-        """
-        records = []
-        for record in graph.get_records():
-            prov_type = PROV_REC_CLS[record.get_type()]
-            if record.is_element():
-                record = prov_type(record.bundle, id_mapping[record.identifier], record.attributes)
-                records.append(record)
-            else:
-                (s_type, source), (t_type, target) = record.formal_attributes[:2]
-                attributes = [(s_type, id_mapping[source]), (t_type, id_mapping[target])]
-                attributes.extend(record.formal_attributes[2:])
-                attributes.extend(record.extra_attributes)
-                records.append(prov_type(record.bundle, record.identifier, attributes))
-        mapping_applied = ProvDocument(records)
-        mapping_applied = enforce_uniqueness_constraints(mapping_applied)
-        return mapping_applied
 
     def _run_pipes(self, url: str) -> List[ProvDocument]:
         """
@@ -133,13 +158,97 @@ class Gitlab2Prov:
             graphs.append(pipe.create_model(packages))
         return graphs
 
-    @staticmethod
-    def unite_graphs(graphs: List[ProvDocument]) -> ProvDocument:
+    def postprocess_graph(self, g, url: str, aliases: Dict[str, str], pseudonymize: bool = False) -> ProvDocument:
         """
-        Unite graphs by updating accumulator with records from others.
+        Unite agents based on alias_mapping.
+        Compute global unique id's for activities and entities by prepending the project name
+        to their respective id's. Add attribute containint project to activities and entities.
         """
-        acc = graphs[0]
-        for sub_graph in graphs[1:]:
-            acc.update(sub_graph)
-        graph = enforce_uniqueness_constraints(acc)
-        return graph
+        aliases = self._update_aliases(g, aliases)
+        if pseudonymize:
+            aliases = self._pseudonymize_aliases(aliases)
+
+        project = url_encoded_path(url).replace("%2F", "/")
+
+        agts, agt_ids = self._unite_agents(g, aliases, pseudonymize)
+        ents, ent_ids = self._project_unique(g, project, aliases, pseudonymize, p_type=ProvEntity)
+        acts, act_ids = self._project_unique(g, project, aliases, pseudonymize, p_type=ProvActivity)
+
+        mapping = {**agt_ids, **act_ids, **ent_ids}
+        relations = self._update_relations(g, mapping)
+
+        return ProvDocument([*agts, *ents, *acts, *relations])
+
+
+    def _unite_agents(self,
+                      g: ProvDocument,
+                      aliases: Dict[str, str],
+                      pseudonymize: bool = False) -> Tuple[List[ProvAgent], Dict[Any, Any]]:
+        """
+        Unite agents based on *alias_mapping*. Pseudonymize agents by enumeration.
+        """
+        if not aliases:
+            agents = [agent for agent in g.get_records(ProvAgent)]
+            ids = {agent.identifier: agent.identifier for agent in g.get_records(ProvAgent)}
+            return agents, ids
+
+        agents, ids = set(), {}
+        for agent in g.get_records(ProvAgent):
+            attributes = {q_n.localpart: (val, q_n) for q_n, val in agent.attributes}
+
+            name = aliases.get(
+                attributes["user_name"][0],
+                attributes["user_name"][0])
+
+            id_, namespace = agent.identifier, agent.identifier.namespace
+            ids[id_] = united_id = QualifiedName(namespace, q_name(f"user-{name}"))
+
+            attributes = {q_n: val for val, q_n in attributes.values()}
+
+            if pseudonymize:
+                attributes = {"user_name": name}
+
+            agents.add(ProvAgent(agent.bundle, united_id, attributes))
+
+        return list(agents), ids
+
+    def _project_unique(self,
+                        g: ProvDocument,
+                        project: str,
+                        mapping: Dict[str, str],
+                        pseudonymize: bool, p_type: Type[Any]) -> Tuple[List[Any], Dict[Any, Any]]:
+        """
+        Prepend project name to record id's for records of type *p_type*.
+        Add project name to record attributes.
+        """
+        records, ids = [], {}
+
+        for record in g.get_records(p_type):
+            id_ = record.identifier
+            namespace, localpart = id_.namespace, id_.localpart
+
+            attributes = {k: v for k, v in record.attributes}
+            if pseudonymize:
+                attributes = self.clean_attrs(attributes, mapping)
+            attributes["project"] = project
+
+            ids[id_] = unique_id = QualifiedName(namespace, q_name(f"{project}-{localpart}"))
+            records.append(p_type(record.bundle, unique_id, attributes))
+
+        return records, ids
+
+    def _update_relations(self, g: ProvDocument, id_mapping: Dict[str, str]) -> List[ProvRelation]:
+        """
+        Return list of relation with updated source and target id's according to *id_mapping*.
+        """
+        relations = []
+        for relation in g.get_records(ProvRelation):
+            (s_type, s), (t_type, t) = relation.formal_attributes[:2]  # edge source, target
+
+            attributes = [(s_type, id_mapping.get(s, s)), (t_type, id_mapping.get(t, t))]
+            attributes.extend(relation.formal_attributes[2:])
+            attributes.extend(relation.extra_attributes)
+
+            r_type = PROV_REC_CLS[relation.get_type()]
+            relations.append(r_type(relation.bundle, relation.identifier, attributes))
+        return relations
