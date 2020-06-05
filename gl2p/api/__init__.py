@@ -98,6 +98,9 @@ class GitlabAPIClient:
         for commit in commits:
             id_ = commit["id"]
             parent_ids = commit["parent_ids"]
+            urls.append(list(self.url_builder.build(path_default, [(id_,)]))[0])
+            continue
+
             if not parent_ids:
                 urls.append(list(self.url_builder.build(path_default, [(id_,)]))[0])
             else:
