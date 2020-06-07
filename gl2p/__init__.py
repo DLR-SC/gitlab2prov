@@ -89,7 +89,7 @@ class Gitlab2Prov:
         """
         pattern = r'@[a-z_]+'  # matches user mentions such as @foo_bar
 
-        def replace(math_object):
+        def replace(match_object):
             match = match_object.group().replace("\\", "")[1:]
             replacement = mapping.get(match, match)
             return replacement
@@ -224,14 +224,13 @@ class Gitlab2Prov:
         records, ids = [], {}
 
         for record in g.get_records(p_type):
-            id_ = record.identifier
-            namespace, localpart = id_.namespace, id_.localpart
-
             attributes = {k: v for k, v in record.attributes}
             if pseudonymize:
                 attributes = self.clean_attrs(attributes, mapping)
             attributes["project"] = project
 
+            id_ = record.identifier
+            namespace, localpart = id_.namespace, id_.localpart
             ids[id_] = unique_id = QualifiedName(namespace, q_name(f"{project}-{localpart}"))
             records.append(p_type(record.bundle, unique_id, attributes))
 
