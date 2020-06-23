@@ -1,6 +1,6 @@
-prov
+prov==1.5.3
 pydot
 aiohttp
 prov-db-connector
 yarl
-py2neo
+py2neo==5.0b1
