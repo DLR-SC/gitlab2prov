@@ -29,7 +29,6 @@ setup(
         "aiohttp",
         "prov-db-connector",
         "yarl",
-        "py2neo==5.0b1"
     ],
     entry_points={"console_scripts":["gitlab2prov=gitlab2prov.cli:main"]},
     license="MIT",

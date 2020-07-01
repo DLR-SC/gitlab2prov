@@ -3,4 +3,3 @@ pydot
 aiohttp
 prov-db-connector
 yarl
-py2neo==5.0b1

@@ -6,23 +6,6 @@ from typing import Any, Iterator, List
 
 from prov.model import ProvDocument
 from provdbconnector import Neo4jAdapter, ProvDb
-from py2neo import Graph
-
-
-def bundle_exists(config: argparse.Namespace) -> bool:
-    """
-    Return whether a bundle for the given project_id is already in the graph.
-    """
-    project_id = url_encoded_path(config.project_url)
-    g = Graph(
-        uri=f"bolt://{config.neo4j_host}:{config.neo4j_boltport}",
-        auth=(config.neo4j_user, config.neo4j_password)
-    )
-    return bool(g.run(
-        "MATCH (bundle:Entity)" +
-        "WHERE bundle.`meta:identifier` = " + f"'{project_id.replace('%2F', '-')}'" +
-        "RETURN bundle.`meta:identifier`"
-    ).forward())
 
 
 def store_in_db(doc: ProvDocument, config: argparse.Namespace) -> None:
