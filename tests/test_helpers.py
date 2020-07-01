@@ -1,6 +1,6 @@
 import pytest
-from gl2p.utils.helpers import ptime, by_date, chunks, url_encoded_path, qname
-from gl2p.utils.objects import GL2PEvent
+from gitlab2prov.utils.helpers import ptime, by_date, chunks, url_encoded_path, qname
+from gitlab2prov.utils.objects import GL2PEvent
 from datetime import datetime, timezone, timedelta
 
 
@@ -9,7 +9,7 @@ control_time = datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0, t
 
 class TestPTime:
     """
-    Tests for ptime method of gl2p.utils.helpers.
+    Tests for ptime method of gitlab2prov.utils.helpers.
     """
 
     def test_valid_value(self):
@@ -49,7 +49,7 @@ class TestPTime:
 
 class TestByDate:
     """
-    Tests for by_date method of gl2p.utils.helpers.
+    Tests for by_date method of gitlab2prov.utils.helpers.
 
     by_date delegates datetime parsing to ptime.
     Therefore parsing tests will remain at ptime.
@@ -67,7 +67,7 @@ class TestByDate:
 
     def test_invalid_type(self):
         """
-        Test by_date with an arg that is not of type GL2PEvent.
+        Test by_date with an arg that is not of type gitlab2provEvent.
         """
         values = [19.84, 1970, tuple(), list(), dict(), set()]
         for val in values:
@@ -77,7 +77,7 @@ class TestByDate:
 
 class TestChunks:
     """
-    Tests for chunks method of gl2p.utils.helpers.
+    Tests for chunks method of gitlab2prov.utils.helpers.
     """
 
     def test_valid(self):
@@ -136,7 +136,7 @@ class TestChunks:
 
 class TestURLEncodedPath:
     """
-    Tests for url_encoded_path method of gl2p.utils.helpers.
+    Tests for url_encoded_path method of gitlab2prov.utils.helpers.
     """
 
     def test_valid(self):
@@ -180,7 +180,7 @@ class TestURLEncodedPath:
 
 class TestQName:
     """
-    Tests for qname method of gl2p.utils.helpers.
+    Tests for qname method of gitlab2prov.utils.helpers.
     """
 
     def test_valid(self):

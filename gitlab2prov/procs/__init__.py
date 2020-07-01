@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Dict, List, Union, Any, Set
 
-from gl2p.utils.types import Commit, Diff, Issue, MergeRequest, Label, Note, Award
+from gitlab2prov.utils.types import Commit, Diff, Issue, MergeRequest, Label, Note, Award
 
-from gl2p.procs.history import FileNameHistory
-from gl2p.procs.meta import Addition, Deletion, Modification, CommitCreationPackage, ResourceCreationPackage, \
+from gitlab2prov.procs.history import FileNameHistory
+from gitlab2prov.procs.meta import Addition, Deletion, Modification, CommitCreationPackage, ResourceCreationPackage, \
     CommitModelPackage, ResourceModelPackage, File, FileVersion, MetaEvent, EventPackage
-from gl2p.procs.parser import parse
+from gitlab2prov.procs.parser import parse
 
 
 class CommitProcessor:

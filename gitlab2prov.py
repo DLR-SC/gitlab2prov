@@ -15,8 +15,8 @@
 #
 # code-author: Claas de Boer <claas.deboer@dlr.de>
 
-from gl2p import Gitlab2Prov
-from gl2p.config import get_config
+from gitlab2prov import Gitlab2Prov
+from gitlab2prov.config import get_config
 
 
 def main():

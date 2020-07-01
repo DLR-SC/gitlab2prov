@@ -16,7 +16,7 @@ supported_formats = [
 # Git Commit Model
 # add file
 document = prov.model.ProvDocument()
-document.set_default_namespace("gl2p:")
+document.set_default_namespace("gitlab2prov:")
 bundle = document.bundle("repository")
 bundle.entity("file")
 bundle.entity("file_v")
@@ -37,7 +37,7 @@ commit_add_file = document
 
 # modify file
 document = prov.model.ProvDocument()
-document.set_default_namespace("gl2p:")
+document.set_default_namespace("gitlab2prov:")
 bundle = document.bundle("repository")
 bundle.entity("file_v-1")
 bundle.entity("file_v")
@@ -60,7 +60,7 @@ commit_modify_file = document
 
 # commit delete file
 document = prov.model.ProvDocument()
-document.set_default_namespace("gl2p:")
+document.set_default_namespace("gitlab2prov:")
 bundle = document.bundle("repository")
 bundle.entity("file")
 bundle.entity("file_v")
@@ -79,7 +79,7 @@ commit_delete_file = document
 # Resources (Commits, Issues, Merge Requests)
 # commit resource
 document = prov.model.ProvDocument()
-document.set_default_namespace("gl2p:")
+document.set_default_namespace("gitlab2prov:")
 bundle = document.bundle("repository")
 bundle.entity("resource")
 bundle.entity("resource_v")
@@ -99,7 +99,7 @@ resource_creation_commit = document
 
 # resource creation (Issue, Merge Request)
 document = prov.model.ProvDocument()
-document.set_default_namespace("gl2p:")
+document.set_default_namespace("gitlab2prov:")
 bundle = document.bundle("repository")
 bundle.entity("resource")
 bundle.entity("resource_v")
@@ -116,7 +116,7 @@ resource_creation = document
 
 # resource event
 document = prov.model.ProvDocument()
-document.set_default_namespace("gl2p:")
+document.set_default_namespace("gitlab2prov:")
 bundle = document.bundle("repository")
 bundle.entity("resource")
 bundle.entity("resource_v-1")

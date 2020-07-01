@@ -1,10 +1,10 @@
 import datetime
 from typing import List, Optional
 
-from gl2p.utils import p_time
-from gl2p.utils.types import Award, Label, Note
-from gl2p.procs.meta import Initiator, MetaEvent
-from gl2p.procs.parser.classifier import classify
+from gitlab2prov.utils import p_time
+from gitlab2prov.utils.types import Award, Label, Note
+from gitlab2prov.procs.meta import Initiator, MetaEvent
+from gitlab2prov.procs.parser.classifier import classify
 
 
 def parse(notes=None, labels=None, awards=None, note_awards=None) -> List[MetaEvent]:

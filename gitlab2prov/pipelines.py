@@ -2,12 +2,12 @@ from typing import List, Tuple
 
 from prov.model import ProvDocument
 
-from gl2p.api import GitlabAPIClient
-from gl2p.models import create_graph
-from gl2p.procs import (CommitProcessor, CommitResourceProcessor,
+from gitlab2prov.api import GitlabAPIClient
+from gitlab2prov.models import create_graph
+from gitlab2prov.procs import (CommitProcessor, CommitResourceProcessor,
                         IssueResourceProcessor, MergeRequestResourceProcessor)
-from gl2p.procs.meta import CommitModelPackage, ResourceModelPackage
-from gl2p.utils.types import (Award, Commit, Diff, Issue, Label, MergeRequest,
+from gitlab2prov.procs.meta import CommitModelPackage, ResourceModelPackage
+from gitlab2prov.utils.types import (Award, Commit, Diff, Issue, Label, MergeRequest,
                               Note)
 
 

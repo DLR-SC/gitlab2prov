@@ -11,7 +11,7 @@
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-344 444,-344 444,4 -4,4"/>
 <g id="clust1" class="cluster">
 <title>cluster_c1</title>
-<g id="a_clust1"><a xlink:href="gl2p:repository" xlink:title="repository">
+<g id="a_clust1"><a xlink:href="gitlab2prov:repository" xlink:title="repository">
 <polygon fill="none" stroke="black" points="8,-8 8,-332 432,-332 432,-8 8,-8"/>
 <text text-anchor="middle" x="220" y="-15.8" font-family="Times,serif" font-size="14.00">repository</text>
 </a>
@@ -20,7 +20,7 @@
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
-<g id="a_node1"><a xlink:href="gl2p:file" xlink:title="file">
+<g id="a_node1"><a xlink:href="gitlab2prov:file" xlink:title="file">
 <ellipse fill="#fffc87" stroke="#808080" cx="113" cy="-140" rx="27" ry="18"/>
 <text text-anchor="middle" x="113" y="-136.3" font-family="Times,serif" font-size="14.00">file</text>
 </a>
@@ -29,7 +29,7 @@
 <!-- n3 -->
 <g id="node3" class="node">
 <title>n3</title>
-<g id="a_node3"><a xlink:href="gl2p:author" xlink:title="author">
+<g id="a_node3"><a xlink:href="gitlab2prov:author" xlink:title="author">
 <polygon fill="#fed37f" stroke="black" points="118.33,-311.56 67,-324 15.67,-311.56 15.72,-291.44 118.28,-291.44 118.33,-311.56"/>
 <text text-anchor="middle" x="67" y="-302.3" font-family="Times,serif" font-size="14.00">author</text>
 </a>
@@ -45,7 +45,7 @@
 <!-- n5 -->
 <g id="node5" class="node">
 <title>n5</title>
-<g id="a_node5"><a xlink:href="gl2p:commit" xlink:title="commit">
+<g id="a_node5"><a xlink:href="gitlab2prov:commit" xlink:title="commit">
 <polygon fill="#9fb1fc" stroke="#0000ff" points="211,-241 141,-241 141,-205 211,-205 211,-241"/>
 <text text-anchor="middle" x="176" y="-219.3" font-family="Times,serif" font-size="14.00">commit</text>
 </a>
@@ -61,7 +61,7 @@
 <!-- n2 -->
 <g id="node2" class="node">
 <title>n2</title>
-<g id="a_node2"><a xlink:href="gl2p:file_v" xlink:title="file_v">
+<g id="a_node2"><a xlink:href="gitlab2prov:file_v" xlink:title="file_v">
 <ellipse fill="#fffc87" stroke="#808080" cx="113" cy="-57" rx="35.19" ry="18"/>
 <text text-anchor="middle" x="113" y="-53.3" font-family="Times,serif" font-size="14.00">file_v</text>
 </a>
@@ -91,7 +91,7 @@
 <!-- n4 -->
 <g id="node4" class="node">
 <title>n4</title>
-<g id="a_node4"><a xlink:href="gl2p:committer" xlink:title="committer">
+<g id="a_node4"><a xlink:href="gitlab2prov:committer" xlink:title="committer">
 <polygon fill="#fed37f" stroke="black" points="424.21,-311.56 351,-324 277.79,-311.56 277.85,-291.44 424.15,-291.44 424.21,-311.56"/>
 <text text-anchor="middle" x="351" y="-302.3" font-family="Times,serif" font-size="14.00">committer</text>
 </a>
@@ -114,7 +114,7 @@
 <!-- n6 -->
 <g id="node6" class="node">
 <title>n6</title>
-<g id="a_node6"><a xlink:href="gl2p:parent_commit" xlink:title="parent_commit">
+<g id="a_node6"><a xlink:href="gitlab2prov:parent_commit" xlink:title="parent_commit">
 <polygon fill="#9fb1fc" stroke="#0000ff" points="260,-324 136,-324 136,-288 260,-288 260,-324"/>
 <text text-anchor="middle" x="198" y="-302.3" font-family="Times,serif" font-size="14.00">parent_commit</text>
 </a>

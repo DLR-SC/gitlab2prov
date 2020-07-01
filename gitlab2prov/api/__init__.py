@@ -9,9 +9,9 @@ from typing import (Any, Callable, Coroutine, Dict, Iterable, Iterator, List,
 from aiohttp import ClientSession
 from yarl import URL
 
-from gl2p.utils import chunks, url_encoded_path
-from gl2p.utils.types import Award, Commit, Diff, Issue, Label, MergeRequest, Note
-from gl2p.api.ratelimiter import RateLimiter
+from gitlab2prov.utils import chunks, url_encoded_path
+from gitlab2prov.utils.types import Award, Commit, Diff, Issue, Label, MergeRequest, Note
+from gitlab2prov.api.ratelimiter import RateLimiter
 
 T = TypeVar("T")
 F = TypeVar("F", bound=Callable[..., Any])

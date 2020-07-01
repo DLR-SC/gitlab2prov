@@ -11,7 +11,7 @@
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-344 250,-344 250,4 -4,4"/>
 <g id="clust1" class="cluster">
 <title>cluster_c1</title>
-<g id="a_clust1"><a xlink:href="gl2p:repository" xlink:title="repository">
+<g id="a_clust1"><a xlink:href="gitlab2prov:repository" xlink:title="repository">
 <polygon fill="none" stroke="black" points="8,-8 8,-332 238,-332 238,-8 8,-8"/>
 <text text-anchor="middle" x="123" y="-15.8" font-family="Times,serif" font-size="14.00">repository</text>
 </a>
@@ -20,7 +20,7 @@
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
-<g id="a_node1"><a xlink:href="gl2p:resource" xlink:title="resource">
+<g id="a_node1"><a xlink:href="gitlab2prov:resource" xlink:title="resource">
 <ellipse fill="#fffc87" stroke="#808080" cx="75" cy="-140" rx="51.19" ry="18"/>
 <text text-anchor="middle" x="75" y="-136.3" font-family="Times,serif" font-size="14.00">resource</text>
 </a>
@@ -29,7 +29,7 @@
 <!-- n3 -->
 <g id="node3" class="node">
 <title>n3</title>
-<g id="a_node3"><a xlink:href="gl2p:resource_creation" xlink:title="resource_creation">
+<g id="a_node3"><a xlink:href="gitlab2prov:resource_creation" xlink:title="resource_creation">
 <polygon fill="#9fb1fc" stroke="#0000ff" points="210,-241 66,-241 66,-205 210,-205 210,-241"/>
 <text text-anchor="middle" x="138" y="-219.3" font-family="Times,serif" font-size="14.00">resource_creation</text>
 </a>
@@ -45,7 +45,7 @@
 <!-- n4 -->
 <g id="node4" class="node">
 <title>n4</title>
-<g id="a_node4"><a xlink:href="gl2p:creator" xlink:title="creator">
+<g id="a_node4"><a xlink:href="gitlab2prov:creator" xlink:title="creator">
 <polygon fill="#fed37f" stroke="black" points="192.76,-311.56 138,-324 83.24,-311.56 83.29,-291.44 192.71,-291.44 192.76,-311.56"/>
 <text text-anchor="middle" x="138" y="-302.3" font-family="Times,serif" font-size="14.00">creator</text>
 </a>
@@ -61,7 +61,7 @@
 <!-- n2 -->
 <g id="node2" class="node">
 <title>n2</title>
-<g id="a_node2"><a xlink:href="gl2p:resource_v" xlink:title="resource_v">
+<g id="a_node2"><a xlink:href="gitlab2prov:resource_v" xlink:title="resource_v">
 <ellipse fill="#fffc87" stroke="#808080" cx="162" cy="-57" rx="61.19" ry="18"/>
 <text text-anchor="middle" x="162" y="-53.3" font-family="Times,serif" font-size="14.00">resource_v</text>
 </a>

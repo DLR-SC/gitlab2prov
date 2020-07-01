@@ -6,8 +6,8 @@ from typing import Any, Dict, List, NamedTuple, Optional, Type, Union
 from prov.constants import PROV_ROLE, PROV_TYPE
 from prov.identifier import QualifiedName
 
-from gl2p.utils import p_time, q_name
-from gl2p.utils.types import Award, Commit, Issue, Label, MergeRequest, Note
+from gitlab2prov.utils import p_time, q_name
+from gitlab2prov.utils.types import Award, Commit, Issue, Label, MergeRequest, Note
 
 
 class Agent(NamedTuple):

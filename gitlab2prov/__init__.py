@@ -23,11 +23,11 @@ from prov.model import ProvDocument, PROV_REC_CLS, ProvActivity, ProvEntity, Pro
 from prov.identifier import QualifiedName
 from prov.dot import prov_to_dot
 
-from gl2p.models import enforce_uniqueness_constraints
-from gl2p.api import GitlabAPIClient
-from gl2p.config import get_config, ConfigurationError
-from gl2p.pipelines import CommitPipeline, CommitResourcePipeline, IssueResourcePipeline, MergeRequestResourcePipeline
-from gl2p.utils import store_in_db, q_name, url_encoded_path
+from gitlab2prov.models import enforce_uniqueness_constraints
+from gitlab2prov.api import GitlabAPIClient
+from gitlab2prov.config import get_config, ConfigurationError
+from gitlab2prov.pipelines import CommitPipeline, CommitResourcePipeline, IssueResourcePipeline, MergeRequestResourcePipeline
+from gitlab2prov.utils import store_in_db, q_name, url_encoded_path
 
 
 class Gitlab2Prov:

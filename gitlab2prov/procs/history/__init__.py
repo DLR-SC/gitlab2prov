@@ -4,7 +4,7 @@ from collections import defaultdict, deque
 from typing import Dict, List, Set, Tuple, Any
 from copy import deepcopy
 
-from gl2p.utils.types import Commit, Diff
+from gitlab2prov.utils.types import Commit, Diff
 
 
 class FileNameHistory:

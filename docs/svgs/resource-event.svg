@@ -11,7 +11,7 @@
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-344 551,-344 551,4 -4,4"/>
 <g id="clust1" class="cluster">
 <title>cluster_c1</title>
-<g id="a_clust1"><a xlink:href="gl2p:repository" xlink:title="repository">
+<g id="a_clust1"><a xlink:href="gitlab2prov:repository" xlink:title="repository">
 <polygon fill="none" stroke="black" points="8,-8 8,-332 539,-332 539,-8 8,-8"/>
 <text text-anchor="middle" x="273.5" y="-15.8" font-family="Times,serif" font-size="14.00">repository</text>
 </a>
@@ -20,7 +20,7 @@
 <!-- n1 -->
 <g id="node1" class="node">
 <title>n1</title>
-<g id="a_node1"><a xlink:href="gl2p:resource" xlink:title="resource">
+<g id="a_node1"><a xlink:href="gitlab2prov:resource" xlink:title="resource">
 <ellipse fill="#fffc87" stroke="#808080" cx="86" cy="-306" rx="51.19" ry="18"/>
 <text text-anchor="middle" x="86" y="-302.3" font-family="Times,serif" font-size="14.00">resource</text>
 </a>
@@ -29,7 +29,7 @@
 <!-- n2 -->
 <g id="node2" class="node">
 <title>n2</title>
-<g id="a_node2"><a xlink:href="gl2p:resource_v-1" xlink:title="resource_v&#45;1">
+<g id="a_node2"><a xlink:href="gitlab2prov:resource_v-1" xlink:title="resource_v&#45;1">
 <ellipse fill="#fffc87" stroke="#808080" cx="106" cy="-223" rx="69.59" ry="18"/>
 <text text-anchor="middle" x="106" y="-219.3" font-family="Times,serif" font-size="14.00">resource_v&#45;1</text>
 </a>
@@ -45,7 +45,7 @@
 <!-- n3 -->
 <g id="node3" class="node">
 <title>n3</title>
-<g id="a_node3"><a xlink:href="gl2p:resource_v" xlink:title="resource_v">
+<g id="a_node3"><a xlink:href="gitlab2prov:resource_v" xlink:title="resource_v">
 <ellipse fill="#fffc87" stroke="#808080" cx="167" cy="-57" rx="61.19" ry="18"/>
 <text text-anchor="middle" x="167" y="-53.3" font-family="Times,serif" font-size="14.00">resource_v</text>
 </a>
@@ -68,7 +68,7 @@
 <!-- n4 -->
 <g id="node4" class="node">
 <title>n4</title>
-<g id="a_node4"><a xlink:href="gl2p:event" xlink:title="event">
+<g id="a_node4"><a xlink:href="gitlab2prov:event" xlink:title="event">
 <polygon fill="#9fb1fc" stroke="#0000ff" points="270,-158 214,-158 214,-122 270,-122 270,-158"/>
 <text text-anchor="middle" x="242" y="-136.3" font-family="Times,serif" font-size="14.00">event</text>
 </a>
@@ -84,7 +84,7 @@
 <!-- n6 -->
 <g id="node6" class="node">
 <title>n6</title>
-<g id="a_node6"><a xlink:href="gl2p:event_initiator" xlink:title="event_initiator">
+<g id="a_node6"><a xlink:href="gitlab2prov:event_initiator" xlink:title="event_initiator">
 <polygon fill="#fed37f" stroke="black" points="531.42,-228.56 434,-241 336.58,-228.56 336.67,-208.44 531.33,-208.44 531.42,-228.56"/>
 <text text-anchor="middle" x="434" y="-219.3" font-family="Times,serif" font-size="14.00">event_initiator</text>
 </a>
@@ -107,7 +107,7 @@
 <!-- n5 -->
 <g id="node5" class="node">
 <title>n5</title>
-<g id="a_node5"><a xlink:href="gl2p:previous_event" xlink:title="previous_event">
+<g id="a_node5"><a xlink:href="gitlab2prov:previous_event" xlink:title="previous_event">
 <polygon fill="#9fb1fc" stroke="#0000ff" points="318.5,-241 193.5,-241 193.5,-205 318.5,-205 318.5,-241"/>
 <text text-anchor="middle" x="256" y="-219.3" font-family="Times,serif" font-size="14.00">previous_event</text>
 </a>

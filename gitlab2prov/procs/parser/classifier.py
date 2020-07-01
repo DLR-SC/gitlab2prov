@@ -1,7 +1,7 @@
 import re
 from functools import lru_cache
 from typing import Any, Dict, List, Pattern
-from gl2p.utils.types import Note
+from gitlab2prov.utils.types import Note
 
 
 classifiers: Dict[str, List[str]] = {
