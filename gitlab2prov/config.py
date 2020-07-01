@@ -1,22 +1,10 @@
-"""
-Configuration handling.
-
-Every option can be configured by a command line flag.
-Every option can be configured by a config file option.
-Flag values take precendence over config file option values.
-
-Config strategy:
-- Parse command line arguments
-- If config file exists, supplement args with config file values
-- Check if minimum configuration has been provided
-- Return configuration namespace
-"""
 import argparse
 import configparser
 import os
 import sys
 from distutils.util import strtobool
 from typing import Any, List, Tuple
+
 
 prog = "GitLab2PROV"
 description = "Extract provenance information from GitLab projects."
@@ -29,10 +17,11 @@ class ConfigurationError(Exception):
 
 def get_config() -> argparse.Namespace:
     """Return configuration namespace."""
-    args = parse_args()
-
-    if os.path.exists(args.config_file):
-        args = patch(args)
+    parser = get_parser()
+    args = parser.parse_args()
+    if args.config_file:
+        if os.path.exists(args.config_file):
+            args = patch(args)
 
     if is_under_configured(args):
         keys = is_under_configured(args)
@@ -40,12 +29,13 @@ def get_config() -> argparse.Namespace:
             ("option", "has"),
             ("options", "have")
         ][min(1, len(keys.split())-1)]
+        parser.print_help()
+        print()
         raise ConfigurationError(f"Necessary config {pick[0]} {keys} {pick[1]} not been provided.")
 
     return args
 
-
-def parse_args() -> argparse.Namespace:
+def get_parser() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(prog, None, description, epilog)
 
@@ -58,7 +48,7 @@ def parse_args() -> argparse.Namespace:
     basic.add_argument("-r", "--rate-limit",
                        help="api client rate limit (in req/s)", metavar="<int>", type=int)
     basic.add_argument("-c", "--config-file",
-                       help="config file path", default="config/config.ini", metavar="<string>")
+                       help="config file path", metavar="<string>")
     basic.add_argument("-f", "--format",
                        help="provenance output format", choices=["provn", "json", "rdf", "xml", "dot"])
     basic.add_argument("-q", "--quiet",
@@ -77,11 +67,14 @@ def parse_args() -> argparse.Namespace:
                        help="neo4j host", metavar="<string>")
     neo4j.add_argument("--neo4j-boltport",
                        help="neo4j bolt protocol port", metavar="<string>")
-    return parser.parse_args()
+    return parser
 
 
 def patch(args: argparse.Namespace) -> argparse.Namespace:
     """Try to patch missing flag values with values from config file."""
+    if not args.config_file:
+        return args
+
     projects = []
     for (section, key), value in config_items(args.config_file):
         try:
