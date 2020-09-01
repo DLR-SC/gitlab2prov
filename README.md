@@ -24,8 +24,21 @@ source env/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
-
 ```
+#### Installation using `pip`
+GitLab2PROV is not yet available on the Python Package Index.
+Still, as there is a `setup.py` file, you can install GitLab2PROV via `pip` after cloning the repository.
+```
+# Clone repository via SSH (recommended)
+git clone git@github.com:DLR-SC/gitlab2prov.git
+
+# Change directory
+cd gitlab2prov
+
+# Install using pip
+pip install . 
+```
+
 ### Configuration
 
 #### Obtain Private Access Token for GitLab
