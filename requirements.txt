@@ -1,5 +1,4 @@
 prov==1.5.3
 pydot
 aiohttp
-prov-db-connector
 yarl

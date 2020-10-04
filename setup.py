@@ -2,7 +2,6 @@ import pathlib
 from setuptools import setup, find_packages
 
 HERE = pathlib.Path(__file__).parent
-README = (HERE / "README.md").read_text()
 
 setup(
     name="gitlab2prov",
@@ -19,15 +18,12 @@ setup(
         "software analytics",
         "w3c prov"
     ],
-    long_description=README,
-    long_description_content_type="text/markdown",
     url="https://gitlab.com/dlr-sc/gitlab2prov",
     packages=find_packages(),
     install_requires=[
         "prov==1.5.3",
         "pydot",
         "aiohttp",
-        "prov-db-connector",
         "yarl",
     ],
     entry_points={"console_scripts":["gitlab2prov=gitlab2prov.cli:main"]},
