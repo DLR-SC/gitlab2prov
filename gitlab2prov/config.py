@@ -6,9 +6,8 @@ from distutils.util import strtobool
 from typing import Any, List, Tuple
 
 
-prog = "GitLab2PROV"
+prog = "gitlab2prov"
 description = "Extract provenance information from GitLab projects."
-epilog = "Consider visiting GitLab2PROV on GitHub: https://github.com/DLR-SC/gitlab2prov"
 
 
 class ConfigurationError(Exception):
@@ -24,49 +23,32 @@ def get_config() -> argparse.Namespace:
             args = patch(args)
 
     if is_under_configured(args):
-        keys = is_under_configured(args)
-        pick = [
-            ("option", "has"),
-            ("options", "have")
-        ][min(1, len(keys.split())-1)]
+        missing_options = is_under_configured(args)
         parser.print_help()
-        print()
-        raise ConfigurationError(f"Necessary config {pick[0]} {keys} {pick[1]} not been provided.")
+        raise ConfigurationError(f"\nMissing values for config options: {missing_options}")
 
     return args
 
 def get_parser() -> argparse.Namespace:
     """Parse command line arguments."""
-    parser = argparse.ArgumentParser(prog, None, description, epilog)
+    parser = argparse.ArgumentParser(prog, None, description)
 
-    basic = parser.add_argument_group("BASIC CONFIG")
-    neo4j = parser.add_argument_group("NEO4J CONFIG")
-    basic.add_argument("-p", "--project-urls",
+    parser.add_argument("-p", "--project-urls",
                        help="gitlab project urls", nargs="+", metavar="<string>")
-    basic.add_argument("-t", "--token",
+    parser.add_argument("-t", "--token",
                        help="gitlab api access token", metavar="<string>")
-    basic.add_argument("-r", "--rate-limit",
+    parser.add_argument("-r", "--rate-limit",
                        help="api client rate limit (in req/s)", metavar="<int>", type=int)
-    basic.add_argument("-c", "--config-file",
+    parser.add_argument("-c", "--config-file",
                        help="config file path", metavar="<string>")
-    basic.add_argument("-f", "--format",
+    parser.add_argument("-f", "--format",
                        help="provenance output format", choices=["provn", "json", "rdf", "xml", "dot"])
-    basic.add_argument("-q", "--quiet",
+    parser.add_argument("-q", "--quiet",
                        help="suppress output to stdout", action="store_true")
-    basic.add_argument("--aliases", metavar="<string>",
+    parser.add_argument("--aliases", metavar="<string>",
                        help="path to agent alias mapping json file")
-    basic.add_argument("--pseudonymize", action="store_true",
+    parser.add_argument("--pseudonymize", action="store_true",
                        help="pseudonymize agents")
-    neo4j.add_argument("--neo4j",
-                       help="enable neo4j storage", action="store_true")
-    neo4j.add_argument("--neo4j-user",
-                       help="neo4j username", metavar="<string>")
-    neo4j.add_argument("--neo4j-password",
-                       help="neo4j password", metavar="<string>")
-    neo4j.add_argument("--neo4j-host",
-                       help="neo4j host", metavar="<string>")
-    neo4j.add_argument("--neo4j-boltport",
-                       help="neo4j bolt protocol port", metavar="<string>")
     return parser
 
 
@@ -88,7 +70,6 @@ def patch(args: argparse.Namespace) -> argparse.Namespace:
 
     if not getattr(args, "project_urls"):
         setattr(args, "project_urls", projects)
-    args.neo4j = bool(strtobool(str(args.neo4j)))
     args.quiet = bool(strtobool(str(args.quiet)))
     args.rate_limit = int(args.rate_limit)
     return args
@@ -97,13 +78,10 @@ def patch(args: argparse.Namespace) -> argparse.Namespace:
 def is_under_configured(args: argparse.Namespace) -> str:
     """Return string of missing keys if there are any."""
     necessary = ["project_urls", "token", "format"]
-    neo4j = ["neo4j_user", "neo4j_host", "neo4j_password", "neo4j_boltport"]
-    if args.neo4j:
-        necessary.extend(neo4j)
     missing = ""
     for key in necessary:
         if not getattr(args, key):
-            missing = ", ".join((missing, f"'{key}'"))
+            missing = ", ".join((missing, f"'--{key}'"))
     return missing[2:]
 
 
