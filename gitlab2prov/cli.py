@@ -1,7 +1,7 @@
 import json
 from prov.dot import prov_to_dot
 from . import Gitlab2Prov
-from .config import get_config
+from .config import get_config, ConfigurationError
 
 def read_alias_mapping(file_path):
     """Read and transform agent alias listing from a .json file."""
@@ -23,7 +23,11 @@ def serialize(graph, fmt="json"):
 
 def main():
     """Command line script entry point."""
-    config = get_config()
+    try:
+        config = get_config()
+    except ConfigurationError as e:
+        print(e)
+        return
     alias_mapping = read_alias_mapping(config.aliases)
 
     gl2p = Gitlab2Prov(config.token, config.rate_limit)
