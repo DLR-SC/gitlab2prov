@@ -5,25 +5,6 @@ import uuid
 from typing import Any, Iterator, List
 
 from prov.model import ProvDocument
-from provdbconnector import Neo4jAdapter, ProvDb
-
-
-def store_in_db(doc: ProvDocument, config: argparse.Namespace) -> None:
-    """
-    Store prov document in neo4j instance.
-    """
-    if bundle_exists(config):
-        raise KeyError(
-            f"Graph for {url_encoded_path(config.project_url).replace('%2F', '-')} already exists in neo4j."
-        )
-
-    auth = {
-        "user_name": config.neo4j_user,
-        "user_password": config.neo4j_password,
-        "host": f"{config.neo4j_host}:{config.neo4j_boltport}"
-    }
-    api = ProvDb(adapter=Neo4jAdapter, auth_info=auth)
-    api.save_document(doc)
 
 
 def p_time(string: str) -> datetime.datetime:
