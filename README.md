@@ -1,62 +1,44 @@
-# GitLab2PROV - Extract Provenance Information from GitLab Repositories
+# :seedling: `gitlab2prov`: Extract Provenance from GitLab Projects 
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![DOI](https://zenodo.org/badge/215042878.svg)](https://zenodo.org/badge/latestdoi/215042878) ![Python application](https://github.com/DLR-SC/gitlab2prov/workflows/Python%20application/badge.svg?branch=master) ![mypy-check](https://github.com/DLR-SC/gitlab2prov/workflows/mypy-check/badge.svg) ![Deploy to Amazon ECS](https://github.com/DLR-SC/gitlab2prov/workflows/Deploy%20to%20Amazon%20ECS/badge.svg)
+[![License: MIT](https://img.shields.io/github/license/dlr-sc/gitlab2prov?label=License)](https://opensource.org/licenses/MIT) [![DOI](https://zenodo.org/badge/215042878.svg)](https://zenodo.org/badge/latestdoi/215042878) 
 
-## Data Model
+`gitlab2prov` is a Python library and command line tool for extracting provenance information from GitLab projects.  
 
-GitLab2PROV uses a data model according to [W3C PROV](https://www.w3.org/TR/prov-overview/) specification.
+The data model employed by `gitlab2prov` has been modelled according to [W3C PROV](https://www.w3.org/TR/prov-overview/) specification.  
+A representation of the model can be found in `\docs`.
 
-## Setup and Usage:rocket:
+**Note: Work in progress. Expect breaking changes until v1.0**.
 
-### Installation
-```
-# Clone repository via SSH (recommended)
-git clone git@github.com:DLR-SC/gitlab2prov.git
+## Installation :wrench:
 
-# Change into directory
-cd gitlab2prov
+Clone the project and use the provided `setup.py` to install `gitlab2prov`.
 
-# Create a virtual environment (recommended)
-python -m venv env
-
-# Activate the environment
-source env/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-#### Installation using `pip`
-GitLab2PROV is not yet available on the Python Package Index.
-Still, as there is a `setup.py` file, you can install GitLab2PROV via `pip` after cloning the repository.
-```
-# Clone repository via SSH (recommended)
-git clone git@github.com:DLR-SC/gitlab2prov.git
-
-# Change directory
-cd gitlab2prov
-
-# Install using pip
-pip install . 
+```bash
+python setup.py install --user
 ```
 
-### Configuration
+## Usage :computer:
 
-#### Obtain Private Access Token for GitLab
+`gitlab2prov` can be used either as a command line script or as a Python lib.
 
-Go to `https://YOUR-GITLAB/profile/personal_access_tokens` and claim a personal access token.
-The necessary scopes are `api` and `read_user`. A guide on how to create an API access token can be found [here](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token).
+To extract provenance from a project, follow these steps:
+| Instructions                                                                                                                                                      | Config Option    |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|
+| 1. Obtain an API Token for the GitLab API ([Token Guide](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token)) | `--token`        |
+| 2. Set the URL for the GitLab Project                                                                                                                             | `--project_urls` |
+| 3. Set a rate limit for API requests                                                                                                                              | `--rate_limit`   |
+| 4. Choose a PROV serialization format                                                                                                                             | `--format`       |
+| 5. Choose whether to print to stdout or not                                                                                                                       | `--quiet`        |
+
+### As a Command Line Script
+
+`gitlab2prov` can be configured either by command line flags or by using a config file.
 
 
-#### Configure `gitlab2prov`
+##### Config File :clipboard:
 
-All available configuration options can be set by providing command line arguments/flags.
-To get a list of available options, simply run `python gitlab2prov.py -h` or refer to the **Usage** section of this README.
-To ease the configuration of consecutive runs, `gitlab2prov` is able to use a configuration file.
-The default path for the config file is set to `config/config.ini` and can be changed by using the `-c` or likewise the `--config-file` flag.
+An example of a configuration file can be found in `config\examples`.
 
-An example of a configuration file can be found at `config/example.ini`.
-
-Excerpt from `config/example.ini`
 ```ini
 [GITLAB2PROV]
 token = token
@@ -64,32 +46,21 @@ quiet = False
 format = json
 rate_limit = 10
 
-neo4j = False
-neo4j_user = username
-neo4j_host = localhost
-neo4j_boltport = 7687
-neo4j_password = password
-
 [PROJECTS]
-foo = project_foo_url
-bar = project_bar_url
+project_a = project_a_url
+project_b = project_b_url
 ```
-**Note:** Command line flags will take precedence over values provided by the config file.
 
-### Usage
+##### Command Line Flags :flags:
+
 ```
-❯ python gitlab2prov.py -h
-usage: GitLab2PROV [-h] [-p <string> [<string> ...]] [-t <string>] [-r <int>]
-                   [-c <string>] [-f {provn,json,rdf,xml,dot}] [-q] [--neo4j]
-                   [--neo4j-user <string>] [--neo4j-password <string>]
-                   [--neo4j-host <string>] [--neo4j-boltport <string>]
+usage: GitLab2PROV [-h] [-p <string> [<string> ...]] [-t <string>] [-r <int>] [-c <string>]
+                   [-f {provn,json,rdf,xml,dot}] [-q] [--aliases <string>] [--pseudonymize]
 
 Extract provenance information from GitLab projects.
 
 optional arguments:
   -h, --help            show this help message and exit
-
-BASIC CONFIG:
   -p <string> [<string> ...], --project-urls <string> [<string> ...]
                         gitlab project urls
   -t <string>, --token <string>
@@ -101,43 +72,26 @@ BASIC CONFIG:
   -f {provn,json,rdf,xml,dot}, --format {provn,json,rdf,xml,dot}
                         provenance output format
   -q, --quiet           suppress output to stdout
-
-NEO4J CONFIG:
-  --neo4j               enable neo4j storage
-  --neo4j-user <string>
-                        neo4j username
-  --neo4j-password <string>
-                        neo4j password
-  --neo4j-host <string>
-                        neo4j host
-  --neo4j-boltport <string>
-                        neo4j bolt protocol port
-
-Consider visiting GitLab2PROV on GitHub: https://github.com/DLR-SC/gitlab2prov
+  --aliases <string>    path to agent alias mapping json file
+  --pseudonymize        pseudonymize agents
 ```
 
-## Example
+## Contributing
 
-### Cypher Query
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
-```cypher
-MATCH (user:Agent)-[:wasAttributedTo]-(fileVersion:Entity), (fileVersion:Entity)-[:specializationOf]->(file:Entity)
-WHERE 
-  fileVersion.`prov:type` = "file_version" AND file.`prov:type` = "file"
-RETURN 
-  user.name, COUNT(DISTINCT file) AS file_count
-ORDER BY file_count DESC
-```
+## References
 
-## Credits
-**Software that has provided the foundations for GitLab2PROV**  
+**Influencial Software for `gitlab2prov`**
 * Martin Stoffers: "Gitlab2Graph", v1.0.0, October 13. 2019, [GitHub Link](https://github.com/DLR-SC/Gitlab2Graph), DOI 10.5281/zenodo.3469385  
 
 * Quentin Pradet: "How do you rate limit calls with aiohttp?", [GitHub Gist](https://gist.github.com/pquentin/5d8f5408cdad73e589d85ba509091741), MIT LICENSE
 
-
-**Papers that GitLab2PROV is based on**:
+**Influencial Papers for `gitlab2prov`**:
 
 * De Nies, T., Magliacane, S., Verborgh, R., Coppens, S., Groth, P., Mannens, E., & Van de Walle, R. (2013). [Git2PROV: Exposing Version Control System Content as W3C PROV](https://dl.acm.org/doi/abs/10.5555/2874399.2874431). In *Poster and Demo Proceedings of the 12th International Semantic Web Conference* (Vol. 1035, pp. 125–128).
 
 * Packer, H. S., Chapman, A., & Carr, L. (2019). [GitHub2PROV: provenance for supporting software project management](https://dl.acm.org/doi/10.5555/3359032.3359039). In *11th International Workshop on Theory and Practice of Provenance (TaPP 2019)*.
+
+**Papers that refer to `gitlab2prov`**:
+* Andreas Schreiber, Claas de Boer (2020). [Modelling Knowledge about Software Processes usingProvenance Graphs and its Application to Git-based VersionControl Systems](https://dl.acm.org/doi/10.1145/3387940.3392220). In *ICSEW'20: Proceedings of the IEEE/ACM 42nd Conference on Software Engineering Workshops* (pp. 358-359).
