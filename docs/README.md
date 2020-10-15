@@ -3,39 +3,12 @@
 ### Brew your own plots.
 You can generate all figures that are displayed in the **Models** section by yourself and in a format of your desire.
 
-Simply run the provided `plot.py` script with the necessary flags/arguments.
-You will need to install the python package `prov`. For a quick setup run:
+Simply run the provided `model.py` script.
+
+You will need to install the python package `prov` first. For a quick setup run:
 
 ```bash
 pip install -r requirements.txt
-```
-
-Usage of `plot.py`:
-```bash
-❯ python plot.py -h
-usage: plot.py [-h] [--format FORMAT] directory
-
-Plot PROV models.
-
-positional arguments:
-  directory        output file directory
-
-optional arguments:
-  -h, --help       show this help message and exit
-  --format FORMAT  output format (default .svg)
-```
-
-**Example**
-
-```bash
-❯ python plot.py --format=pdf pdfs/
-Plotting: pdfs/commit-add-file.pdf
-Plotting: pdfs/commit-modify-file.pdf
-Plotting: pdfs/commit-delete-file.pdf
-Plotting: pdfs/resource-creation-commit.pdf
-Plotting: pdfs/resource-event.pdf
-Plotting: pdfs/resource-creation.pdf
-Done.
 ```
 
 # Models
@@ -44,79 +17,81 @@ Done.
 #### Adding a file
 This is the model for the addition of a new file to the project through a git commit.
 
-The `commit activity` represents the commit. The `commit activity` is associated with two agents, the `author agent` aswell as the `committer agent`. These represent the users responsible  for authoring and committing the `git` commit.
+The `Commit` activity represents the commit itself. The `Commit` activity is associated with two agents, the `Author` agent aswell as the `Committer` agent. These represent the users responsible  for authoring and committing the `git` commit.
 
-The `commit activity` generates two entities for the added file. One `file entity` representing the concept of the file itself and one `file version entity` that represents the initial version of the added file. Both entities are attributed to the `author agent`. The `author agent` is assumed to not only having authored the commit but also the files contained in the commit. The `file version` entity is related to to the `file entity` to mark it as a specialization of the `file entity`.
+The `Commit` activity generates two entities for the added file. One `File` entity representing the concept of the file itself and one `File Version` entity that represents the initial version of the added file. Both entities are attributed to the `Author` agent. The `Author` agent is assumed to not only having authored the commit but also the files contained in the commit. The `File Version` entity is related to to the `File` entity to mark it as a specialization of `File`.
 
-The `commit activity` is related to the activities representing the its parent commits. This only applies if the commit has any parents.
+The `Commit` activity is related to the activities representing the its parent commits. This only applies if the commit has any parents. The parent commits are represented by the `Parent Commit` activity in the model.
 
-All following `file version entities` will share the same `original entity` and will always relate to their latest previous versions. This can be examined in the model for the modification of a file.
+All following `File Version` entities will share the same original `File` entity and will always relate to their latest previous versions. This can be examined in the model for the modification of a file.
 
-![Adding a file.](./svgs/commit-add-file.svg)
+![Adding a file.](./svgs/git_commit_model_add.svg)
 ---
 
 
 #### Modifying a file
 This is the model for the modification of an already existing file by a `git` commit.
 
-As usual a `commit activity` represents the `git` commit itself. The modification of a file generates a new file version. This is represented by the `commit activity` generating a new `file version entity`. The `commit activity` used the previous `file version entity` for the generation. This entity is related to the latest preceding `file version entity` and marked as being derived from the previous entity. The new `file version entity` is also related to the original `file entity` and marked as a specialization of it. The new `file version entity` is attributed to the `author agent`.
+As usual a `Commit` activity represents the `git` commit itself. The modification of a file generates a new file version. This is represented by the `Commit` activity generating a new `File Version N` entity. The `commit activity` used the previous `File Version N-1` entity for the generation. The generated entity is related to the latest preceding `File Version N-1` entity and marked as being derived from it. The new `File Version N` entity is also related to the original `File` entity and marked as a specialization of it. The new `File Version` entity is attributed to the `Author` agent.
 
-The `commit activity` is associated with the `author agent` and the `committer agent`. They represent the users that are responsible for the authorship and commit respectivly.
-The `commit activity` is related to its parenting commit by a wasInformedBy relations.
+The `Commit` activity is associated with the `Author` agent and the `Committer` agent. They represent the users that are responsible for the authorship and commit respectivly.
+The `Commit` activity is related to its parenting commit by a `wasInformedBy` relations.
 
-Note: Due to the data retrieval approach of `gitlab2prov`, determining the latest preceding file version is not trivial. We deploy a workaround for this by creating a `file version entity` for each parenting commit and relating the generated `file version entity` to those `file version entities`. In essence this still represents the file at its latest revision. Though as a result there can be more `file version entities` than changes have been made to the file. This has to be considered when planning out queries.
+Note: Due to the data retrieval approach of `gitlab2prov`, determining the latest preceding file version is not trivial. We deploy a workaround for this by creating a `File Version N-1` entity for each parenting commit and relating the generated `File Version` entity to those `File Version N-1` entities. In essence this still represents the file at its latest revision. Though as a result there can be more `File Version` entities than changes have been made to the file. This has to be considered when planning out queries.
 
-![Modifying a file.](./svgs/commit-modify-file.svg)
+![Modifying a file.](./svgs/git_commit_model_mod.svg)
 ---
 
 #### Deleting a file
 This is the model for the deletion of a file.
 
-A `commit activity` represents the `git` commit. The `commit activity` is associated with the `author agent` and the `committer agent` representing the users that are responsible for the respective actions. The `commit activity` is related to all of its parent commits.
+A `Commit` activity represents the `git` commit. The `Commit` activity is associated with the `Author` agent and the `Committer` agent representing the users that are responsible for the respective actions. The `Commit` activity is related to all of its parent commits.
 
-We model the deletion of a file through a commit by spawning a special `file version entity` which is imidiatly marked as invalidated by the `commit activity`. This `file version entity` is connected to the `file entity` by a specialization of relationship. This allows to preserve the time at which the file got deleted.
+We model the deletion of a file through a commit by spawning a special `File Version` entity which is imidiatly marked as invalidated by the `Commit` activity. This `File Version` entity is connected to the `File` entity by a `specializationOf` relationship. This allows to preserve the time at which the file got deleted.
 
-![Deleting a file.](./svgs/commit-delete-file.svg)
+![Deleting a file.](./svgs/git_commit_model_del.svg)
+---
 
+## The GitLab Web Resource Models
 
-## The GitLab Resource Model
+Most `git`-hosting platforms provide not only a `git` server but also platform specific features. For example, GitLab has an issue tracking system, allows discussions for each recorded `git` commit and provides the ability to post, discuss and review merge requests, etc. We model these features as event-driven resources. Events occur against resources and create new resource versions by doing so.
 
-Most `git`-hosting platforms provide not only a `git` server but also platform specific features. For example, GitLab has an issue tracking system, allows discussions for each recorded `git` commit and provides the ability to post, discuss and review merge requests, etc. We model these features as event-driven resources. Events occur against them and by that create new versions of the resource.
+#### GitLab Commit Model
 
-#### Resource Creation
-This is the model for the creation of issue resources and merge request resources.
+The models that we employ to capture user interactions on GitLab Web resources such as issues and merge requests do not differ significantly from one another.
+Therefore we only explain one, as the underlying concept carries over to the remaining models.
 
-The `resource creation activity` represents the creation of the resource and generates a `resource entity` representing the resource aswell as a `resource version` representing the first resource version.
+The employed model can be partitioned into two sections.
+The first section is concerned with the capture of the creation of a Web resource.
+The second one models the evolution of such a resource over time as user and system initiated events occur against it.
 
-The `resource version entity` is related to the `resource entity` and is marked as a specialization of that entity. The `resource creation activity` is associated with the `creator agent` which represents the user that created the resource. For merge requests and isseus this is the user that opened it. The time of creation coincides with the time at which the resource was opened. Both the `resource entity` and the `resource version entity` are attributed to the `creator agent`.
+Lets take the GitLab Commit Model as an example.
+Immidiatly after GitLab receives a new `git` commit, GitLab creates a web interface for that commit.
+The action of creating that interface is displayed by the `Commit Creation` activity.
+The `Commit Creation` activity is related to the activity of the `git` commit that issued the Web resource creation.
+The `Committer` of the `git` commit is marked as the `Creator` agent of the GitLab Commit Model that is responsible for the creation of the web resource.
+Entities for the Commit Web resource (`Commit`) aswell as the initial version of that Web resource (`Commit Version`) are generated by the `Commit Creation` activity at the time of creation.
 
-![The creation of a resource.](./svgs/resource-creation.svg)
+The second section is concerned with events that occur against the Web resource.
+Such events are comments that users add to the resource aswell as other interactions such as reacting with emoji.
+Each such event, that we call `Commit Annotations`, creates a new version of the web resource.
+This version is represented by the `Annotated Commit Version` entity.
+Each new resource version is marked as a specialization of the original web resource and as a derivation of the version preceding it.
+This modeling approach can be compared to an event chain.
+
+![GitLab Commit Model](./svgs/gitlab_commit_model.svg)
 
 ---
 
-#### Commit Resource Creation - Special Case of Resource Creation
-This is the model for the creation of a commit resource.
+#### GitLab Issue Model
 
-A commit resource is the web-interface representation that GitLab provides for commits. Just as with issues and merge requests, users have the ability to comment on commit resources. Only a handful of features that are provided for issues and merge request also apply to the commit representation, we chose to model it anyway as it provides decent inside into the linkage of commits, issues, and merge requests.
-
-The creation of a commit resource is intertwined with the actual `git` commit activity itself. This combines the `git` commit model with the model for commit resources.
-
-A commit triggers the creation of a commit resource. This is modeled by a `commit activity` that instigates a `resource creation activity`. The `resource creation activity` generates a `resource entity` that represents the resource itself and a `resource version entity` that represents the first version of the resource. Both entities are attributed to the `committer agent` whith which the `commit activity` is associated. The `resource version entity` is marked as a specialization of the `resource entity`.
-
-![The creation of a commit resource.](./svgs/resource-creation-commit.svg)
+![GitLab Issue Model](./svgs/gitlab_issue_model.svg)
 
 ---
 
-#### Resource Events
-This is the model for an event occuring against a resource.
+#### GitLab Merge Request Model
 
-Events can represent a multitude of things. For example an event occuring against an issue could be, that the issue got reopened or that some user added a label to it.
-
-An `event activity` represents the event that occurs against the resource. The `event activity` uses the latest `resource version` **V-1** and generates a new `resource version` **V**. **V** is marked as being derived from **V-1** and relates to the original `resource version` by a specialization of relation. The `event activity` is associated with the `event initiator agent`. The generated `resource entity` **V** is attributed to the `event initiator agent`. The `event activity` is related to the previous event.
-
-If the event is the first one occuring against the resource after the creation of the resource, the `event activity` is instead related to the `creation activity`.
-
-![An event occuring on a resource.](./svgs/resource-event.svg)
+![GitLab Issue Model](./svgs/gitlab_merge_request_model.svg)
 
 ---
 
