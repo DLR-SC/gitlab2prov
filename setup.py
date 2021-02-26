@@ -5,7 +5,7 @@ HERE = pathlib.Path(__file__).parent
 
 setup(
     name="gitlab2prov",
-    version="0.1",
+    version="0.3",
     author="Claas de Boer, Andreas Schreiber",
     author_email="claas.deboer@dlr.de, andreas.schreiber@dlr.de",
     description="Extract provenance information (W3C PROV) from GitLab projects.",
@@ -18,7 +18,7 @@ setup(
         "software analytics",
         "w3c prov"
     ],
-    url="https://gitlab.com/dlr-sc/gitlab2prov",
+    url="https://github.com/dlr-sc/gitlab2prov",
     packages=find_packages(),
     install_requires=[
         "prov==1.5.3",
