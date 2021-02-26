@@ -21,7 +21,7 @@ setup(
     url="https://github.com/dlr-sc/gitlab2prov",
     packages=find_packages(),
     install_requires=[
-        "prov==1.5.3",
+        "prov==2.0.0",
         "pydot",
         "aiohttp",
         "yarl",
