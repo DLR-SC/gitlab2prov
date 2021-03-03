@@ -16,7 +16,11 @@ class CommitProcessor:
         packages = []
         commits = {commit["id"]: commit for commit in commits}
         for commit, parsed_diff in zip(commits.values(), CommitProcessor.parse_diffs(commits, diffs)):
-            parents = [commits[parent_id] for parent_id in commit["parent_ids"]]
+            parents = []
+            for parent_id in commit["parent_ids"]:
+                parent = commits.get(parent_id)
+                if parent:
+                    parents.append(parent)
             package = CommitModelPackage.from_commit(commit=commit, parents=parents, diff=parsed_diff)
             packages.append(package)
         return packages
