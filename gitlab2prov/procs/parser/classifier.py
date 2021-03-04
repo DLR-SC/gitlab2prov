@@ -6,6 +6,10 @@ from gitlab2prov.utils.types import Note
 
 classifiers: Dict[str, List[str]] = {
 
+    "change_target_branch": [
+        r"^changed target branch from `(?P<old_target_branch>.+)` to `(?P<new_target_branch>.+)`$"
+    ],
+
     "change_epic": [
 
         r"^changed epic to &(?P<epic_iid>\d+)$",
@@ -441,9 +445,10 @@ classifiers: Dict[str, List[str]] = {
     ],
 
     "requested_review": [
-        
-        r'^requested review from @(?P<user_name>.*) and @(?P<user_name2>.*)$'
-        
+
+        r"^requested review from @(?P<user_name>.*)$",
+        r"^requested review from @(?P<user_name>.*) and @(?P<user_name2>.*)$"
+
     ],
 }
 
