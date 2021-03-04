@@ -73,6 +73,7 @@ class GitlabAPIClient:
         url = self.url_builder.build(path)
 
         commits: List[Commit] = []
+
         for sublist in await self.request_handler.request(url):
             for commit in sublist:
                 commits.append(commit)
@@ -248,9 +249,11 @@ class GitlabAPIClient:
         url = self.url_builder.build(path)
 
         merge_requests: List[MergeRequest] = []
+
         for sublist in await self.request_handler.request(url):
             for merge_request in sublist:
                 merge_requests.append(merge_request)
+
         return merge_requests
 
     @alru_cache
@@ -362,7 +365,7 @@ class URLBuilder:
             raise ValueError
 
         p_id = url_encoded_path(url.path)
-        self.base = url.origin().with_path(f"api/v4/projects/{p_id}")
+        self.base = url.origin().with_path(f"api/v4/projects/{p_id}", encoded=True)
 
     def build(self, path: str, inserts: Optional[Sequence[Tuple[str, ...]]] = None) -> Iterator[URL]:
         """
@@ -384,7 +387,7 @@ class URLBuilder:
             if path.count("{}"):
                 # blanks in path but insert list empty
                 raise ValueError("Blanks exist. No values to insert.")
-            url = self.base.origin().with_path(self.base.raw_path + path)
+            url = self.base.origin().with_path(self.base.raw_path + path, encoded=True)
             ret = url.update_query({"per_page": 50})
             yield ret
 
@@ -401,7 +404,7 @@ class URLBuilder:
             else:
                 fmt_query = {}
 
-            url = self.base.origin().with_path(self.base.raw_path + fmt)
+            url = self.base.origin().with_path(self.base.raw_path + fmt, encoded=True)
             ret = url.update_query({**fmt_query, "per_page": 50})
             yield ret
 
@@ -441,6 +444,12 @@ class RequestHandler:
         url = url.update_query({"page": 1})
 
         async with await self.session.get(url) as resp:
+            status = resp.status
+            if status != 200:
+                print("A GET request got an unexpected status code response!")
+                print("Concerned URL: ", url)
+                print("HTTP Status Code: ", status)
+                raise Exception
             json = await resp.json()
             page_count = int(resp.headers.get("x-total-pages", 1))
 
@@ -456,6 +465,12 @@ class RequestHandler:
         url = url.update_query({"page": page})
 
         async with await self.session.get(url) as resp:
+            status = resp.status
+            if status != 200:
+                print("A GET request got an unexpected status code response!")
+                print("Concerned URL:", url)
+                print("HTTP Status Code:", status)
+                raise Exception
             json = await resp.json()
 
         return json
