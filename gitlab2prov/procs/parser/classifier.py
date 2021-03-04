@@ -433,6 +433,18 @@ classifiers: Dict[str, List[str]] = {
         r"^created #(?P<issue_iid>\d+) to continue this discussion$"
 
     ],
+
+    "marked_merge_request_ready": [
+
+        r"^marked this merge request as \*\*ready\*\*$"
+
+    ],
+
+    "requested_review": [
+        
+        r'^requested review from @(?P<user_name>.*) and @(?P<user_name2>.*)$'
+        
+    ],
 }
 
 
