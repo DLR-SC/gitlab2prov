@@ -450,6 +450,12 @@ classifiers: Dict[str, List[str]] = {
         r"^requested review from @(?P<user_name>.*) and @(?P<user_name2>.*)$"
 
     ],
+
+    "cancel_review_request": [
+    
+        r"^removed review request for @(?P<user_name>.*)$"
+
+    ],
 }
 
 
