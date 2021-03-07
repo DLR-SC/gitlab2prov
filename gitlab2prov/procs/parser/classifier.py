@@ -362,13 +362,16 @@ classifiers: Dict[str, List[str]] = {
 
     "mention_in_merge_request": [
 
-        r"^mentioned in merge request !(?P<merge_request_iid>\d+)$"
+        r"^mentioned in merge request !(?P<merge_request_iid>\d+)$",
+        r"^Mentioned in merge request !(?P<merge_request_iid>\d+)$"
 
     ],
 
+
     "mention_in_external_commit": [
 
-        r"^mentioned in commit (?P<project_slug>.+)@(?P<commit_sha>[0-9a-z]{40})$"
+        r"^mentioned in commit (?P<project_slug>.+)@(?P<commit_sha>[0-9a-z]{40})$",
+        r"^Mentioned in commit (?P<project_slug>.+)@(?P<commit_sha>[0-9a-z]{40})$"
 
     ],
 
@@ -444,6 +447,11 @@ classifiers: Dict[str, List[str]] = {
 
     ],
 
+    "marked_merge_request_note": [
+
+        r"^marked this merge request as \*\*draft\*\*$  "
+    ],
+
     "requested_review": [
 
         r"^requested review from @(?P<user_name>.*)$",
@@ -456,6 +464,15 @@ classifiers: Dict[str, List[str]] = {
         r"^removed review request for @(?P<user_name>.*)$"
 
     ],
+
+    "mention_in_epic": [
+
+        r"^mentioned in epic &(?P<noteable_iid>\d+)$"
+
+    ],
+
+
+
 }
 
 
