@@ -61,15 +61,18 @@ classifiers: Dict[str, List[str]] = {
 
     "close_by_merge_request": [
 
-        r"^closed via merge request !(?P<merge_request_iid>.+)$"
+        r"^closed via merge request !(?P<merge_request_iid>.+)$",
+        r"^Status changed to closed by merge request !(?P<merge_request_iid>.+)$",
 
     ],
 
     "close_by_commit": [
 
-        r"^closed via commit (?P<commit_sha>[a-z0-9]+)$"
+        r"^closed via commit (?P<commit_sha>[a-z0-9]+)$",
+        r"^Status changed to closed by commit (?P<commit_sha>[a-z0-9]+)$",
 
     ],
+
 
     "restore_source_branch": [
 
@@ -102,7 +105,8 @@ classifiers: Dict[str, List[str]] = {
 
     "mark_task_as_done": [
 
-        r"^marked the task [*]{2}(?P<task_description>.+)[*]{2} as completed$"
+        r"^marked the task [*]{2}(?P<task_description>.+)[*]{2} as completed$",
+        r"^Marked the task [*]{2}(?P<task_description>.+)[*]{2} as completed$"
 
     ],
 
@@ -112,7 +116,23 @@ classifiers: Dict[str, List[str]] = {
         r"(?P<number_of_commits>\d+)\scommit[s]?\n\n" +
         r".+(?P<short_sha>[a-z0-9]{8}) - (?P<title>.+?)<.*",
 
+        r"Added " +
+        r"(?P<number_of_commits>\d+)\scommit[s]?\n\n" +
+        r".+(?P<short_sha>[a-z0-9]{8}) - (?P<title>.+?)<.*",
+
+        r"^Added " +
+        r"(?P<number_of_commits>\d+) new commit[s]?:\n\n" +
+        r"(\* (?P<short_sha>[a-z0-9]{8}) - (?P<title>.+?)\n)+$",
+
+        r"^Added " +
+        r"(?P<number_of_commits>\d+) new commit[s]?:\n\n" +
+        r"(\* (?P<short_sha>[a-z0-9]{11}) - (?P<title>.+?)\n)+$",
+
+
         r"^added (?P<number_of_commits>\d+) commit[s]?(?:.*\n?)*$",
+        r"^Added (?P<number_of_commits>\d+) commit[s]?(?:.*\n?)*$",
+        r"^Added 0 new commits:\n\n$"
+
 
     ],
 
@@ -124,19 +144,22 @@ classifiers: Dict[str, List[str]] = {
 
     "unmark_as_work_in_progress": [
 
-        r"^unmarked as a [*]{2}Work In Progress[*]{2}$"
+        r"^unmarked as a [*]{2}Work In Progress[*]{2}$",
+        r"^Unmarked this merge request as a Work In Progress$"
 
     ],
 
     "mark_as_work_in_progress": [
 
-        r"^marked as a [*]{2}Work In Progress[*]{2}$"
+        r"^marked as a [*]{2}Work In Progress[*]{2}$",
+        r"^Marked this merge request as a [*]{2}Work In Progress[*]{2}$"
 
     ],
 
     "merge": [
 
-        r"^merged$"
+        r"^merged$",
+        r"Status changed to merged",
 
     ],
 
@@ -149,7 +172,8 @@ classifiers: Dict[str, List[str]] = {
     "change_title": [
 
         r"^changed title from [*]{2}(?P<old_title>.+)[*]{2} to [*]{2}(?P<new_title>.+)[*]{2}$",
-        r"^Changed title: [*]{2}(?P<old_title>.+)[*]{2} → [*]{2}(?P<new_title>.+)[*]{2}$"
+        r"^Changed title: [*]{2}(?P<old_title>.+)[*]{2} → [*]{2}(?P<new_title>.+)[*]{2}$",
+        r"^Title changed from [*]{2}(?P<old_title>.+)[*]{2} to [*]{2}(?P<new_title>.+)[*]{2}$"
 
     ],
 
@@ -167,14 +191,15 @@ classifiers: Dict[str, List[str]] = {
 
     "reopen": [
 
-        r"^reopened$"
+        r"^reopened$",
+        r"^Status changed to reopened$"
 
     ],
 
     "close": [
 
         r"^closed$",
-        r"^Status changed to closed$"
+        r"^Status changed to closed$",
 
     ],
 
@@ -216,7 +241,8 @@ classifiers: Dict[str, List[str]] = {
 
     "make_visible": [
 
-        r"^made the issue visible to everyone$"
+        r"^made the issue visible to everyone$",
+        r"^Made the issue visible$"
 
     ],
 
@@ -327,7 +353,8 @@ classifiers: Dict[str, List[str]] = {
 
     "remove_milestone": [
 
-        r"^removed milestone$"
+        r"^removed milestone$",
+        r"^Milestone removed$"
 
     ],
 
@@ -336,7 +363,10 @@ classifiers: Dict[str, List[str]] = {
         r"^changed milestone to %(?P<milestone_iid>\d+)$",
         r"^changed milestone to %(?P<milestone_name>.+)$",
         r"^changed milestone to (?P<project_slug>.+)%(?P<milestone_iid>\d+)$",
-        r"^changed milestone to (?P<project_slug>.+)%(?P<milestone_name>.+)$"
+        r"^changed milestone to (?P<project_slug>.+)%(?P<milestone_name>.+)$",
+        r"^Milestone changed to %(?P<milestone_iid>\d+)$",
+        r"^Milestone changed to \[(?P<release_name>.+)\]\((?P<release_link>.+)\)$",
+        r"^Milestone changed to (?P<release_name>.+)$",
 
     ],
 
@@ -377,19 +407,22 @@ classifiers: Dict[str, List[str]] = {
 
     "mention_in_commit": [
 
-        r"^mentioned in commit (?P<commit_sha>[0-9a-z]{40})$"
+        r"^mentioned in commit (?P<commit_sha>[0-9a-z]{40})$",
+        r"^Mentioned in commit (?P<commit_sha>[0-9a-z]{40})$"
 
     ],
 
     "mention_in_external_issue": [
 
-        r"^mentioned in issue (?P<project_slug>.+)#(?P<issue_iid>\d+)$"
+        r"^mentioned in issue (?P<project_slug>.+)#(?P<issue_iid>\d+)$",
+        r"^Mentioned in issue (?P<project_slug>.+)#(?P<issue_iid>\d+)$"
 
     ],
 
     "mention_in_issue": [
 
-        r"^mentioned in issue #(?P<issue_iid>\d+)$"
+        r"^mentioned in issue #(?P<issue_iid>\d+)$",
+        r"^Mentioned in issue #(?P<issue_iid>\d+)$"
 
     ],
 
@@ -407,7 +440,8 @@ classifiers: Dict[str, List[str]] = {
 
     "resolve_all_discussions": [
 
-        r"^resolved all discussions$"
+        r"^resolved all discussions$",
+        r"^Resolved all discussions$"
 
     ],
 
@@ -417,9 +451,17 @@ classifiers: Dict[str, List[str]] = {
 
     ],
 
-    "enable_automatic_merge_on_pipeline_completion": [
+    "automatic_merge_on_pipeline_completion_enabled": [
 
-        r"^enabled an automatic merge when the pipeline for (?P<pipeline_commit_sha>[0-9a-z]+) succeeds$"
+        r"^enabled an automatic merge when the pipeline for (?P<pipeline_commit_sha>[0-9a-z]+) succeeds$",
+        r"^Enabled an automatic merge when the pipeline for (?P<pipeline_commit_sha>[0-9a-z]+) succeeds$"
+
+    ],
+
+    "automatic_merge_on_build_success_enabled": [
+
+        r"^enabled an automatic merge when the build for (?P<commit_sha>[0-9a-z]+) succeeds$",
+        r"^Enabled an automatic merge when the build for (?P<commit_sha>[0-9a-z]+) succeeds$",
 
     ],
 
@@ -431,7 +473,8 @@ classifiers: Dict[str, List[str]] = {
 
     "cancel_automatic_merge": [
 
-        r"^canceled the automatic merge$"
+        r"^canceled the automatic merge$",
+        r"^Canceled the automatic merge$"
 
     ],
 
@@ -470,6 +513,30 @@ classifiers: Dict[str, List[str]] = {
         r"^mentioned in epic &(?P<noteable_iid>\d+)$"
 
     ],
+
+    "reassigned": [
+
+        r"^Reassigned to @(?P<user_name>.*)$",
+
+    ],
+
+    "merge_request_removed": [
+
+        r"^removed this merge request from the merge train because No stages / jobs for this pipeline.$"
+
+    ],
+
+    "merge_train_started": [
+
+        r"^started a merge train$",
+
+    ],
+
+    "automatic_add_to_merge_train_enabled": [
+
+        r"^enabled automatic add to merge train when the pipeline for (?P<pipeline_commit_sha>[0-9a-z]+) succeeds$",
+
+    ]
 
 
 
