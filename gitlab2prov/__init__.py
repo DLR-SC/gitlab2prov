@@ -6,18 +6,17 @@ __license__ = "MIT"
 __version__ = "0.3"
 __status__ = "Development"
 
-import re
 import asyncio
-from collections import namedtuple
-from typing import List, Dict, Optional, Type, Tuple, Any
 
-from prov.model import ProvDocument, PROV_REC_CLS, ProvActivity, ProvEntity, ProvRecord, ProvAgent, ProvRelation, ProvElement
+from collections import namedtuple
+from typing import List, Optional, Type, Tuple
+
+from prov.model import ProvDocument, PROV_REC_CLS, ProvActivity, ProvEntity, ProvAgent, ProvRelation, ProvElement
 from prov.identifier import QualifiedName
 from prov.dot import prov_to_dot
 
 from gitlab2prov.models import enforce_uniqueness_constraints
 from gitlab2prov.api import GitlabAPIClient
-from gitlab2prov.config import get_config, ConfigurationError
 from gitlab2prov.pipelines import CommitPipeline, CommitResourcePipeline, IssueResourcePipeline, MergeRequestResourcePipeline
 from gitlab2prov.utils import q_name, url_encoded_path
 
