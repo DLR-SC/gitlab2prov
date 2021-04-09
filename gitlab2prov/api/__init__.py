@@ -363,7 +363,6 @@ class URLBuilder:
 
         if not url.scheme:
             raise ValueError
-
         p_id = url_encoded_path(url.path)
         self.base = url.origin().with_path(f"api/v4/projects/{p_id}", encoded=True)
 
@@ -445,11 +444,13 @@ class RequestHandler:
 
         async with await self.session.get(url) as resp:
             status = resp.status
+            if status == 403:
+                return [], 1
             if status != 200:
-                print("A GET request got an unexpected status code response!")
-                print("Concerned URL: ", url)
-                print("HTTP Status Code: ", status)
-                raise Exception
+                msg = "A GET request got an unexpected status code response!"
+                http_status = f"HTTP Status Code: {status}"
+                concerned_url = f"Concerned URL: {url}"
+                raise Exception(msg + "\n" + http_status + "\n" + concerned_url)
             json = await resp.json()
             page_count = int(resp.headers.get("x-total-pages", 1))
 
@@ -467,10 +468,10 @@ class RequestHandler:
         async with await self.session.get(url) as resp:
             status = resp.status
             if status != 200:
-                print("A GET request got an unexpected status code response!")
-                print("Concerned URL:", url)
-                print("HTTP Status Code:", status)
-                raise Exception
+                msg = "A GET request got an unexpected status code response!"
+                http_status = f"HTTP Status Code: {status}"
+                concerned_url = f"Concerned URL: {url}"
+                raise Exception(msg + "\n" + http_status + "\n" + concerned_url)
             json = await resp.json()
 
         return json
@@ -516,7 +517,6 @@ class RequestHandler:
 
         # extend first page of each request to
         # hold the entire content of all pages
-
         results: List[Any] = []
         for (page, page_count) in first_pages:
             for _ in range(2, page_count + 1):
