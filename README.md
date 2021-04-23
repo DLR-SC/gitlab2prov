@@ -76,6 +76,16 @@ optional arguments:
   --pseudonymize        pseudonymize agents
 ```
 
+### Provenance Output Formats
+
+`gitlab2prov` supports output formats that the `[prov](https://github.com/trungdong/prov)` library provides:
+* [PROV-N](http://www.w3.org/TR/prov-n/)
+* [PROV-O](http://www.w3.org/TR/prov-o/) (RDF)
+* [PROV-XML](http://www.w3.org/TR/prov-xml/)
+* [PROV-JSON](http://www.w3.org/Submission/prov-json/)
+* [Graphviz](https://graphviz.org/) (DOT)
+
+
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
