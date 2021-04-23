@@ -78,7 +78,7 @@ optional arguments:
 
 ### Provenance Output Formats
 
-`gitlab2prov` supports output formats that the `[prov](https://github.com/trungdong/prov)` library provides:
+`gitlab2prov` supports output formats that the [`prov`](https://github.com/trungdong/prov) library provides:
 * [PROV-N](http://www.w3.org/TR/prov-n/)
 * [PROV-O](http://www.w3.org/TR/prov-o/) (RDF)
 * [PROV-XML](http://www.w3.org/TR/prov-xml/)
