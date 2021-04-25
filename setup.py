@@ -19,6 +19,8 @@ setup(
     maintainer='Andreas Schreiber',
     maintainer_email='andreas.schreiber@dlr.de',
     description='Extract provenance information (W3C PROV) from GitLab projects.',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     keywords=[
         'prov',
         'gitlab',
