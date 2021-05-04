@@ -134,7 +134,7 @@ def modification(graph: ProvDocument, package: CommitModelPackage, action: Modif
     for version in previous_versions:
         graph.entity(*version)
         graph.used(commit.id, version.id)
-        graph.wasDerivedFrom(file_version.id, version.id)
+        graph.wasRevisionOf(file_version.id, version.id)
         graph.specializationOf(version.id, file.id)
     return graph
 
