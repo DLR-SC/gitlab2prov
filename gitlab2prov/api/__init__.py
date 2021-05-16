@@ -254,146 +254,99 @@ class URLBuilder:
             urls.append(url)
         return urls
 
-            fmt = path.format(*values[:path.count("{}")])
-            if query:
-                fmt_query = {
-                    val.split("=")[0]: val.split("=")[1]
-                    for val in query.format(*values[path.count("{}"):]).split("&")}
-            else:
-                fmt_query = {}
 
-            url = self.base.origin().with_path(self.base.raw_path + fmt, encoded=True)
-            ret = url.update_query({**fmt_query, "per_page": 50})
-            yield ret
-
-
-@dataclass
 class RequestHandler:
-    """
-    Dispatch requests asynchronously, though adhere to rate limiting.
-    """
-    token: str
-    rate: int = 10
-    session: Optional[RateLimiter] = None
+    def __init__(self, token, rate_limit, batch_size=200):
+        self.token = token
+        self.rate_limit = rate_limit
+        self.batch_size = batch_size
+        self.requests = defaultdict(deque)
+        self.client = None
 
-    async def __aenter__(self) -> RequestHandler:
-        """
-        Create client session with authorization info.
-        """
+    async def __aenter__(self):
         auth = {"Private-Token": self.token}
-        self.session = RateLimiter(ClientSession(headers=auth), rate=self.rate)
+        client = ClientSession(headers=auth)
+        self.client = RateLimiter(client, rate=self.rate_limit)
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """
-        Close client session.
-        """
-        if not self.session:
-            return
-        await self.session.close()
-
-    async def first_page(self, url: URL) -> Tuple[Any, int]:
-        """
-        Return content of first page and number of total pages.
-        """
-        if not self.session:
-            raise ValueError
-
-        url = url.update_query({"page": 1})
-
-        async with await self.session.get(url) as resp:
-            status = resp.status
-            if status == 403:
-                return [], 1
-            if status != 200:
-                msg = "A GET request got an unexpected status code response!"
-                http_status = f"HTTP Status Code: {status}"
-                concerned_url = f"Concerned URL: {url}"
-                raise Exception(msg + "\n" + http_status + "\n" + concerned_url)
-            json = await resp.json()
-            page_count = int(resp.headers.get("x-total-pages", 1))
-
-        return json, page_count
-
-    async def single_page(self, url: URL, page: int) -> Any:
-        """
-        Return json content of page number *page* of request *url*.
-        """
-        if not self.session:
-            raise ValueError
-
-        url = url.update_query({"page": page})
-
-        async with await self.session.get(url) as resp:
-            status = resp.status
-            if status != 200:
-                msg = "A GET request got an unexpected status code response!"
-                http_status = f"HTTP Status Code: {status}"
-                concerned_url = f"Concerned URL: {url}"
-                raise Exception(msg + "\n" + http_status + "\n" + concerned_url)
-            json = await resp.json()
-
-        return json
-
-    async def request(self, urls: Iterable[URL]) -> List[Any]:
-        """
-        Return content of all pages for each url in *urls*
-
-        Workflow of this method:
-
-        1. Asynchronously request first page and page count for all
-            urls.
-
-        2. Create request tasks for the remaining pages of urls that
-            have more than one content page.
-
-        3. Dispatch tasks batches asynchronously.
-
-        4. Match remaining pages with their corresponding first.
-
-        5. Return as one big page for all urls.
-        """
-        urls = list(urls)
-
-        # create tasks for first pages
-        tasks = [self.first_page(url) for url in urls]
-        # collect first pages
-        first_pages = await self.gather_in_batches(tasks)
-
-        # create tasks for remaining pages
-        tasks = []
-        for url, (_, page_count) in zip(urls, first_pages):
-            if page_count < 2:
-                continue
-            remaining = [self.single_page(url, n) for n in range(2, page_count + 1)]
-            tasks.extend(remaining)
-
-        # collect remaining pages
-        remaining_pages = deque(await self.gather_in_batches(tasks))
-
-        if not remaining_pages:
-            return [page for (page, _) in first_pages]
-
-        # extend first page of each request to
-        # hold the entire content of all pages
-        results: List[Any] = []
-        for (page, page_count) in first_pages:
-            for _ in range(2, page_count + 1):
-                page.extend(remaining_pages.popleft())
-            results.append(page)
-
-        return results
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.client:
+            await self.client.close()
+        return
 
     @staticmethod
-    async def gather_in_batches(coroutines: List[Coroutine[Any, Any, T]]) -> List[T]:
-        """
-        Perform a limited amount of requests per asyncio.gather statement.
+    def validate_response(url, response):
+        if response.status == 401:
+            # TODO
+            # token invalid
+            # how to handle: user should be notified (raise)
+            raise HTTPUnauthorized
+        elif response.status == 403:
+            # TODO
+            # returned for merge request endpoint if endpoint disabled in project settings
+            # how to handle: return an empty list for clt.merge_requests() (catch)
+            # else: raise and stop execution
+            raise HTTPForbidden
+        elif response.status == 404:
+            # TODO
+            # a) returned when url leads to nothing (raise)
+            # b) returned for commits when repository endpoint disabled in project settings
+            # b) how to handle: return an empty list for clt.commits() (catch & log)
+            raise HTTPNotFound
+        elif response.status == 429:
+            # TODO
+            # to many requests in too little time (raise/catch?)
+            # reason: rate limit set too high
+            # how to handle 1: wait for specified time, then continue requesting (catch & log)
+            # how to handle 2: inform user about rate limits (gitlab.com defaults to 100)
+            # how to handle 3: link to github api with rate limit info
+            raise HTTPTooManyRequests
+        return True
 
-        Prevent segfault when matching queries to their answers.
-        """
-        result: List[T] = []
+    async def request_page(self, url, page=1):
+        url = url.update_query({"page": page})
+        async with await self.client.get(url) as resp:
+            self.validate_response(url, resp)
+            json = await resp.json()
+        self.queue_next_page_requests(url, resp, page)
+        return json
 
-        for coroutine_batch in chunks(coroutines, 200):
-            result.extend(await asyncio.gather(*coroutine_batch))
+    def queue_next_page_requests(self, url, response, current_page):
+        key = url.with_query("")
+        if "x-total-pages" in response.headers and current_page == 1:
+            total_pages = int(response.headers["x-total-pages"])
+            for page in range(2, total_pages + 1):
+                self.requests[key].append(self.request_page(url, page))
+        elif "x-total-pages" not in response.headers:
+            next_page = response.headers["x-next-page"]
+            next_page = 0 if not next_page else int(next_page)
+            if current_page < next_page:
+                self.requests[key].append(self.request_page(url, next_page))
 
-        return result
+    def get_queued_requests(self, max_n):
+        pairs = []
+        for url, requests in self.requests.items():
+            for _ in range(max_n):
+                if not requests:
+                    break
+                pairs.append((url, requests.popleft()))
+        return pairs
+
+    def queued_requests_exist(self):
+        return any(requests for requests in self.requests.values())
+
+    async def request_all_pages(self, urls):
+        for url in urls:
+            key = url.with_query("")
+            self.requests[key].append(self.request_page(url))
+        responses = defaultdict(list)
+        while self.queued_requests_exist():
+            pairs = self.get_queued_requests(self.batch_size)
+            urls = [url for url, _ in pairs]
+            requests = [request for _, request in pairs]
+            pages = await asyncio.gather(*requests)
+            for url, page in zip(urls, pages):
+                responses[url].append(page)
+        return [
+            [entry for page in pages for entry in page] for pages in responses.values()
+        ]
