@@ -183,12 +183,15 @@ class GitlabClient:
         )
         return awards_grouped_by_merge_request
 
-        urls = self.url_builder.build(path, inserts)
-        result = await self.request_handler.request(urls)
-        notes = []
+    @cache
+    async def releases(self):
+        path = "releases"
+        return (await self.request(path))[0]
 
-        # rematch note awards to the merge requests
-        # that they have been awarded on
+    @cache
+    async def tags(self):
+        path = "repository/tags"
+        return (await self.request(path))[0]
 
 
 class URLBuilder:
