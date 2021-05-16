@@ -7,6 +7,16 @@ from typing import Any, Iterator, List
 from prov.model import ProvDocument
 
 
+def group_by(ungrouped, group_size_index):
+    start = 0
+    grouped = []
+    for group_size in group_size_index:
+        group = ungrouped[start:(start + group_size)]
+        flattened = [member for members in group for member in members]
+        grouped.append(flattened)
+        start += group_size
+    return grouped
+
 def p_time(string: str) -> datetime.datetime:
     """
     Parse datetime string to datetime object.
