@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 from prov.model import ProvDocument
 
-from gitlab2prov.api import GitlabAPIClient
+from gitlab2prov.api import GitlabClient
 from gitlab2prov.models import create_graph
 from gitlab2prov.procs import (CommitProcessor, CommitResourceProcessor,
                         IssueResourceProcessor, MergeRequestResourceProcessor)
@@ -16,7 +16,7 @@ class CommitPipeline:
     Pipeline that fetches, processes and models git commits of a project.
     """
     @staticmethod
-    async def fetch(client: GitlabAPIClient) -> Tuple[List[Commit], List[Diff]]:
+    async def fetch(client: GitlabClient) -> Tuple[List[Commit], List[Diff]]:
         """
         Retrieve commits and their diffs from the project API wrapper.
         """
