@@ -130,6 +130,40 @@ iss.wasAssociatedWith("Issue Creation", "Creator")
 iss.wasAssociatedWith("Issue Annotation", "Annotator")
 
 
+release_tag_model = ProvDocument()
+release_tag_model.set_default_namespace("gitlab2prov:")
+release_tag_model.agent("User", {"name": "", "email": ""})
+release_tag_model.activity("Release_Event")
+release_tag_model.activity("Tag_Event")
+release_tag_model.activity("Commit_Event")
+release_tag_model.entity("Tag", {"prov:type": "prov:Collection", "name": "", "message": "", "commit": "", "target_branch": ""})
+release_tag_model.entity("Release", {"prov:type": "prov:Collection", "name": "", "tag_name": "", "description": "", "description_html": "", "created_at": "", "released_at": "", "commit_path": "", "tag_path": ""})
+release_tag_model.entity("Commit", {"id": "", "short_id": "", "title": "", "message": "", "web_url": "", "created_at": ""})
+release_tag_model.entity("Release_Evidence", {"sha": "", "filepath": "", "collected_at": ""})
+release_tag_model.entity("Release_Assets", {"prov:type": "prov:Collection", "count": ""})
+release_tag_model.entity("source.zip", {"url": "", "format": ""})
+release_tag_model.entity("source.tar", {"url": "", "format": ""})
+release_tag_model.entity("source.tar.gz", {"url": "", "format": ""})
+release_tag_model.entity("source.tar.bz2", {"url": "", "format": ""})
+release_tag_model.hadMember("source.zip", "Release_Assets")
+release_tag_model.hadMember("source.tar", "Release_Assets")
+release_tag_model.hadMember("source.tar.gz", "Release_Assets")
+release_tag_model.hadMember("source.tar.bz2", "Release_Assets")
+release_tag_model.hadMember("Release_Assets", "Release")
+release_tag_model.hadMember("Release_Evidence", "Release")
+release_tag_model.hadMember("Tag", "Release")
+release_tag_model.hadMember("Commit", "Tag")
+release_tag_model.wasAssociatedWith("Commit_Event", "User")
+release_tag_model.wasAssociatedWith("Release_Event", "User")
+release_tag_model.wasAssociatedWith("Tag_Event", "User")
+release_tag_model.wasAttributedTo("Release", "User")
+release_tag_model.wasAttributedTo("Tag", "User")
+release_tag_model.wasAttributedTo("Commit", "User")
+release_tag_model.wasGeneratedBy("Release", "Release_Event")
+release_tag_model.wasGeneratedBy("Tag", "Tag_Event")
+release_tag_model.wasGeneratedBy("Commit", "Commit_Event")
+
+
 for title, doc in [
     ("git_commit_model_add", add),
     ("git_commit_model_mod", mod),
@@ -137,6 +171,7 @@ for title, doc in [
     ("gitlab_commit_model", com),
     ("gitlab_issue_model", iss),
     ("gitlab_merge_request_model", mr),
+    ("gitlab_release_tag_model", release_tag_model)
 ]:
     prov_to_dot(doc, show_nary=False, use_labels=False, direction="BT").write_pdf(
         f"pdfs/{title}.pdf"
