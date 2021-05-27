@@ -6,7 +6,7 @@ from gitlab2prov.utils.types import Commit, Diff, Issue, MergeRequest, Label, No
 
 from gitlab2prov.procs.history import FileNameHistory
 from gitlab2prov.procs.meta import Addition, Deletion, Modification, CommitCreationPackage, ResourceCreationPackage, \
-    CommitModelPackage, ResourceModelPackage, File, FileVersion, MetaEvent, EventPackage
+    CommitModelPackage, ResourceModelPackage, File, FileVersion, MetaEvent, EventPackage, TagPackage, ReleasePackage, ReleaseTagPackage
 from gitlab2prov.procs.parser import parse
 
 
@@ -134,4 +134,28 @@ class MergeRequestResourceProcessor:
             parsed_events = parse(*annotation)
             event_chain = EventChainBuilder.compute_event_chain(creation, parsed_events)
             packages.append(ResourceModelPackage(creation, event_chain))
+        return packages
+
+class ReleaseTagProcessor:
+    def process(releases, tags):
+        tags = {tag["name"]: tag for tag in tags}
+        releases = {release["tag_name"]: release for release in releases}
+
+        packages = []
+        for tag_name in tags.keys() | releases.keys():
+            if tag_name in tags:
+                tag = tags[tag_name]
+                commit = tag["commit"]
+                tag_pkg = TagPackage.from_tag(tag)
+                commit_pkg = CommitCreationPackage.from_commit(commit)
+            else:
+                tag_pkg = None
+                commit_pkg = None
+
+            if tag_name not in releases:
+                packages.append(ReleaseTagPackage(None, tag_pkg, commit_pkg))
+            else:
+                release = releases[tag_name]
+                release_pkg = ReleasePackage.from_release(release)
+                packages.append(ReleaseTagPackage(release_pkg, tag_pkg, commit_pkg))
         return packages
