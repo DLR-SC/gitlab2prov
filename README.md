@@ -1,6 +1,6 @@
 # :seedling: `gitlab2prov`: Extract Provenance from GitLab Projects 
 
-[![License: MIT](https://img.shields.io/github/license/dlr-sc/gitlab2prov?label=License)](https://opensource.org/licenses/MIT) [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/) [![PyPI version fury.io](https://badge.fury.io/py/gitlab2prov.svg)](https://pypi.python.org/pypi/gitlab2prov/) [![DOI](https://zenodo.org/badge/215042878.svg)](https://zenodo.org/badge/latestdoi/215042878) 
+[![License: MIT](https://img.shields.io/github/license/dlr-sc/gitlab2prov?label=License)](https://opensource.org/licenses/MIT) [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/) [![PyPI version fury.io](https://badge.fury.io/py/gitlab2prov.svg)](https://pypi.python.org/pypi/gitlab2prov/) [![DOI](https://zenodo.org/badge/215042878.svg)](https://zenodo.org/badge/latestdoi/215042878) [![Git commits (by Cauldron.io)](https://cauldron.io/project/4509/export/svg/git_commits.svg)](https://cauldron.io/project/4509) [![Issues created (by Cauldron.io)](https://cauldron.io/project/4509/export/svg/issues_created.svg)](https://cauldron.io/project/4509) [![Issues closed (by Cauldron.io)](https://cauldron.io/project/4509/export/svg/issues_closed.svg)](https://cauldron.io/project/4509)
 
 `gitlab2prov` is a Python library and command line tool for extracting provenance information from GitLab projects.  
 
