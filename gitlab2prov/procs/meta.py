@@ -69,8 +69,13 @@ class IntermediateRepresentation:
     def label(self) -> Dict[str, Any]:
         if self._node_type is None:
             raise ValueError
-
-        d = {PROV_TYPE: self._node_type}
+        d = {}
+        if "prov:type" in self.attributes:
+            d[PROV_TYPE] = [self.attributes["prov:type"]]
+            d[PROV_TYPE].append(self._node_type)
+            del self.attributes["prov:type"]
+        else:
+            d[PROV_TYPE] = self._node_type
         for key, value in self.attributes.items():
             if isinstance(key, QualifiedName):
                 d[key] = value
@@ -81,11 +86,19 @@ class IntermediateRepresentation:
     def to_prov_element(self) -> Union[Activity, Agent, Entity]:
         if self._prov_type is None:
             raise ValueError
-
+        # turn attribute dictionary into list of tuples
+        # support multivalued attributes
+        label = []
+        for key, value in self.label.items():
+            if isinstance(value, list):
+                for v in value:
+                    label.append((key, v))
+            else:
+                label.append((key, value))
         if self._prov_type is not Activity:
-            return self._prov_type(id=self.qid, label=self.label)
+            return self._prov_type(id=self.qid, label=label)
         start, end = p_time(self.started_at), p_time(self.ended_at)
-        return Activity(id=self.qid, start=start, end=end, label=self.label)
+        return Activity(id=self.qid, start=start, end=end, label=label)
 
 
 class Creator(IntermediateRepresentation):
