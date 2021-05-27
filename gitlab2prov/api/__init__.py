@@ -273,7 +273,10 @@ class RequestHandler:
         return
 
     @staticmethod
-    def validate_response(url, response):
+    def raise_for_status(url, response):
+        """
+        Raise a HTTP Exception according to the status code of a response.
+        """
         if response.status == 401:
             # TODO
             # token invalid
@@ -304,7 +307,7 @@ class RequestHandler:
     async def request_page(self, url, page=1):
         url = url.update_query({"page": page})
         async with await self.client.get(url) as resp:
-            self.validate_response(url, resp)
+            self.raise_for_status(url, resp)
             json = await resp.json()
         self.queue_next_page_requests(url, resp, page)
         return json
