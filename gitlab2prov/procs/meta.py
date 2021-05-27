@@ -316,7 +316,8 @@ class MetaResourceVersion(IntermediateRepresentation):
 
     @classmethod
     def from_meta_versions(cls, version: Entity, event: MetaEvent) -> MetaResourceVersion:
-        cls._node_type = f"{version.label[PROV_TYPE]}_version"
+        resource_type = {k: v for k, v in version.label}[PROV_TYPE]
+        cls._node_type = f"{resource_type}_version"
         id_section = f"{version.id}-{event.id_section}"
         return cls(id_section=id_section, attributes={})
 
