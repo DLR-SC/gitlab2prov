@@ -258,7 +258,7 @@ class RequestHandler:
         self.token = token
         self.rate_limit = rate_limit
         self.batch_size = batch_size
-        self.requests = defaultdict(deque)
+        self.request_queue = defaultdict(deque)
         self.client = None
 
     async def __aenter__(self):
@@ -297,19 +297,22 @@ class RequestHandler:
 
     def queue_next_page_requests(self, url, response, current_page):
         key = url.with_query("")
-        if "x-total-pages" in response.headers and current_page == 1:
-            total_pages = int(response.headers["x-total-pages"])
-            for page in range(2, total_pages + 1):
-                self.requests[key].append(self.request_page(url, page))
-        elif "x-total-pages" not in response.headers:
+        x_total = "x-total-pages" in response.headers
+        if x_total and current_page == 1:
+            next_pages = range(2, int(response.headers["x-total-pages"]) + 1)
+            for next_page in next_pages:
+                request_coroutine = self.request_page(url, next_page)
+                self.request_queue[key].append(request_coroutine)
+        if not x_total:
             next_page = response.headers["x-next-page"]
-            next_page = 0 if not next_page else int(next_page)
-            if current_page < next_page:
-                self.requests[key].append(self.request_page(url, next_page))
+            next_page = 0 if next_page == "" else int(next_page)
+            if current_page <= next_page:
+                request_coroutine = self.request_page(url, next_page)
+                self.request_queue[key].append(request_coroutine)
 
     def get_queued_requests(self, max_n):
         pairs = []
-        for url, requests in self.requests.items():
+        for url, requests in self.request_queue.items():
             for _ in range(max_n):
                 if not requests:
                     break
@@ -317,12 +320,15 @@ class RequestHandler:
         return pairs
 
     def queued_requests_exist(self):
-        return any(requests for requests in self.requests.values())
+        """
+        Return True if the request queue is non-empty.
+        """
+        return any(requests for requests in self.request_queue.values())
 
     async def request_all_pages(self, urls):
         for url in urls:
             key = url.with_query("")
-            self.requests[key].append(self.request_page(url))
+            self.request_queue[key].append(self.request_page(url))
         responses = defaultdict(list)
         while self.queued_requests_exist():
             pairs = self.get_queued_requests(self.batch_size)
