@@ -278,29 +278,12 @@ class RequestHandler:
         Raise a HTTP Exception according to the status code of a response.
         """
         if response.status == 401:
-            # TODO
-            # token invalid
-            # how to handle: user should be notified (raise)
             raise HTTPUnauthorized
         elif response.status == 403:
-            # TODO
-            # returned for merge request endpoint if endpoint disabled in project settings
-            # how to handle: return an empty list for clt.merge_requests() (catch)
-            # else: raise and stop execution
             raise HTTPForbidden
         elif response.status == 404:
-            # TODO
-            # a) returned when url leads to nothing (raise)
-            # b) returned for commits when repository endpoint disabled in project settings
-            # b) how to handle: return an empty list for clt.commits() (catch & log)
             raise HTTPNotFound
         elif response.status == 429:
-            # TODO
-            # to many requests in too little time (raise/catch?)
-            # reason: rate limit set too high
-            # how to handle 1: wait for specified time, then continue requesting (catch & log)
-            # how to handle 2: inform user about rate limits (gitlab.com defaults to 100)
-            # how to handle 3: link to github api with rate limit info
             raise HTTPTooManyRequests
         return True
 
