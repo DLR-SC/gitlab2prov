@@ -1,7 +1,7 @@
 from typing import List, Union
 from prov.model import ProvDocument, ProvElement, ProvRelation
 from ..procs.meta import Addition, CommitCreationPackage, CommitModelPackage, ResourceCreationPackage, Deletion, \
-    Modification, ResourceModelPackage
+    Modification, ResourceModelPackage, ReleaseTagPackage
 
 
 def create_graph(packages: List[Union[CommitModelPackage, ResourceModelPackage]]) -> ProvDocument:
@@ -19,6 +19,7 @@ def create_graph(packages: List[Union[CommitModelPackage, ResourceModelPackage]]
     model = {
         CommitModelPackage: commit_package_model,
         ResourceModelPackage: resource_package_model,
+        ReleaseTagPackage: release_tag_model
     }[type(packages[0])]
 
     graph = model(graph, packages)
@@ -209,4 +210,46 @@ def add_event_chain(graph: ProvDocument, package: ResourceModelPackage) -> ProvD
             graph.wasInformedBy(event.id, previous_event.id)
         previous_event = event
         previous_resource_version = resource_version
+    return graph
+
+def release_tag_model(graph: ProvDocument, packages: ReleaseTagPackage):
+    for package in packages:
+        if package.release_package is not None:
+            r_user, release, release_event, release_evidence, assets = package.release_package
+            graph.agent(*r_user)
+            graph.entity(*release)
+            graph.activity(*release_event)
+            graph.entity(*release_evidence)
+            for asset in assets:
+                graph.entity(*asset)
+                graph.hadMember(asset.id, release.id)
+
+            graph.hadMember(release_evidence.id, release.id)
+            graph.wasGeneratedBy(release.id, release_event.id)
+            graph.wasAttributedTo(release.id, r_user.id)
+            graph.wasAssociatedWith(release_event.id, r_user.id)
+
+        if package.tag_package is not None:
+            t_user, tag, tag_event = package.tag_package
+            graph.agent(*t_user)
+            graph.entity(*tag)
+            graph.activity(*tag_event)
+
+            if package.release_package is not None:
+                graph.hadMember(tag.id, release.id)
+            graph.wasGeneratedBy(tag_event.id, tag.id)
+            graph.wasAttributedTo(tag.id, t_user.id)
+            graph.wasAssociatedWith(tag_event.id, t_user.id)
+
+        if package.commit_package is not None:
+            author, commit_event, _, commit, _ = package.commit_package
+            graph.agent(*author)
+            graph.activity(*commit_event)
+            graph.entity(*commit)
+
+            if package.tag_package is not None:
+                graph.hadMember(commit.id, tag.id)
+            graph.wasGeneratedBy(commit.id, commit_event.id)
+            graph.wasAttributedTo(commit.id, author.id)
+            graph.wasAssociatedWith(commit_event.id, author.id)
     return graph
