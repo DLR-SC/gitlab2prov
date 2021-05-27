@@ -68,8 +68,8 @@ class Gitlab2Prov:
         project = url_encoded_path(url).replace("%2F", "/")
 
         for record in graph.get_records((ProvActivity, ProvEntity)):
-            attributes = {k: v for k, v in record.attributes}
-            attributes.update({"project": project})
+            attributes = [*record.attributes, *record.formal_attributes]
+            attributes.append(("project", project))
 
             identifier = record.identifier
             namespace, localpart = identifier.namespace, identifier.localpart
