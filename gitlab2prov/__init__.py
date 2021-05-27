@@ -17,7 +17,7 @@ from prov.dot import prov_to_dot
 
 from gitlab2prov.models import enforce_uniqueness_constraints
 from gitlab2prov.api import GitlabClient
-from gitlab2prov.pipelines import CommitPipeline, CommitResourcePipeline, IssueResourcePipeline, MergeRequestResourcePipeline
+from gitlab2prov.pipelines import CommitPipeline, CommitResourcePipeline, IssueResourcePipeline, MergeRequestResourcePipeline, ReleaseTagPipeline
 from gitlab2prov.utils import q_name, url_encoded_path
 
 
@@ -27,10 +27,13 @@ class Gitlab2Prov:
         """Initialize with api token, api rate limit and pipeline configuration."""
         self.token = token
         self.rate = rate
-        self.pipelines = [CommitPipeline(),
-                          CommitResourcePipeline(),
-                          IssueResourcePipeline(),
-                          MergeRequestResourcePipeline()]
+        self.pipelines = [
+            CommitPipeline(),
+            CommitResourcePipeline(),
+            IssueResourcePipeline(),
+            MergeRequestResourcePipeline(),
+            ReleaseTagPipeline()
+        ]
 
     def compute_graph(self, url):
         """Compute graph for gitlab project at *url*."""
