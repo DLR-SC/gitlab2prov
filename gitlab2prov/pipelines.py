@@ -5,7 +5,7 @@ from prov.model import ProvDocument
 from gitlab2prov.api import GitlabClient
 from gitlab2prov.models import create_graph
 from gitlab2prov.procs import (CommitProcessor, CommitResourceProcessor,
-                        IssueResourceProcessor, MergeRequestResourceProcessor)
+                        IssueResourceProcessor, MergeRequestResourceProcessor, ReleaseTagProcessor)
 from gitlab2prov.procs.meta import CommitModelPackage, ResourceModelPackage
 from gitlab2prov.utils.types import (Award, Commit, Diff, Issue, Label, MergeRequest,
                               Note)
@@ -153,5 +153,23 @@ class MergeRequestResourcePipeline:
         """
         Return populated PROV graph for resource model.
         """
+        model = create_graph(packages)
+        return model
+
+class ReleaseTagPipeline:
+    @staticmethod
+    async def fetch(client):
+        async with client as clt:
+            releases = await clt.releases()
+            tags = await clt.tags()
+        return releases, tags
+
+    @staticmethod
+    def process(releases, tags):
+        packages = ReleaseTagProcessor.process(releases, tags)
+        return packages
+
+    @staticmethod
+    def create_model(packages):
         model = create_graph(packages)
         return model

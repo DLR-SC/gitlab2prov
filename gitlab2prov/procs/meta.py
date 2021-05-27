@@ -69,8 +69,13 @@ class IntermediateRepresentation:
     def label(self) -> Dict[str, Any]:
         if self._node_type is None:
             raise ValueError
-
-        d = {PROV_TYPE: self._node_type}
+        d = {}
+        if "prov:type" in self.attributes:
+            d[PROV_TYPE] = [self.attributes["prov:type"]]
+            d[PROV_TYPE].append(self._node_type)
+            del self.attributes["prov:type"]
+        else:
+            d[PROV_TYPE] = self._node_type
         for key, value in self.attributes.items():
             if isinstance(key, QualifiedName):
                 d[key] = value
@@ -81,11 +86,19 @@ class IntermediateRepresentation:
     def to_prov_element(self) -> Union[Activity, Agent, Entity]:
         if self._prov_type is None:
             raise ValueError
-
+        # turn attribute dictionary into list of tuples
+        # support multivalued attributes
+        label = []
+        for key, value in self.label.items():
+            if isinstance(value, list):
+                for v in value:
+                    label.append((key, v))
+            else:
+                label.append((key, value))
         if self._prov_type is not Activity:
-            return self._prov_type(id=self.qid, label=self.label)
+            return self._prov_type(id=self.qid, label=label)
         start, end = p_time(self.started_at), p_time(self.ended_at)
-        return Activity(id=self.qid, start=start, end=end, label=self.label)
+        return Activity(id=self.qid, start=start, end=end, label=label)
 
 
 class Creator(IntermediateRepresentation):
@@ -123,6 +136,16 @@ class Author(IntermediateRepresentation):
         attributes = {key.split("_")[1]: value for key, value in commit.items() if key in attr_keys}
         attributes.update({PROV_ROLE: "author"})
         return cls(id_section=commit["author_name"], attributes=attributes)
+
+    @classmethod
+    def from_release(cls, release):
+        attributes = {k: v for k, v in release["author"].items() if v}
+        attributes[PROV_ROLE] = "author"
+        return cls(id_section=release["author"]["name"], attributes=attributes)
+
+    @classmethod
+    def from_tag(cls, tag):
+        return cls.from_commit(tag["commit"])
 
 
 class Committer(IntermediateRepresentation):
@@ -293,7 +316,8 @@ class MetaResourceVersion(IntermediateRepresentation):
 
     @classmethod
     def from_meta_versions(cls, version: Entity, event: MetaEvent) -> MetaResourceVersion:
-        cls._node_type = f"{version.label[PROV_TYPE]}_version"
+        resource_type = {k: v for k, v in version.label}[PROV_TYPE]
+        cls._node_type = f"{resource_type}_version"
         id_section = f"{version.id}-{event.id_section}"
         return cls(id_section=id_section, attributes={})
 
@@ -324,6 +348,151 @@ class FileVersion(IntermediateRepresentation):
         return cls(id_section=f"{path_at_addition}-{sha}", attributes=attributes)
 
 
+class Release(IntermediateRepresentation):
+    _prov_type: Type[Entity] = Entity
+    _node_type: str = "release"
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+
+    @classmethod
+    def from_release(cls, release):
+        attributes = {
+            "prov:type": "prov:Collection",
+            "commit_path": release["commit_path"],
+            "created_at": release["created_at"],
+            "description": release["description"],
+            "name": release["name"],
+            "released_at": release["released_at"],
+            "tag_name": release["tag_name"],
+            "tag_path": release["tag_path"]
+        }
+        _id = f"entity-{attributes['name']}{attributes['tag_name']}"
+        return cls(id_section=_id, attributes=attributes)
+
+
+class ReleaseEvent(IntermediateRepresentation):
+    _prov_type: Type[Activity] = Activity
+    _node_type: str = "release_event"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def from_release(cls, release):
+        _id = f"activity-{release['name']}{release['tag_name']}"
+        created_at = release["created_at"]
+        return cls(id_section=_id, started_at=created_at, ended_at=created_at, attributes={})
+
+
+class ReleaseEvidence(IntermediateRepresentation):
+
+    _prov_type: Type[Entity] = Entity
+    _node_type: str = "release_evidence"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def from_evidence(cls, evidence):
+        _id = f"release_evidence-{evidence['filepath']}"
+        attributes = {
+            "collected_at": evidence["collected_at"],
+            "sha": evidence["sha"],
+            "filepath": evidence["filepath"],
+            "uri": evidence["filepath"]
+        }
+        return cls(id_section=_id, attributes=attributes)
+
+
+class ReleaseAsset(IntermediateRepresentation):
+
+    _prov_type: Type[Entity] = Entity
+    _node_type: str = "release_asset"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def from_asset(cls, asset):
+        attributes = {
+            "filepath": asset["url"],
+            "format": asset["format"],
+            "uri": asset["url"]
+        }
+        _id = f"release_asset-{asset['url']}"
+        return cls(id_section=_id, attributes=attributes)
+
+
+class Tag(IntermediateRepresentation):
+    _prov_type: Type[Entity] = Entity
+    _node_type: str = "tag"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def from_tag(cls, tag):
+        attributes = {
+            "prov:type": "prov:Collection",
+            "target_commit": tag["target"],
+            "message": tag["message"],
+            "name": tag["name"],
+        }
+        _id = f"{tag['name']}{tag['target']}"
+        return cls(id_section=_id, attributes=attributes)
+
+
+class TagEvent(IntermediateRepresentation):
+    _prov_type: Type[Activity] = Activity
+    _node_type: str = "tag_event"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def from_tag(cls, tag):
+        _id = f"{tag['name']}{tag['target']}"
+        created_at = tag["commit"]["created_at"]
+        return cls(id_section=_id, started_at=created_at, ended_at=created_at, attributes={})
+
+
+class ReleasePackage(NamedTuple):
+    """
+    Represents the creation of a release.
+    """
+    user: Agent
+    release: Entity
+    release_event: Activity
+    release_evidence: Entity
+    assets: List[Entity]
+
+    @classmethod
+    def from_release(cls, release):
+        release_event = ReleaseEvent.from_release(release).to_prov_element()
+        _release = Release.from_release(release).to_prov_element()
+        assets = [ReleaseAsset.from_asset(asset).to_prov_element() for asset in release["assets"]["sources"]]
+        release_evidence = ReleaseEvidence.from_evidence(release["evidences"][0]).to_prov_element()
+        user = Author.from_release(release).to_prov_element()
+        return cls(user, _release, release_event, release_evidence, assets)
+
+
+class TagPackage(NamedTuple):
+    """
+    Represents the creation of a tag.
+    """
+    user: Agent
+    tag: Entity
+    tag_event: Activity
+
+    @classmethod
+    def from_tag(cls, tag):
+        user = Author.from_tag(tag).to_prov_element()
+        tag_event = TagEvent.from_tag(tag).to_prov_element()
+        tag = Tag.from_tag(tag).to_prov_element()
+        return cls(user, tag, tag_event)
+
+
 class CommitModelPackage(NamedTuple):
     """Package for commit model implementation."""
     author: Agent
@@ -344,6 +513,15 @@ class CommitModelPackage(NamedTuple):
         for parent in parents:
             ps.append(MetaCommit.from_commit(parent).to_prov_element())
         return cls(author=a, committer=c_agt, commit=c_act, parent_commits=ps, file_changes=diff)
+
+
+class ReleaseTagPackage(NamedTuple):
+    """
+    Package for release and tag model.
+    """
+    release_package: ReleasePackage
+    tag_package: TagPackage
+    commit_package: CommitModelPackage
 
 
 class CommitCreationPackage(NamedTuple):
