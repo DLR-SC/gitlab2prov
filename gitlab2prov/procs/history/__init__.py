@@ -137,7 +137,9 @@ class FileNameHistory:
         ret_mapping = deepcopy(parent_mapping)
         for entry in parent_diff:
             new, old = entry["new_path"], entry["old_path"]
-            origin = self.history[parent_id][new]
+            origin = self.history[parent_id].get(new)
+            if origin is None:
+                origin = old
             if entry["new_file"] or new != old:
                 ret_mapping[origin] = {parent_id}
             elif entry["deleted_file"]:

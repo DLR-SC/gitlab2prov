@@ -1,540 +1,429 @@
-from __future__ import annotations
-
 import asyncio
-from collections import deque
-from dataclasses import InitVar, dataclass
-from typing import (Any, Callable, Coroutine, Dict, Iterable, Iterator, List,
-                    Optional, Sequence, Tuple, TypeVar, cast)
 
 from aiohttp import ClientSession
+from aiohttp.web import (
+    HTTPForbidden,
+    HTTPNotFound,
+    HTTPTooManyRequests,
+    HTTPUnauthorized,
+)
+from collections import defaultdict, deque
+from gitlab2prov.utils import group_by, url_encoded_path
 from yarl import URL
 
-from gitlab2prov.utils import chunks, url_encoded_path
-from gitlab2prov.utils.types import Award, Commit, Diff, Issue, Label, MergeRequest, Note
-from gitlab2prov.api.ratelimiter import RateLimiter
-
-T = TypeVar("T")
-F = TypeVar("F", bound=Callable[..., Any])
+from .ratelimiter import RateLimiter
 
 
-def alru_cache(func: F) -> F:
-    """
-    Typed lru cache decorator wrapping async coroutines.
-    Creates a cache entry for each wrapped instance.
+def cache(func):
+    cache = dict()
 
-    Preserve the type signature of the wrapped function.
-    Cache the return value of a function F on it's first execution.
-    Return that value for every call of F after the first.
-    """
-    cache: Dict[str, Any] = dict()
-
-    async def memorized(self: GitlabAPIClient) -> Any:
-        # use method name and instance id as cache key
-        key = func.__name__ + str(id(self))
+    async def memorized(self, *args, **kwargs):
+        key = f"{func.__name__}:{id(self)}"
         if key not in cache:
-            # exec call on miss
-            # store result in cache
-            cache[key] = await func(self)
+            cache[key] = await func(self, *args, **kwargs)
         return cache[key]
 
-    return cast(F, memorized)
+    return memorized
 
 
-@dataclass
-class GitlabAPIClient:
-    """A wrapper for the GitLab project API."""
-    purl: InitVar[str]
-    token: InitVar[str]
-    rate: InitVar[int]
+class GitlabClient:
+    def __init__(self, project_url, token, rate_limit):
+        self.url_builder = URLBuilder(project_url)
+        self.req_handler = RequestHandler(token, rate_limit)
 
-    def __post_init__(self, purl: str, token: str, rate: int) -> None:
-        self.url_builder = URLBuilder(purl)
-        self.request_handler = RequestHandler(token, rate)
-
-    async def __aenter__(self) -> GitlabAPIClient:
+    async def __aenter__(self):
         """
-        Open client session of request handler.
+        Open request handler client session on.
         """
-        self.request_handler = await self.request_handler.__aenter__()
+        self.req_handler = await self.req_handler.__aenter__()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         """
-        Close client session of request handler.
+        Close client request handler client session on.
         """
-        await self.request_handler.__aexit__(exc_type, exc_val, exc_tb)
+        await self.req_handler.__aexit__(exc_type, exc_val, exc_tb)
 
-    @alru_cache
-    async def commits(self) -> List[Commit]:
+    def set_project_url(self, project_url):
         """
-        Return list of commits of the wrapped project repository.
+        Set gitlab project url.
+        """
+        self.url_builder.set_project_url(project_url)
+
+    async def request(self, path, path_values=None):
+        urls = self.url_builder.build_urls(path, path_values)
+        return await self.req_handler.request_all_pages(urls)
+
+    @cache
+    async def commits(self):
+        """
+        Return list of repository commits.
         """
         path = "repository/commits"
-        url = self.url_builder.build(path)
-
-        commits: List[Commit] = []
-
-        for sublist in await self.request_handler.request(url):
-            for commit in sublist:
-                commits.append(commit)
-
+        try:
+            commits = (await self.request(path))[0]
+        except HTTPNotFound as e404:
+            # git repository might be disabled
+            # continue without commits
+            commits = []
         return commits
 
-    @alru_cache
-    async def commit_diffs(self) -> List[Diff]:
+    @cache
+    async def commit_diffs(self):
         """
-        Return list of commit diffs of the wrapped project repository.
+        Return a list of file changes for each repository commit.
 
-        Same order of commits as in self.commits. (zipable)
+        Ordered by commit: zip-able with self.commits
         """
-        commits = await self.commits()
-
-        if not commits:
+        if not await self.commits():
             return []
-
-        path_default = "repository/commits/{}/diff"
-        path_compare = "repository/compare?from={}&to={}"
-
-        urls = []
-        for commit in commits:
-            id_ = commit["id"]
-            parent_ids = commit["parent_ids"]
-            urls.append(list(self.url_builder.build(path_default, [(id_,)]))[0])
-            continue
-
-            if not parent_ids:
-                urls.append(list(self.url_builder.build(path_default, [(id_,)]))[0])
-            else:
-                urls.append(list(self.url_builder.build(path_compare, [(parent_ids[0], id_)]))[0])
-
-        diffs = []
-        for diff in await self.request_handler.request(urls):
-            cut_diff = []
-            for entry in diff["diffs"] if isinstance(diff, dict) else diff:
-                del entry["diff"]
-                cut_diff.append(entry)
-            diffs.append(cut_diff)
+        path = "repository/commits/{}/diff"
+        path_values = [(commit["id"],) for commit in await self.commits() if commit]
+        diffs = await self.request(path, path_values)
         return diffs
 
-    @alru_cache
-    async def commit_notes(self) -> List[List[Note]]:
+    @cache
+    async def commit_notes(self):
         """
-        Return list of commit notes for each commit of the wrapped
-        project repository.
-        """
-        commits = await self.commits()
+        Return a list of notes (comments) for each repository commit.
 
-        if not commits:
+        Ordered by commit: zip-able with self.commits
+        """
+        if not await self.commits():
             return []
-
         path = "repository/commits/{}/discussions"
-        inserts = [(c["id"],) for c in commits]
-        urls = self.url_builder.build(path, inserts)
+        path_values = [(commit["id"],) for commit in await self.commits()]
+        discussions_grouped_by_commit = await self.request(path, path_values)
+        notes_grouped_by_commit = []
+        for discussions in discussions_grouped_by_commit:
+            notes = [note for discussion in discussions for note in discussion["notes"]]
+            notes_grouped_by_commit.append(notes)
+        return notes_grouped_by_commit
 
-        commit_notes: List[List[Note]] = []
-
-        for commit in await self.request_handler.request(urls):
-            notes = [n for discussion in commit for n in discussion["notes"]]
-            commit_notes.append(notes)
-        return commit_notes
-
-    @alru_cache
-    async def issues(self) -> List[Issue]:
+    @cache
+    async def issues(self):
         """
-        Return list of all issues of the wrapped project.
+        Return a list containing all project issues.
         """
         path = "issues"
-        url = self.url_builder.build(path)
+        return (await self.request(path))[0]
 
-        issues: List[Issue] = []
-        for sublist in await self.request_handler.request(url):
-            for issue in sublist:
-                issues.append(issue)
-        return issues
-
-    @alru_cache
-    async def issue_labels(self) -> List[List[Label]]:
+    @cache
+    async def issue_labels(self):
         """
-        Return list of issue labels for each issue of the wrapped
-        project.
-        """
-        issues = await self.issues()
+        Return a list of labels for each project issue.
 
-        if not issues:
+        Ordered by issue: zip-able with self.issues
+        """
+        if not await self.issues():
             return []
-
         path = "issues/{}/resource_label_events"
-        inserts = [(i["iid"],) for i in issues]
-        urls = self.url_builder.build(path, inserts)
+        path_values = [(issue["iid"],) for issue in await self.issues()]
+        return await self.request(path, path_values)
 
-        return await self.request_handler.request(urls)
-
-    @alru_cache
-    async def issue_awards(self) -> List[List[Award]]:
+    @cache
+    async def issue_awards(self):
         """
-        Return list of award emoji for each issue of the wrapped
-        project.
-        """
-        issues = await self.issues()
+        Return a list of emoji awards for each project issue.
 
-        if not issues:
+        Ordered by issue: zip-able with self.issues
+        """
+        if not await self.issues():
             return []
-
         path = "issues/{}/award_emoji"
-        inserts = [(i["iid"],) for i in issues]
-        urls = self.url_builder.build(path, inserts)
+        path_values = [(issue["iid"],) for issue in await self.issues()]
+        return await self.request(path, path_values)
 
-        return await self.request_handler.request(urls)
-
-    @alru_cache
-    async def issue_notes(self) -> List[List[Note]]:
+    @cache
+    async def issue_notes(self):
         """
-        Return list of issue notes for each issue of the wrapped
-        project.
-        """
-        issues = await self.issues()
+        Return a list of notes (comments) for each project issue.
 
-        if not issues:
+        Ordered by issue: zip-able with self.issues
+        """
+        if not await self.issues():
             return []
-
         path = "issues/{}/notes"
-        inserts = [(i["iid"],) for i in issues]
-        urls = self.url_builder.build(path, inserts)
+        path_values = [(issue["iid"],) for issue in await self.issues()]
+        return await self.request(path, path_values)
 
-        return await self.request_handler.request(urls)
-
-    @alru_cache
-    async def issue_note_awards(self) -> List[List[Award]]:
+    @cache
+    async def issue_note_awards(self):
         """
-        Return list of award emoji that have been awarded
-        to notes of an issue for each issue.
-        """
-        issue_notes = await self.issue_notes()
+        Return a list of note emoji awards for each issue.
 
-        if not issue_notes:
+        Ordered by issue: zip-able with self.issues
+        """
+        if not await self.issue_notes():
             return []
-
         path = "issues/{}/notes/{}/award_emoji"
+        path_values = []
+        for notes in await self.issue_notes():
+            for note in notes:
+                if note["system"]:
+                    continue
+                tpl = (note["noteable_iid"], note["id"])
+                path_values.append(tpl)
+        if not path_values:
+            return [list() for _ in await self.issues()]
+        awards_grouped_by_note = await self.request(path, path_values)
+        notes_per_issue = [len(notes) for notes in await self.issue_notes()]
+        return group_by(awards_grouped_by_note, notes_per_issue)
 
-        inserts = [
-            (note["noteable_iid"], note["id"])
-            for issue in issue_notes
-            for note in issue
-            if not note["system"]
-        ]
-
-        if not inserts:
-            # do not perform requests
-            # if no awardable notes exist
-            return [list() for issue in issue_notes]
-
-        urls = self.url_builder.build(path, inserts)
-        result = await self.request_handler.request(urls)
-        notes = []
-
-        for note_count in (len(issue) for issue in issue_notes):
-
-            notes.append([n for sublist in result[:note_count] for n in sublist])
-
-            result = result[note_count:]
-
-        return notes
-
-    @alru_cache
-    async def merge_requests(self) -> List[MergeRequest]:
+    @cache
+    async def merge_requests(self):
         """
-        Return list of all merge request of the wrapped project.
+        Return a list of project merge requests.
         """
         path = "merge_requests"
-        url = self.url_builder.build(path)
-
-        merge_requests: List[MergeRequest] = []
-
-        for sublist in await self.request_handler.request(url):
-            for merge_request in sublist:
-                merge_requests.append(merge_request)
-
+        try:
+            merge_requests = (await self.request(path))[0]
+        except HTTPForbidden as e403:
+            # merge requests might be disabled
+            # continue without merge requests
+            merge_requests = []
         return merge_requests
 
-    @alru_cache
-    async def merge_request_labels(self) -> List[List[Label]]:
+    @cache
+    async def merge_request_labels(self):
         """
-        Return list of all label events for each merge request of the
-        wrapped project.
-        """
-        mrs = await self.merge_requests()
+        Return a list of labels for each project merge request.
 
-        if not mrs:
+        Ordered by merge request: zip-able with self.merge_requests
+        """
+        if not await self.merge_requests():
             return []
-
         path = "merge_requests/{}/resource_label_events"
-        inserts = [(mr["iid"],) for mr in mrs]
-        urls = self.url_builder.build(path, inserts)
-
-        return await self.request_handler.request(urls)
-
-    @alru_cache
-    async def merge_request_awards(self) -> List[List[Award]]:
-        """
-        Return list of all award emoji for each merge request of the
-        wrapped project.
-        """
-        mrs = await self.merge_requests()
-
-        if not mrs:
-            return []
-
-        path = "merge_requests/{}/award_emoji"
-        inserts = [(mr["iid"],) for mr in mrs]
-        urls = self.url_builder.build(path, inserts)
-
-        return await self.request_handler.request(urls)
-
-    @alru_cache
-    async def merge_request_notes(self) -> List[List[Note]]:
-        """
-        Return list of merge request notes for each merge request of
-        the wrapped project.
-        """
-        mrs = await self.merge_requests()
-
-        if not mrs:
-            return []
-
-        path = "merge_requests/{}/notes"
-        inserts = [(mr["iid"],) for mr in mrs]
-        urls = self.url_builder.build(path, inserts)
-
-        return await self.request_handler.request(urls)
-
-    @alru_cache
-    async def merge_request_note_awards(self) -> List[List[Award]]:
-        """
-        Return list of award emoji that have been awarded to notes
-        of a merge request for each merge request.
-        """
-        mrs_notes = await self.merge_request_notes()
-
-        if not mrs_notes:
-            return []
-
-        path = "merge_requests/{}/notes/{}/award_emoji"
-        inserts = [
-            (note["noteable_iid"], note["id"])
-            for mr in mrs_notes
-            for note in mr
-            if not note["system"]
+        path_values = [
+            (merge_request["iid"],) for merge_request in await self.merge_requests()
         ]
+        return await self.request(path, path_values)
 
-        if not inserts:
-            # do not perform requests
-            # if no awardable notes exist
-            return [list() for mr in mrs_notes]
+    @cache
+    async def merge_request_awards(self):
+        """
+        Return a list of awards for each project merge request.
 
-        urls = self.url_builder.build(path, inserts)
-        result = await self.request_handler.request(urls)
-        notes = []
+        Ordered by merge request: zip-able with self.merge_requests
+        """
+        if not await self.merge_requests():
+            return []
+        path = "merge_requests/{}/award_emoji"
+        path_values = [
+            (merge_request["iid"],) for merge_request in await self.merge_requests()
+        ]
+        return await self.request(path, path_values)
 
-        # rematch note awards to the merge requests
-        # that they have been awarded on
+    @cache
+    async def merge_request_notes(self):
+        """
+        Return a list of notes (comments) for each project merge request.
 
-        for note_count in (len(mr) for mr in mrs_notes):
+        Ordered by merge request: zip-able with self.merge_requests
+        """
+        if not await self.merge_requests():
+            return []
+        path = "merge_requests/{}/notes"
+        path_values = [
+            (merge_request["iid"],) for merge_request in await self.merge_requests()
+        ]
+        return await self.request(path, path_values)
 
-            notes.append([n for sublist in result[:note_count] for n in sublist])
+    @cache
+    async def merge_request_note_awards(self):
+        """
+        Return a list of note emoji awards for each project merge request.
 
-            result = result[note_count:]
+        Ordered by merge requests: zip-able with self.merge_requests
+        """
+        if not await self.merge_request_notes():
+            return []
+        path = "merge_requests/{}/notes/{}/award_emoji"
+        path_values = []
+        for notes in await self.merge_request_notes():
+            for note in notes:
+                if note["system"]:
+                    continue
+                vs = (note["noteable_iid"], note["id"])
+                path_values.append(vs)
+        if not path_values:
+            return [list() for _ in await self.merge_request_notes()]
+        awards_grouped_by_note = await self.request(path, path_values)
+        notes_per_merge_request = [
+            len(notes) for notes in await self.merge_request_notes()
+        ]
+        awards_grouped_by_merge_request = group_by(
+            awards_grouped_by_note, notes_per_merge_request
+        )
+        return awards_grouped_by_merge_request
 
-        return notes
+    @cache
+    async def releases(self):
+        """
+        Return a list of project releases.
+        """
+        path = "releases"
+        try:
+            releases = (await self.request(path))[0]
+        except HTTPForbidden as e403:
+            releases = []
+        return releases
+
+    @cache
+    async def tags(self):
+        """
+        Return a list of repository git tags.
+        """
+        path = "repository/tags"
+        try:
+            tags = (await self.request(path))[0]
+        except HTTPForbidden as e403:
+            tags = []
+        return tags
 
 
-@dataclass
 class URLBuilder:
-    """
-    URL formatting and path building.
-    """
-    project_url: InitVar[str]
-    base: URL = URL()
+    def __init__(self, project_url):
+        self.api_path = "api/v4/projects"
+        project_url = URL(project_url)
+        self.base_url = project_url.origin()
+        self.project_id = url_encoded_path(project_url.path)
 
-    def __post_init__(self, project_url: str) -> None:
-        if not project_url:
-            raise ValueError
-
-        url = URL(project_url)
-
-        if not url.scheme:
-            raise ValueError
-        p_id = url_encoded_path(url.path)
-        self.base = url.origin().with_path(f"api/v4/projects/{p_id}", encoded=True)
-
-    def build(self, path: str, inserts: Optional[Sequence[Tuple[str, ...]]] = None) -> Iterator[URL]:
+    def set_project_url(self, url):
         """
-        Yield urls by appending *path* optionally formatted with values
-        of *inserts* to self.base.
-
-        Update query string to request 50 entries per page.
+        Set the project url.
         """
-        if inserts is None:
-            inserts = []
+        self.__init__(url)
 
-        if path and not path.startswith("/"):
-            path = "/" + path
-        query = None
-        if len(path.split("?")) == 2:
-            path, query = path.split("?")
+    def build_paths(self, path, path_values=None):
+        """
+        Build a list of paths by formatting the path string with placeholder values.
+        """
+        if path.startswith("/"):
+            path = path[1:]
+        path = f"{self.api_path}/{self.project_id}/{path}"
+        if not path_values:
+            return [path]
+        paths = []
+        for values in path_values:
+            if path.count("{}") != len(values):
+                raise ValueError("")
+            paths.append(path.format(*values))
+        return paths
 
-        if not inserts:
-            if path.count("{}"):
-                # blanks in path but insert list empty
-                raise ValueError("Blanks exist. No values to insert.")
-            url = self.base.origin().with_path(self.base.raw_path + path, encoded=True)
-            ret = url.update_query({"per_page": 50})
-            yield ret
+    def build_urls(self, path, path_values=None):
+        """
+        Build a list of urls from a path and a list of placeholder values.
 
-        for values in inserts:
-            if len(values) != (path.count("{}") if not query else path.count("{}") + query.count("{}")):
-                # blank count doesn't match count of insert values
-                raise ValueError("Unequal amount of blanks and insert values.")
-
-            fmt = path.format(*values[:path.count("{}")])
-            if query:
-                fmt_query = {
-                    val.split("=")[0]: val.split("=")[1]
-                    for val in query.format(*values[path.count("{}"):]).split("&")}
-            else:
-                fmt_query = {}
-
-            url = self.base.origin().with_path(self.base.raw_path + fmt, encoded=True)
-            ret = url.update_query({**fmt_query, "per_page": 50})
-            yield ret
+        The path string can contain placeholders just like a string used in
+        the f-string or .format string syntax.
+        """
+        urls = []
+        paths = self.build_paths(path, path_values)
+        query = "per_page=100"
+        for path in paths:
+            url = self.base_url.with_path(path, encoded=True).with_query(query)
+            urls.append(url)
+        return urls
 
 
-@dataclass
 class RequestHandler:
-    """
-    Dispatch requests asynchronously, though adhere to rate limiting.
-    """
-    token: str
-    rate: int = 10
-    session: Optional[RateLimiter] = None
+    def __init__(self, token, rate_limit, batch_size=200):
+        self.token = token
+        self.rate_limit = rate_limit
+        self.batch_size = batch_size
+        self.request_queue = defaultdict(deque)
+        self.client = None
 
-    async def __aenter__(self) -> RequestHandler:
-        """
-        Create client session with authorization info.
-        """
+    async def __aenter__(self):
         auth = {"Private-Token": self.token}
-        self.session = RateLimiter(ClientSession(headers=auth), rate=self.rate)
+        client = ClientSession(headers=auth)
+        self.client = RateLimiter(client, rate=self.rate_limit)
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """
-        Close client session.
-        """
-        if not self.session:
-            return
-        await self.session.close()
-
-    async def first_page(self, url: URL) -> Tuple[Any, int]:
-        """
-        Return content of first page and number of total pages.
-        """
-        if not self.session:
-            raise ValueError
-
-        url = url.update_query({"page": 1})
-
-        async with await self.session.get(url) as resp:
-            status = resp.status
-            if status == 403:
-                return [], 1
-            if status != 200:
-                msg = "A GET request got an unexpected status code response!"
-                http_status = f"HTTP Status Code: {status}"
-                concerned_url = f"Concerned URL: {url}"
-                raise Exception(msg + "\n" + http_status + "\n" + concerned_url)
-            json = await resp.json()
-            page_count = int(resp.headers.get("x-total-pages", 1))
-
-        return json, page_count
-
-    async def single_page(self, url: URL, page: int) -> Any:
-        """
-        Return json content of page number *page* of request *url*.
-        """
-        if not self.session:
-            raise ValueError
-
-        url = url.update_query({"page": page})
-
-        async with await self.session.get(url) as resp:
-            status = resp.status
-            if status != 200:
-                msg = "A GET request got an unexpected status code response!"
-                http_status = f"HTTP Status Code: {status}"
-                concerned_url = f"Concerned URL: {url}"
-                raise Exception(msg + "\n" + http_status + "\n" + concerned_url)
-            json = await resp.json()
-
-        return json
-
-    async def request(self, urls: Iterable[URL]) -> List[Any]:
-        """
-        Return content of all pages for each url in *urls*
-
-        Workflow of this method:
-
-        1. Asynchronously request first page and page count for all
-            urls.
-
-        2. Create request tasks for the remaining pages of urls that
-            have more than one content page.
-
-        3. Dispatch tasks batches asynchronously.
-
-        4. Match remaining pages with their corresponding first.
-
-        5. Return as one big page for all urls.
-        """
-        urls = list(urls)
-
-        # create tasks for first pages
-        tasks = [self.first_page(url) for url in urls]
-        # collect first pages
-        first_pages = await self.gather_in_batches(tasks)
-
-        # create tasks for remaining pages
-        tasks = []
-        for url, (_, page_count) in zip(urls, first_pages):
-            if page_count < 2:
-                continue
-            remaining = [self.single_page(url, n) for n in range(2, page_count + 1)]
-            tasks.extend(remaining)
-
-        # collect remaining pages
-        remaining_pages = deque(await self.gather_in_batches(tasks))
-
-        if not remaining_pages:
-            return [page for (page, _) in first_pages]
-
-        # extend first page of each request to
-        # hold the entire content of all pages
-        results: List[Any] = []
-        for (page, page_count) in first_pages:
-            for _ in range(2, page_count + 1):
-                page.extend(remaining_pages.popleft())
-            results.append(page)
-
-        return results
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.client:
+            await self.client.close()
+        return
 
     @staticmethod
-    async def gather_in_batches(coroutines: List[Coroutine[Any, Any, T]]) -> List[T]:
+    def raise_for_status(url, response):
         """
-        Perform a limited amount of requests per asyncio.gather statement.
-
-        Prevent segfault when matching queries to their answers.
+        Raise a HTTP Exception according to the status code of a response.
         """
-        result: List[T] = []
+        if response.status == 401:
+            raise HTTPUnauthorized
+        elif response.status == 403:
+            raise HTTPForbidden
+        elif response.status == 404:
+            raise HTTPNotFound
+        elif response.status == 429:
+            raise HTTPTooManyRequests
+        return True
 
-        for coroutine_batch in chunks(coroutines, 200):
-            result.extend(await asyncio.gather(*coroutine_batch))
+    async def request_page(self, url, page=1):
+        """
+        Request a single page for a given url, queue requests to the following pages.
+        """
+        url = url.update_query({"page": page})
+        async with await self.client.get(url) as resp:
+            self.raise_for_status(url, resp)
+            json = await resp.json()
+        self.queue_next_page_requests(url, resp, page)
+        return json
 
-        return result
+    def queue_next_page_requests(self, url, response, current_page):
+        """
+        Add page requests (self.request_page coroutines) to the request queue according to
+        the information retrieved about the total number of pages left.
+        """
+        key = url.with_query("")
+        x_total = "x-total-pages" in response.headers
+        if x_total and current_page == 1:
+            next_pages = range(2, int(response.headers["x-total-pages"]) + 1)
+            for next_page in next_pages:
+                request_coroutine = self.request_page(url, next_page)
+                self.request_queue[key].append(request_coroutine)
+        if not x_total:
+            next_page = response.headers["x-next-page"]
+            next_page = 0 if next_page == "" else int(next_page)
+            if current_page <= next_page:
+                request_coroutine = self.request_page(url, next_page)
+                self.request_queue[key].append(request_coroutine)
+
+    def get_queued_requests(self, max_n):
+        """
+        Deque up to *max_n* request coroutines from the request queue and return them in a list.
+        """
+        pairs = []
+        for url, requests in self.request_queue.items():
+            for _ in range(max_n):
+                if not requests:
+                    break
+                pairs.append((url, requests.popleft()))
+        return pairs
+
+    def queued_requests_exist(self):
+        """
+        Return True if the request queue is non-empty.
+        """
+        return any(requests for requests in self.request_queue.values())
+
+    async def request_all_pages(self, urls):
+        """
+        Request, combine and return all pages for each url in *urls*.
+        """
+        for url in urls:
+            key = url.with_query("")
+            self.request_queue[key].append(self.request_page(url))
+        responses = defaultdict(list)
+        while self.queued_requests_exist():
+            pairs = self.get_queued_requests(self.batch_size)
+            urls = [url for url, _ in pairs]
+            requests = [request for _, request in pairs]
+            pages = await asyncio.gather(*requests)
+            for url, page in zip(urls, pages):
+                responses[url].append(page)
+        return [
+            [entry for page in pages for entry in page] for pages in responses.values()
+        ]

@@ -16,7 +16,7 @@ from prov.identifier import QualifiedName
 from prov.dot import prov_to_dot
 
 from gitlab2prov.models import enforce_uniqueness_constraints
-from gitlab2prov.api import GitlabAPIClient
+from gitlab2prov.api import GitlabClient
 from gitlab2prov.pipelines import CommitPipeline, CommitResourcePipeline, IssueResourcePipeline, MergeRequestResourcePipeline
 from gitlab2prov.utils import q_name, url_encoded_path
 
@@ -49,7 +49,7 @@ class Gitlab2Prov:
 
     def run_pipelines(self, url: str) -> List[ProvDocument]:
         """Run Pipelines for a given client."""
-        client = GitlabAPIClient(url, self.token, self.rate)
+        client = GitlabClient(url, self.token, self.rate)
         graphs = []
         for pipe in self.pipelines:
             data = asyncio.run(pipe.fetch(client))
