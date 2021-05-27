@@ -237,39 +237,17 @@ class URLBuilder:
             paths.append(path.format(*values))
         return paths
 
-    @staticmethod
-    def build_queries(query="", query_values=None):
-        # remove leading '?'
-        if query.startswith("?"):
-            query = query[1:]
-        # split query into single parts; (delimiter '&')
-        parts = [part for part in query.split("&") if part]
-        # add 'per_page' parameter to query parts
-        parts.append("per_page=100")
-        query = f"{'&'.join(parts)}"
-        if not query_values:
-            return [query]
-        queries = []
-        for values in query_values:
-            if query.count("{}") != len(values):
-                raise ValueError("")
-            queries.append(query.format(*values))
-        return queries
+    def build_urls(self, path, path_values=None):
+        """
+        Build a list of urls from a path and a list of placeholder values.
 
-    def build_urls(self, path, path_values=None, query="", query_values=None):
-        paths = self.build_paths(path, path_values)
-        queries = self.build_queries(query, query_values)
-        pairs = []
-        if len(paths) == len(queries):
-            pairs = zip(paths, queries)
-        elif len(paths) == 1:
-            path = paths[0]
-            pairs = [(path, query) for query in queries]
-        elif len(queries) == 1:
-            query = queries[0]
-            pairs = [(path, query) for path in paths]
+        The path string can contain placeholders just like a string used in
+        the f-string or .format string syntax.
+        """
         urls = []
-        for path, query in pairs:
+        paths = self.build_paths(path, path_values)
+        query = "per_page=100"
+        for path in paths:
             url = self.base_url.with_path(path, encoded=True).with_query(query)
             urls.append(url)
         return urls
