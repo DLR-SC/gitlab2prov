@@ -47,14 +47,19 @@ class GitlabClient:
     def set_project_url(self, project_url):
         self.url_builder.set_project_url(project_url)
 
-    async def request(self, path, path_values=None, query="", query_values=None):
-        urls = self.url_builder.build_urls(path, path_values, query, query_values)
+    async def request(self, path, path_values=None):
+        urls = self.url_builder.build_urls(path, path_values)
         return await self.req_handler.request_all_pages(urls)
 
     @cache
     async def commits(self):
         path = "repository/commits"
-        commits = (await self.request(path))[0]
+        try:
+            commits = (await self.request(path))[0]
+        except HTTPNotFound as e404:
+            # git repository might be disabled
+            # continue without commits
+            commits = []
         return commits
 
     @cache
@@ -63,7 +68,8 @@ class GitlabClient:
             return []
         path = "repository/commits/{}/diff"
         path_values = [(commit["id"],) for commit in await self.commits() if commit]
-        return await self.request(path, path_values)
+        diffs = await self.request(path, path_values)
+        return diffs
 
     @cache
     async def commit_notes(self):
@@ -128,7 +134,13 @@ class GitlabClient:
     @cache
     async def merge_requests(self):
         path = "merge_requests"
-        return (await self.request(path))[0]
+        try:
+            merge_requests = (await self.request(path))[0]
+        except HTTPForbidden as e403:
+            # merge requests might be disabled
+            # continue without merge requests
+            merge_requests = []
+        return merge_requests
 
     @cache
     async def merge_request_labels(self):
@@ -186,12 +198,20 @@ class GitlabClient:
     @cache
     async def releases(self):
         path = "releases"
-        return (await self.request(path))[0]
+        try:
+            releases = (await self.request(path))[0]
+        except HTTPForbidden as e403:
+            releases = []
+        return releases
 
     @cache
     async def tags(self):
         path = "repository/tags"
-        return (await self.request(path))[0]
+        try:
+            tags = (await self.request(path))[0]
+        except HTTPForbidden as e403:
+            tags = []
+        return tags
 
 
 class URLBuilder:
