@@ -45,6 +45,9 @@ class GitlabClient:
         await self.req_handler.__aexit__(exc_type, exc_val, exc_tb)
 
     def set_project_url(self, project_url):
+        """
+        Set gitlab project url.
+        """
         self.url_builder.set_project_url(project_url)
 
     async def request(self, path, path_values=None):
@@ -53,6 +56,9 @@ class GitlabClient:
 
     @cache
     async def commits(self):
+        """
+        Return list of repository commits.
+        """
         path = "repository/commits"
         try:
             commits = (await self.request(path))[0]
@@ -64,6 +70,11 @@ class GitlabClient:
 
     @cache
     async def commit_diffs(self):
+        """
+        Return a list of file changes for each repository commit.
+
+        Ordered by commit: zip-able with self.commits
+        """
         if not await self.commits():
             return []
         path = "repository/commits/{}/diff"
@@ -73,6 +84,11 @@ class GitlabClient:
 
     @cache
     async def commit_notes(self):
+        """
+        Return a list of notes (comments) for each repository commit.
+
+        Ordered by commit: zip-able with self.commits
+        """
         if not await self.commits():
             return []
         path = "repository/commits/{}/discussions"
@@ -86,11 +102,19 @@ class GitlabClient:
 
     @cache
     async def issues(self):
+        """
+        Return a list containing all project issues.
+        """
         path = "issues"
         return (await self.request(path))[0]
 
     @cache
     async def issue_labels(self):
+        """
+        Return a list of labels for each project issue.
+
+        Ordered by issue: zip-able with self.issues
+        """
         if not await self.issues():
             return []
         path = "issues/{}/resource_label_events"
@@ -99,6 +123,11 @@ class GitlabClient:
 
     @cache
     async def issue_awards(self):
+        """
+        Return a list of emoji awards for each project issue.
+
+        Ordered by issue: zip-able with self.issues
+        """
         if not await self.issues():
             return []
         path = "issues/{}/award_emoji"
@@ -107,6 +136,11 @@ class GitlabClient:
 
     @cache
     async def issue_notes(self):
+        """
+        Return a list of notes (comments) for each project issue.
+
+        Ordered by issue: zip-able with self.issues
+        """
         if not await self.issues():
             return []
         path = "issues/{}/notes"
@@ -115,6 +149,11 @@ class GitlabClient:
 
     @cache
     async def issue_note_awards(self):
+        """
+        Return a list of note emoji awards for each issue.
+
+        Ordered by issue: zip-able with self.issues
+        """
         if not await self.issue_notes():
             return []
         path = "issues/{}/notes/{}/award_emoji"
@@ -133,6 +172,9 @@ class GitlabClient:
 
     @cache
     async def merge_requests(self):
+        """
+        Return a list of project merge requests.
+        """
         path = "merge_requests"
         try:
             merge_requests = (await self.request(path))[0]
@@ -144,6 +186,11 @@ class GitlabClient:
 
     @cache
     async def merge_request_labels(self):
+        """
+        Return a list of labels for each project merge request.
+
+        Ordered by merge request: zip-able with self.merge_requests
+        """
         if not await self.merge_requests():
             return []
         path = "merge_requests/{}/resource_label_events"
@@ -154,6 +201,11 @@ class GitlabClient:
 
     @cache
     async def merge_request_awards(self):
+        """
+        Return a list of awards for each project merge request.
+
+        Ordered by merge request: zip-able with self.merge_requests
+        """
         if not await self.merge_requests():
             return []
         path = "merge_requests/{}/award_emoji"
@@ -164,6 +216,11 @@ class GitlabClient:
 
     @cache
     async def merge_request_notes(self):
+        """
+        Return a list of notes (comments) for each project merge request.
+
+        Ordered by merge request: zip-able with self.merge_requests
+        """
         if not await self.merge_requests():
             return []
         path = "merge_requests/{}/notes"
@@ -174,6 +231,11 @@ class GitlabClient:
 
     @cache
     async def merge_request_note_awards(self):
+        """
+        Return a list of note emoji awards for each project merge request.
+
+        Ordered by merge requests: zip-able with self.merge_requests
+        """
         if not await self.merge_request_notes():
             return []
         path = "merge_requests/{}/notes/{}/award_emoji"
@@ -197,6 +259,9 @@ class GitlabClient:
 
     @cache
     async def releases(self):
+        """
+        Return a list of project releases.
+        """
         path = "releases"
         try:
             releases = (await self.request(path))[0]
@@ -206,6 +271,9 @@ class GitlabClient:
 
     @cache
     async def tags(self):
+        """
+        Return a list of repository git tags.
+        """
         path = "repository/tags"
         try:
             tags = (await self.request(path))[0]
@@ -222,9 +290,15 @@ class URLBuilder:
         self.project_id = url_encoded_path(project_url.path)
 
     def set_project_url(self, url):
+        """
+        Set the project url.
+        """
         self.__init__(url)
 
     def build_paths(self, path, path_values=None):
+        """
+        Build a list of paths by formatting the path string with placeholder values.
+        """
         if path.startswith("/"):
             path = path[1:]
         path = f"{self.api_path}/{self.project_id}/{path}"
@@ -288,6 +362,9 @@ class RequestHandler:
         return True
 
     async def request_page(self, url, page=1):
+        """
+        Request a single page for a given url, queue requests to the following pages.
+        """
         url = url.update_query({"page": page})
         async with await self.client.get(url) as resp:
             self.raise_for_status(url, resp)
@@ -296,6 +373,10 @@ class RequestHandler:
         return json
 
     def queue_next_page_requests(self, url, response, current_page):
+        """
+        Add page requests (self.request_page coroutines) to the request queue according to
+        the information retrieved about the total number of pages left.
+        """
         key = url.with_query("")
         x_total = "x-total-pages" in response.headers
         if x_total and current_page == 1:
@@ -311,6 +392,9 @@ class RequestHandler:
                 self.request_queue[key].append(request_coroutine)
 
     def get_queued_requests(self, max_n):
+        """
+        Deque up to *max_n* request coroutines from the request queue and return them in a list.
+        """
         pairs = []
         for url, requests in self.request_queue.items():
             for _ in range(max_n):
@@ -326,6 +410,9 @@ class RequestHandler:
         return any(requests for requests in self.request_queue.values())
 
     async def request_all_pages(self, urls):
+        """
+        Request, combine and return all pages for each url in *urls*.
+        """
         for url in urls:
             key = url.with_query("")
             self.request_queue[key].append(self.request_page(url))
