@@ -40,6 +40,7 @@ class Gitlab2Prov:
         graphs = self.run_pipelines(url)
         graph = self.unite_graphs(graphs)
         graph = self.postprocess(graph, url)
+        graph = self.unite_agents(graph, alias_map={})
         return graph
 
     def unite_graphs(self, graphs):
