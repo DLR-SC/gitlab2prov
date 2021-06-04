@@ -8,7 +8,7 @@ __status__ = "Development"
 
 import asyncio
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from typing import List, Optional, Type, Tuple
 
 from prov.model import ProvDocument, PROV_REC_CLS, ProvActivity, ProvEntity, ProvAgent, ProvRelation, ProvElement
@@ -101,27 +101,27 @@ class Gitlab2Prov:
 
         return ProvDocument(records)
 
-    def unite_agents(self, graph, alias_mapping):
+    def unite_agents(self, graph, alias_map):
         """Unite agents that represent the same person based on their aliases."""
         records = list(graph.get_records((ProvActivity, ProvEntity)))
-        id_mapping = {}
+        id_map = {}
+        agents = defaultdict(list)
         for agent in graph.get_records(ProvAgent):
-            attributes = {k.localpart: (v, k) for k, v in agent.attributes}
-            name, key = attributes["user_name"]
-            name = alias_mapping.get(name, name)
+            n_key, name = {k.localpart: (k, v) for k, v in agent.attributes}["user_name"]
+            name = alias_map.get(name, name)
 
-            attributes = {k: v for v, k in attributes.values()}
-            attributes[key] = name
+            agents[name].extend(agent.attributes)
+            agents[name].extend(agent.formal_attributes)
+            agents[name] = [(k, v) for k, v in agents[name] if k != n_key]
+            agents[name].append((n_key, name))
 
-            identifier = agent.identifier
-            namespace = identifier.namespace
-            united_id = QualifiedName(namespace, q_name(f"user-{name}"))
-            id_mapping[identifier] = united_id
-            records.append(ProvAgent(agent.bundle, united_id, attributes))
+            id_ = QualifiedName(agent.identifier.namespace, q_name(f"user-{name}"))
+            id_map[agent.identifier] = id_
+            records.append(ProvAgent(agent.bundle, id_, agents[name]))
 
         records.extend(graph.get_records(ProvRelation))
         graph = ProvDocument(records)
-        graph = self.update_relations(graph, id_mapping)
+        graph = self.update_relations(graph, id_map)
         return graph
 
     def pseudonymize(self, graph):
