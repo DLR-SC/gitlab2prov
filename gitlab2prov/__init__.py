@@ -8,7 +8,7 @@ __status__ = "Development"
 
 import asyncio
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from typing import List, Optional, Type, Tuple
 
 from prov.model import ProvDocument, PROV_REC_CLS, ProvActivity, ProvEntity, ProvAgent, ProvRelation, ProvElement
@@ -40,6 +40,7 @@ class Gitlab2Prov:
         graphs = self.run_pipelines(url)
         graph = self.unite_graphs(graphs)
         graph = self.postprocess(graph, url)
+        graph = self.unite_agents(graph, alias_map={})
         return graph
 
     def unite_graphs(self, graphs):
@@ -64,7 +65,7 @@ class Gitlab2Prov:
         """Prepend project identifier to identifiers of activities and entities.
         Add project identifier to node attributes of activities and entities."""
         records = list(graph.get_records(ProvAgent))
-        id_mapping = {agent.identifier: agent.identifier for agent in records}
+        id_map = {agent.identifier: agent.identifier for agent in records}
         project = url_encoded_path(url).replace("%2F", "/")
 
         for record in graph.get_records((ProvActivity, ProvEntity)):
@@ -74,7 +75,7 @@ class Gitlab2Prov:
             identifier = record.identifier
             namespace, localpart = identifier.namespace, identifier.localpart
             unique_id = QualifiedName(namespace, q_name(f"{project}-{localpart}"))
-            id_mapping[identifier] = unique_id
+            id_map[identifier] = unique_id
 
             if isinstance(record, ProvEntity):
                 records.append(ProvEntity(record.bundle, unique_id, attributes))
@@ -83,16 +84,16 @@ class Gitlab2Prov:
 
         records.extend(graph.get_records(ProvRelation))
         graph = ProvDocument(records)
-        graph = self.update_relations(graph, id_mapping)
+        graph = self.update_relations(graph, id_map)
         return graph
 
-    def update_relations(self, graph, id_mapping):
+    def update_relations(self, graph, id_map):
         """Update start and enpoints of relations according to node id mapping."""
         records = list(graph.get_records(ProvElement))
         for relation in graph.get_records(ProvRelation):
             (s_type, s), (t_type, t) = relation.formal_attributes[:2]
 
-            attributes = [(s_type, id_mapping.get(s, s)), (t_type, id_mapping.get(t, t))]
+            attributes = [(s_type, id_map.get(s, s)), (t_type, id_map.get(t, t))]
             attributes.extend(relation.formal_attributes[2:])
             attributes.extend(relation.extra_attributes)
 
@@ -101,27 +102,27 @@ class Gitlab2Prov:
 
         return ProvDocument(records)
 
-    def unite_agents(self, graph, alias_mapping):
+    def unite_agents(self, graph, alias_map):
         """Unite agents that represent the same person based on their aliases."""
         records = list(graph.get_records((ProvActivity, ProvEntity)))
-        id_mapping = {}
+        id_map = {}
+        agents = defaultdict(list)
         for agent in graph.get_records(ProvAgent):
-            attributes = {k.localpart: (v, k) for k, v in agent.attributes}
-            name, key = attributes["user_name"]
-            name = alias_mapping.get(name, name)
+            n_key, name = {k.localpart: (k, v) for k, v in agent.attributes}["user_name"]
+            name = alias_map.get(name, name)
 
-            attributes = {k: v for v, k in attributes.values()}
-            attributes[key] = name
+            agents[name].extend(agent.attributes)
+            agents[name].extend(agent.formal_attributes)
+            agents[name] = [(k, v) for k, v in agents[name] if k != n_key]
+            agents[name].append((n_key, name))
 
-            identifier = agent.identifier
-            namespace = identifier.namespace
-            united_id = QualifiedName(namespace, q_name(f"user-{name}"))
-            id_mapping[identifier] = united_id
-            records.append(ProvAgent(agent.bundle, united_id, attributes))
+            id_ = QualifiedName(agent.identifier.namespace, q_name(f"user-{name}"))
+            id_map[agent.identifier] = id_
+            records.append(ProvAgent(agent.bundle, id_, agents[name]))
 
         records.extend(graph.get_records(ProvRelation))
         graph = ProvDocument(records)
-        graph = self.update_relations(graph, id_mapping)
+        graph = self.update_relations(graph, id_map)
         return graph
 
     def pseudonymize(self, graph):
