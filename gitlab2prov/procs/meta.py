@@ -77,10 +77,7 @@ class IntermediateRepresentation:
         else:
             d[PROV_TYPE] = self._node_type
         for key, value in self.attributes.items():
-            if isinstance(key, QualifiedName):
-                d[key] = value
-                continue
-            d[f"{self._node_type.split('_')[0]}_{key}"] = value
+            d[key] = value
         return d
 
     def to_prov_element(self) -> Union[Activity, Agent, Entity]:
