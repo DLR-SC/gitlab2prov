@@ -110,14 +110,14 @@ class Creator(IntermediateRepresentation):
 
     @classmethod
     def from_issue(cls, issue: Issue) -> Creator:
-        name = issue["author"]["name"]
+        name = issue["author"]["name"].strip()
         attributes = {PROV_ROLE: "creator", "name": name}
         return cls(id_section=name, attributes=attributes)
 
     @classmethod
     def from_merge_request(cls, merge_request: MergeRequest) -> Creator:
         """Create a creator meta agent form a merge request API resource."""
-        name = merge_request["author"]["name"]
+        name = merge_request["author"]["name"].strip()
         attributes = {PROV_ROLE: "creator", "name": name}
         return cls(id_section=name, attributes=attributes)
 
@@ -132,16 +132,18 @@ class Author(IntermediateRepresentation):
     @classmethod
     def from_commit(cls, commit: Commit) -> Author:
         """Create an author meta agent from a commit API resource."""
-        attr_keys = ["author_name", "author_email"]
-        attributes = {key.split("_")[1]: value for key, value in commit.items() if key in attr_keys}
+        attributes = {}
+        attributes["name"] = commit["author_name"].strip()
+        attributes["email"] = commit["author_email"]
         attributes.update({PROV_ROLE: "author"})
-        return cls(id_section=commit["author_name"], attributes=attributes)
+        return cls(id_section=attributes["name"], attributes=attributes)
 
     @classmethod
     def from_release(cls, release):
         attributes = {k: v for k, v in release["author"].items() if v}
+        attributes["name"] = attributes["name"].strip()
         attributes[PROV_ROLE] = "author"
-        return cls(id_section=release["author"]["name"], attributes=attributes)
+        return cls(id_section=attributes["name"], attributes=attributes)
 
     @classmethod
     def from_tag(cls, tag):
@@ -158,10 +160,11 @@ class Committer(IntermediateRepresentation):
     @classmethod
     def from_commit(cls, commit: Commit) -> Committer:
         """Create an author meta agent from a commit API resource."""
-        attr_keys = ["committer_name", "committer_email"]
-        attributes = {key.split("_")[1]: value for key, value in commit.items() if key in attr_keys}
+        attributes = {}
+        attributes["name"] = commit["committer_name"].strip()
+        attributes["email"] = commit["committer_email"]
         attributes.update({PROV_ROLE: "committer"})
-        return cls(id_section=commit["committer_name"], attributes=attributes)
+        return cls(id_section=attributes["name"], attributes=attributes)
 
 
 class Initiator(IntermediateRepresentation):
@@ -175,20 +178,20 @@ class Initiator(IntermediateRepresentation):
     @classmethod
     def from_note(cls, note: Note) -> Initiator:
         """Create an initiator meta agent from a note API resource."""
-        attributes = {PROV_ROLE: "initiator", "name": note["author"]["name"]}
-        return cls(id_section=note["author"]["name"], attributes=attributes)
+        attributes = {PROV_ROLE: "initiator", "name": note["author"]["name"].strip()}
+        return cls(id_section=attributes["name"], attributes=attributes)
 
     @classmethod
     def from_label(cls, label: Label) -> Initiator:
         """Create an initiator meta agent from a label event API resource."""
-        attributes = {PROV_ROLE: "initiator", "name": label["user"]["name"]}
-        return cls(id_section=label["user"]["name"], attributes=attributes)
+        attributes = {PROV_ROLE: "initiator", "name": label["user"]["name"].strip()}
+        return cls(id_section=attributes["name"], attributes=attributes)
 
     @classmethod
     def from_award(cls, award: Award) -> Initiator:
         """Create an initiator meta agent from an award API resource."""
-        attributes = {PROV_ROLE: "initiator", "name": award["user"]["name"]}
-        return cls(id_section=award["user"]["name"], attributes=attributes)
+        attributes = {PROV_ROLE: "initiator", "name": award["user"]["name"].strip()}
+        return cls(id_section=attributes["name"], attributes=attributes)
 
 
 class MetaEvent(IntermediateRepresentation):
