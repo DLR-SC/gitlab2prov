@@ -65,7 +65,7 @@ class Gitlab2Prov:
         """Prepend project identifier to identifiers of activities and entities.
         Add project identifier to node attributes of activities and entities."""
         records = list(graph.get_records(ProvAgent))
-        id_mapping = {agent.identifier: agent.identifier for agent in records}
+        id_map = {agent.identifier: agent.identifier for agent in records}
         project = url_encoded_path(url).replace("%2F", "/")
 
         for record in graph.get_records((ProvActivity, ProvEntity)):
@@ -75,7 +75,7 @@ class Gitlab2Prov:
             identifier = record.identifier
             namespace, localpart = identifier.namespace, identifier.localpart
             unique_id = QualifiedName(namespace, q_name(f"{project}-{localpart}"))
-            id_mapping[identifier] = unique_id
+            id_map[identifier] = unique_id
 
             if isinstance(record, ProvEntity):
                 records.append(ProvEntity(record.bundle, unique_id, attributes))
@@ -84,16 +84,16 @@ class Gitlab2Prov:
 
         records.extend(graph.get_records(ProvRelation))
         graph = ProvDocument(records)
-        graph = self.update_relations(graph, id_mapping)
+        graph = self.update_relations(graph, id_map)
         return graph
 
-    def update_relations(self, graph, id_mapping):
+    def update_relations(self, graph, id_map):
         """Update start and enpoints of relations according to node id mapping."""
         records = list(graph.get_records(ProvElement))
         for relation in graph.get_records(ProvRelation):
             (s_type, s), (t_type, t) = relation.formal_attributes[:2]
 
-            attributes = [(s_type, id_mapping.get(s, s)), (t_type, id_mapping.get(t, t))]
+            attributes = [(s_type, id_map.get(s, s)), (t_type, id_map.get(t, t))]
             attributes.extend(relation.formal_attributes[2:])
             attributes.extend(relation.extra_attributes)
 
