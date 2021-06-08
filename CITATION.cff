@@ -14,6 +14,7 @@ authors:
     given-names: Claas
     orcid: "https://orcid.org/0000-0002-1841-8099"
   -
+    affiliation: "German Aerospace Center (DLR)"
     family-names: Schreiber
     given-names: Andreas
     orcid: "https://orcid.org/0000-0001-5750-5649"
@@ -25,4 +26,25 @@ message: "If you use this software, please cite it using these metadata."
 repository-code: "https://github.com/DLR-SC/gitlab2prov"
 title: GitLab2PROV
 version: "0.4"
-...
+references:
+  - type: conference-paper
+    authors: 
+    -
+      affiliation: "German Aerospace Center (DLR)"
+      family-names: Schreiber
+      given-names: Andreas
+      orcid: "https://orcid.org/0000-0001-5750-5649"
+    -
+      affiliation: "German Aerospace Center (DLR)"
+      family-names: "de Boer"
+      given-names: Claas
+      orcid: "https://orcid.org/0000-0002-1841-8099"
+    -
+      affiliation: "German Aerospace Center (DLR)"
+      family-names: "von Kurnatowski"
+      given-names: Lynn
+      orcid: "https://orcid.org/0000-0001-5144-702X"
+    title: "GitLab2PROV—Provenance of Software Projects hosted on GitLab"
+    conference:
+      - name: "13th  International  Workshop  on  Theory  and  Practice  of  Provenance  (TaPP  2021)"
+      
