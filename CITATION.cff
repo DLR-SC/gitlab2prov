@@ -1,0 +1,28 @@
+# YAML 1.2
+---
+abstract: "GitLab2PROV is a Python library and command line tool for extracting provenance information from GitLab projects."
+keywords: 
+  - provenance
+  - git
+  - "software-analytics"
+  - gitlab
+  - "w3c-prov"
+authors: 
+  -
+    affiliation: "German Aerospace Center (DLR)"
+    family-names: "de Boer"
+    given-names: Claas
+    orcid: "https://orcid.org/0000-0002-1841-8099"
+  -
+    family-names: Schreiber
+    given-names: Andreas
+    orcid: "https://orcid.org/0000-0001-5750-5649"
+cff-version: "1.1.0"
+date-released: 2021-04-23
+doi: "10.5281/zenodo.4714963"
+license: MIT
+message: "If you use this software, please cite it using these metadata."
+repository-code: "https://github.com/DLR-SC/gitlab2prov"
+title: GitLab2PROV
+version: "0.4"
+...
