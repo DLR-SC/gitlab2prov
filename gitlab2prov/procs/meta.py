@@ -12,12 +12,14 @@ from gitlab2prov.utils.types import Award, Commit, Issue, Label, MergeRequest, N
 
 class Agent(NamedTuple):
     """W3C PROV atom representing an agent."""
+
     id: str
     label: Dict[str, Any]
 
 
 class Activity(NamedTuple):
     """W3C PROV atom representing an activity."""
+
     id: str
     start: datetime.datetime
     end: datetime.datetime
@@ -26,18 +28,21 @@ class Activity(NamedTuple):
 
 class Entity(NamedTuple):
     """W3C PROV atom representing an entity."""
+
     id: str
     label: Dict[str, Any]
 
 
 class Addition(NamedTuple):
     """File change package representing the addition of a new file."""
+
     file: Entity
     file_v: Entity
 
 
 class Modification(NamedTuple):
     """File change package representing the modification of an existing file."""
+
     file: Entity
     file_v: Entity
     file_v_1: List[Entity]
@@ -45,6 +50,7 @@ class Modification(NamedTuple):
 
 class Deletion(NamedTuple):
     """File change package representing the deletion of an existing file."""
+
     file: Entity
     file_v: Entity
 
@@ -77,10 +83,7 @@ class IntermediateRepresentation:
         else:
             d[PROV_TYPE] = self._node_type
         for key, value in self.attributes.items():
-            if isinstance(key, QualifiedName):
-                d[key] = value
-                continue
-            d[f"{self._node_type.split('_')[0]}_{key}"] = value
+            d[key] = value
         return d
 
     def to_prov_element(self) -> Union[Activity, Agent, Entity]:
@@ -169,6 +172,7 @@ class Committer(IntermediateRepresentation):
 
 class Initiator(IntermediateRepresentation):
     """MetaAgent representing the initiator of an event."""
+
     _prov_type = Agent
     _node_type = "user"
 
@@ -206,14 +210,17 @@ class MetaEvent(IntermediateRepresentation):
         super().__init__(**kwargs)
 
     @classmethod
-    def create(cls, initiator: Initiator, created_at: str, attributes: Dict[str, Any]) -> MetaEvent:
+    def create(
+        cls, initiator: Initiator, created_at: str, attributes: Dict[str, Any]
+    ) -> MetaEvent:
         id_section = f"{attributes['event']}-{attributes['event_id']}"
         return cls(
             id_section=id_section,
             started_at=created_at,
             ended_at=created_at,
             attributes=attributes,
-            initiator=initiator)
+            initiator=initiator,
+        )
 
 
 class MetaCommit(IntermediateRepresentation):
@@ -227,10 +234,12 @@ class MetaCommit(IntermediateRepresentation):
     def from_commit(cls, commit: Commit) -> MetaCommit:
         attr_keys = ["title", "message", "id", "short_id"]
         attributes = {key: value for key, value in commit.items() if key in attr_keys}
-        return cls(id_section=commit["id"],
-                   started_at=commit["authored_date"],
-                   ended_at=commit["committed_date"],
-                   attributes=attributes)
+        return cls(
+            id_section=commit["id"],
+            started_at=commit["authored_date"],
+            ended_at=commit["committed_date"],
+            attributes=attributes,
+        )
 
 
 class MetaCreation(IntermediateRepresentation):
@@ -243,23 +252,32 @@ class MetaCreation(IntermediateRepresentation):
     @classmethod
     def from_commit(cls, commit: Commit) -> MetaCreation:
         cls._node_type = "commit_creation"
-        return cls(id_section=commit["id"],
-                   started_at=commit["committed_date"],
-                   ended_at=commit["committed_date"],
-                   attributes={})
+        return cls(
+            id_section=commit["id"],
+            started_at=commit["committed_date"],
+            ended_at=commit["committed_date"],
+            attributes={},
+        )
 
     @classmethod
     def from_issue(cls, issue: Issue) -> MetaCreation:
         cls._node_type = "issue_creation"
-        return cls(id_section=issue["id"], started_at=issue["created_at"], ended_at=issue["created_at"], attributes={})
+        return cls(
+            id_section=issue["id"],
+            started_at=issue["created_at"],
+            ended_at=issue["created_at"],
+            attributes={},
+        )
 
     @classmethod
     def from_merge_request(cls, merge_request: MergeRequest) -> MetaCreation:
         cls._node_type = "merge_request_creation"
-        return cls(id_section=merge_request["id"],
-                   started_at=merge_request["created_at"],
-                   ended_at=merge_request["created_at"],
-                   attributes={})
+        return cls(
+            id_section=merge_request["id"],
+            started_at=merge_request["created_at"],
+            ended_at=merge_request["created_at"],
+            attributes={},
+        )
 
 
 class MetaResource(IntermediateRepresentation):
@@ -286,9 +304,21 @@ class MetaResource(IntermediateRepresentation):
     @classmethod
     def from_merge_request(cls, merge_request: MergeRequest) -> MetaResource:
         cls._node_type = "merge_request_resource"
-        attr_keys = ["id", "iid", "title", "description", "web_url", "project_id",
-                     "source_branch", "target_branch", "source_project_url", "target_project_url"]
-        attributes = {key: value for key, value in merge_request.items() if key in attr_keys}
+        attr_keys = [
+            "id",
+            "iid",
+            "title",
+            "description",
+            "web_url",
+            "project_id",
+            "source_branch",
+            "target_branch",
+            "source_project_url",
+            "target_project_url",
+        ]
+        attributes = {
+            key: value for key, value in merge_request.items() if key in attr_keys
+        }
         return cls(id_section=merge_request["id"], attributes=attributes)
 
 
@@ -300,25 +330,41 @@ class MetaResourceVersion(IntermediateRepresentation):
         super().__init__(**kwargs)
 
     @classmethod
-    def from_commit(cls, commit: Commit, event: Optional[MetaEvent] = None) -> MetaResourceVersion:
+    def from_commit(
+        cls, commit: Commit, event: Optional[MetaEvent] = None
+    ) -> MetaResourceVersion:
         cls._node_type = "commit_resource_version"
-        id_section = commit["id"] if event is None else f"{commit['id']}-{event.id_section}"
+        id_section = (
+            commit["id"] if event is None else f"{commit['id']}-{event.id_section}"
+        )
         return cls(id_section=id_section, attributes={})
 
     @classmethod
-    def from_issue(cls, issue: Issue, event: Optional[MetaEvent] = None) -> MetaResourceVersion:
+    def from_issue(
+        cls, issue: Issue, event: Optional[MetaEvent] = None
+    ) -> MetaResourceVersion:
         cls._node_type = "issue_resource_version"
-        id_section = issue["id"] if event is None else f"{issue['id']}-{event.id_section}"
+        id_section = (
+            issue["id"] if event is None else f"{issue['id']}-{event.id_section}"
+        )
         return cls(id_section=id_section, attributes={})
 
     @classmethod
-    def from_merge_request(cls, merge_request: MergeRequest, event: Optional[MetaEvent] = None) -> MetaResourceVersion:
+    def from_merge_request(
+        cls, merge_request: MergeRequest, event: Optional[MetaEvent] = None
+    ) -> MetaResourceVersion:
         cls._node_type = "merge_request_resource_version"
-        id_section = merge_request["id"] if event is None else f"{merge_request['id']}-{event.id_section}"
+        id_section = (
+            merge_request["id"]
+            if event is None
+            else f"{merge_request['id']}-{event.id_section}"
+        )
         return cls(id_section=id_section, attributes={})
 
     @classmethod
-    def from_meta_versions(cls, version: Entity, event: MetaEvent) -> MetaResourceVersion:
+    def from_meta_versions(
+        cls, version: Entity, event: MetaEvent
+    ) -> MetaResourceVersion:
         resource_type = {k: v for k, v in version.label}[PROV_TYPE]
         cls._node_type = f"{resource_type}_version"
         id_section = f"{version.id}-{event.id_section}"
@@ -334,8 +380,10 @@ class File(IntermediateRepresentation):
 
     @classmethod
     def create(cls, path_at_addition: str) -> File:
-        return cls(id_section=path_at_addition,
-                   attributes={"path_at_addition": "-".join(path_at_addition.split("-")[:-1])})
+        return cls(
+            id_section=path_at_addition,
+            attributes={"path_at_addition": "-".join(path_at_addition.split("-")[:-1])},
+        )
 
 
 class FileVersion(IntermediateRepresentation):
@@ -346,7 +394,9 @@ class FileVersion(IntermediateRepresentation):
         super().__init__(**kwargs)
 
     @classmethod
-    def create(cls, path_at_addition: str, old_path: str, new_path: str, sha: str) -> FileVersion:
+    def create(
+        cls, path_at_addition: str, old_path: str, new_path: str, sha: str
+    ) -> FileVersion:
         attributes = {"old_path": old_path, "new_path": new_path}
         return cls(id_section=f"{path_at_addition}-{sha}", attributes=attributes)
 
@@ -368,7 +418,7 @@ class Release(IntermediateRepresentation):
             "name": release["name"],
             "released_at": release["released_at"],
             "tag_name": release["tag_name"],
-            "tag_path": release["tag_path"]
+            "tag_path": release["tag_path"],
         }
         _id = f"entity-{attributes['name']}{attributes['tag_name']}"
         return cls(id_section=_id, attributes=attributes)
@@ -385,7 +435,9 @@ class ReleaseEvent(IntermediateRepresentation):
     def from_release(cls, release):
         _id = f"activity-{release['name']}{release['tag_name']}"
         created_at = release["created_at"]
-        return cls(id_section=_id, started_at=created_at, ended_at=created_at, attributes={})
+        return cls(
+            id_section=_id, started_at=created_at, ended_at=created_at, attributes={}
+        )
 
 
 class ReleaseEvidence(IntermediateRepresentation):
@@ -403,7 +455,7 @@ class ReleaseEvidence(IntermediateRepresentation):
             "collected_at": evidence["collected_at"],
             "sha": evidence["sha"],
             "filepath": evidence["filepath"],
-            "uri": evidence["filepath"]
+            "uri": evidence["filepath"],
         }
         return cls(id_section=_id, attributes=attributes)
 
@@ -421,7 +473,7 @@ class ReleaseAsset(IntermediateRepresentation):
         attributes = {
             "filepath": asset["url"],
             "format": asset["format"],
-            "uri": asset["url"]
+            "uri": asset["url"],
         }
         _id = f"release_asset-{asset['url']}"
         return cls(id_section=_id, attributes=attributes)
@@ -457,13 +509,16 @@ class TagEvent(IntermediateRepresentation):
     def from_tag(cls, tag):
         _id = f"{tag['name']}{tag['target']}"
         created_at = tag["commit"]["created_at"]
-        return cls(id_section=_id, started_at=created_at, ended_at=created_at, attributes={})
+        return cls(
+            id_section=_id, started_at=created_at, ended_at=created_at, attributes={}
+        )
 
 
 class ReleasePackage(NamedTuple):
     """
     Represents the creation of a release.
     """
+
     user: Agent
     release: Entity
     release_event: Activity
@@ -474,8 +529,13 @@ class ReleasePackage(NamedTuple):
     def from_release(cls, release):
         release_event = ReleaseEvent.from_release(release).to_prov_element()
         _release = Release.from_release(release).to_prov_element()
-        assets = [ReleaseAsset.from_asset(asset).to_prov_element() for asset in release["assets"]["sources"]]
-        release_evidence = ReleaseEvidence.from_evidence(release["evidences"][0]).to_prov_element()
+        assets = [
+            ReleaseAsset.from_asset(asset).to_prov_element()
+            for asset in release["assets"]["sources"]
+        ]
+        release_evidence = ReleaseEvidence.from_evidence(
+            release["evidences"][0]
+        ).to_prov_element()
         user = Author.from_release(release).to_prov_element()
         return cls(user, _release, release_event, release_evidence, assets)
 
@@ -484,6 +544,7 @@ class TagPackage(NamedTuple):
     """
     Represents the creation of a tag.
     """
+
     user: Agent
     tag: Entity
     tag_event: Activity
@@ -498,6 +559,7 @@ class TagPackage(NamedTuple):
 
 class CommitModelPackage(NamedTuple):
     """Package for commit model implementation."""
+
     author: Agent
     committer: Agent
     commit: Activity
@@ -505,23 +567,32 @@ class CommitModelPackage(NamedTuple):
     file_changes: List[Union[Addition, Deletion, Modification]]
 
     @classmethod
-    def from_commit(cls,
-                    commit: Commit,
-                    parents: List[Commit],
-                    diff: List[Union[Addition, Deletion, Modification]]) -> CommitModelPackage:
+    def from_commit(
+        cls,
+        commit: Commit,
+        parents: List[Commit],
+        diff: List[Union[Addition, Deletion, Modification]],
+    ) -> CommitModelPackage:
         a = Author.from_commit(commit).to_prov_element()
         c_agt = Committer.from_commit(commit).to_prov_element()
         c_act = MetaCommit.from_commit(commit).to_prov_element()
         ps = []
         for parent in parents:
             ps.append(MetaCommit.from_commit(parent).to_prov_element())
-        return cls(author=a, committer=c_agt, commit=c_act, parent_commits=ps, file_changes=diff)
+        return cls(
+            author=a,
+            committer=c_agt,
+            commit=c_act,
+            parent_commits=ps,
+            file_changes=diff,
+        )
 
 
 class ReleaseTagPackage(NamedTuple):
     """
     Package for release and tag model.
     """
+
     release_package: ReleasePackage
     tag_package: TagPackage
     commit_package: CommitModelPackage
@@ -531,6 +602,7 @@ class CommitCreationPackage(NamedTuple):
     """Represents the creation of a commit resource.
 
     Subpackage for resource model package."""
+
     committer: Agent
     commit: Activity
     creation: Activity
@@ -544,13 +616,20 @@ class CommitCreationPackage(NamedTuple):
         cr_act = MetaCreation.from_commit(commit).to_prov_element()
         r = MetaResource.from_commit(commit).to_prov_element()
         r_v = MetaResourceVersion.from_commit(commit).to_prov_element()
-        return cls(committer=c_agt, commit=c_act, creation=cr_act, resource=r, resource_version=r_v)
+        return cls(
+            committer=c_agt,
+            commit=c_act,
+            creation=cr_act,
+            resource=r,
+            resource_version=r_v,
+        )
 
 
 class ResourceCreationPackage(NamedTuple):
     """Represents the creation of issue- or merge request resources.
 
     Subpackage for resource model package."""
+
     creator: Agent
     creation: Activity
     resource: Entity
@@ -577,31 +656,47 @@ class EventPackage(NamedTuple):
     """Represents an event occurring against a resource.
 
     Subpackage for resource model package."""
+
     initiator: Agent
     event: Activity
     resource: Entity
     resource_version: Entity
 
     @classmethod
-    def from_creation(cls, creation: Union[CommitCreationPackage, ResourceCreationPackage]) -> EventPackage:
-        i = creation.committer if isinstance(creation, CommitCreationPackage) else creation.creator
-        e = creation.commit if isinstance(creation, CommitCreationPackage) else creation.creation
+    def from_creation(
+        cls, creation: Union[CommitCreationPackage, ResourceCreationPackage]
+    ) -> EventPackage:
+        i = (
+            creation.committer
+            if isinstance(creation, CommitCreationPackage)
+            else creation.creator
+        )
+        e = (
+            creation.commit
+            if isinstance(creation, CommitCreationPackage)
+            else creation.creation
+        )
         r = creation.resource
         r_v = creation.resource_version
         return cls(initiator=i, event=e, resource=r, resource_version=r_v)
 
     @classmethod
-    def from_meta_events(cls, latest: MetaEvent, previous: EventPackage) -> EventPackage:
+    def from_meta_events(
+        cls, latest: MetaEvent, previous: EventPackage
+    ) -> EventPackage:
         if latest.initiator is None:
             raise ValueError
         i = latest.initiator.to_prov_element()
         e = latest.to_prov_element()
         r = previous.resource
-        r_v = MetaResourceVersion.from_meta_versions(previous.resource, latest).to_prov_element()
+        r_v = MetaResourceVersion.from_meta_versions(
+            previous.resource, latest
+        ).to_prov_element()
         return cls(initiator=i, event=e, resource=r, resource_version=r_v)
 
 
 class ResourceModelPackage(NamedTuple):
     """Package for resource model implementation."""
+
     creation: Union[ResourceCreationPackage, CommitCreationPackage]
     event_chain: List[EventPackage]
