@@ -108,7 +108,7 @@ class Gitlab2Prov:
         id_map = {}
         agents = defaultdict(list)
         for agent in graph.get_records(ProvAgent):
-            n_key, name = {k.localpart: (k, v) for k, v in agent.attributes}["user_name"]
+            n_key, name = {k.localpart: (k, v) for k, v in agent.attributes}["name"]
             name = alias_map.get(name, name)
 
             agents[name].extend(agent.attributes)
@@ -131,7 +131,7 @@ class Gitlab2Prov:
         records = list(graph.get_records((ProvActivity, ProvEntity, ProvRelation)))
         for code_name, agent in enumerate(set(graph.get_records(ProvAgent))):
             attributes = {k.localpart: (v, k) for k, v in agent.attributes}
-            attributes = {attributes["user_name"][1]: str(code_name)}
+            attributes = {attributes["name"][1]: str(code_name)}
             records.append(ProvAgent(agent.bundle, agent.identifier, attributes))
         graph = ProvDocument(records)
         return graph
