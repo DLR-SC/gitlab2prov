@@ -237,7 +237,7 @@ def release_tag_model(graph: ProvDocument, packages: ReleaseTagPackage):
 
             if package.release_package is not None:
                 graph.hadMember(tag.id, release.id)
-            graph.wasGeneratedBy(tag_event.id, tag.id)
+            graph.wasGeneratedBy(tag.id, tag_event.id)
             graph.wasAttributedTo(tag.id, t_user.id)
             graph.wasAssociatedWith(tag_event.id, t_user.id)
 
