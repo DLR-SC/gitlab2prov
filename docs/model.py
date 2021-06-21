@@ -1,3 +1,12 @@
+"""PROV model fpr GitLab2PROV."""
+
+__author__ = "Claas de Boer, Andreas Schreiber, Lynn von Kurnatowski"
+__copyright__ = "Copyright 2020, German Aerospace Center (DLR) and individual contributors"
+__license__ = "MIT"
+__version__ = "0.5"
+__status__ = "Development"
+
+
 from prov.model import ProvDocument
 from prov.constants import PROV_LABEL
 from prov.dot import prov_to_dot

@@ -13,7 +13,7 @@ HERE = pathlib.Path(__file__).parent
 
 setup(
     name='gitlab2prov',
-    version='0.4.1',
+    version='0.5',
     author='Claas de Boer',
     author_email='claas.deboer@dlr.de',
     maintainer='Andreas Schreiber',
