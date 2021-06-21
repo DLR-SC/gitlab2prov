@@ -25,7 +25,7 @@ license: MIT
 message: "If you use this software, please cite it using these metadata."
 repository-code: "https://github.com/DLR-SC/gitlab2prov"
 title: GitLab2PROV
-version: "0.4"
+version: "0.5"
 references:
   - type: conference-paper
     authors: 
