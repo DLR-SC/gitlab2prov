@@ -90,6 +90,28 @@ optional arguments:
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
+## How to cite
+
+If you use GitLab2PROV in a scientific publication, we would appreciate citations to the following paper:
+
+* Schreiber, A., de Boer, C. and von Kurnatowski, L. (2021). [GitLab2PROV—Provenance of Software Projects hosted on GitLab](https://www.usenix.org/conference/tapp2021/presentation/schreiber). 13th International Workshop on Theory and Practice of Provenance (TaPP 2021), USENIX Association
+
+Bibtex entry:
+
+```BibTeX
+@InProceedings{SchreiberBoerKurnatowski2021,
+  author    = {Andreas Schreiber and Claas de~Boer and Lynn von~Kurnatowski},
+  booktitle = {13th International Workshop on Theory and Practice of Provenance (TaPP 2021)},
+  title     = {{GitLab2PROV}{\textemdash}Provenance of Software Projects hosted on GitLab},
+  year      = {2021},
+  month     = jul,
+  publisher = {{USENIX} Association},
+  url       = {https://www.usenix.org/conference/tapp2021/presentation/schreiber},
+}
+```
+
+You can also cite specific releases published on Zenodo: [![DOI](https://zenodo.org/badge/215042878.svg)](https://zenodo.org/badge/latestdoi/215042878)
+
 ## References
 
 **Influencial Software for `gitlab2prov`**
@@ -99,11 +121,12 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 **Influencial Papers for `gitlab2prov`**:
 
-* De Nies, T., Magliacane, S., Verborgh, R., Coppens, S., Groth, P., Mannens, E., & Van de Walle, R. (2013). [Git2PROV: Exposing Version Control System Content as W3C PROV](https://dl.acm.org/doi/abs/10.5555/2874399.2874431). In *Poster and Demo Proceedings of the 12th International Semantic Web Conference* (Vol. 1035, pp. 125–128).
+* De Nies, T., Magliacane, S., Verborgh, R., Coppens, S., Groth, P., Mannens, E., and Van de Walle, R. (2013). [Git2PROV: Exposing Version Control System Content as W3C PROV](https://dl.acm.org/doi/abs/10.5555/2874399.2874431). In *Poster and Demo Proceedings of the 12th International Semantic Web Conference* (Vol. 1035, pp. 125–128).
 
-* Packer, H. S., Chapman, A., & Carr, L. (2019). [GitHub2PROV: provenance for supporting software project management](https://dl.acm.org/doi/10.5555/3359032.3359039). In *11th International Workshop on Theory and Practice of Provenance (TaPP 2019)*.
+* Packer, H. S., Chapman, A., and Carr, L. (2019). [GitHub2PROV: provenance for supporting software project management](https://dl.acm.org/doi/10.5555/3359032.3359039). In *11th International Workshop on Theory and Practice of Provenance (TaPP 2019)*.
 
 **Papers that refer to `gitlab2prov`**:
+
 * Andreas Schreiber, Claas de Boer (2020). [Modelling Knowledge about Software Processes using Provenance Graphs and its Application to Git-based VersionControl Systems](https://dl.acm.org/doi/10.1145/3387940.3392220). In *ICSEW'20: Proceedings of the IEEE/ACM 42nd Conference on Software Engineering Workshops* (pp. 358–359).
 
 * Tim Sonnekalb, Thomas S. Heinze, Lynn von Kurnatowski, Andreas Schreiber, Jesus M. Gonzalez-Barahona, and Heather Packer (2020). [Towards automated, provenance-driven security audit for git-based repositories: applied to germany's corona-warn-app: vision paper](https://doi.org/10.1145/3416507.3423190). In *Proceedings of the 3rd ACM SIGSOFT International Workshop on Software Security from Design to Deployment* (pp. 15–18).
