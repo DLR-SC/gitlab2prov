@@ -588,18 +588,22 @@ def classify(note: Note) -> Dict[str, Any]:
     """
     if note["type"] == "DiffNote":
         return diff_note_attributes(note)
-
     matches = event_attributes(note["body"])
-
+    # TODO: fix hotfix
+    # if no match is found, return a default event
+    # instead of raising an exception
     if not matches:
-        raise Exception(f"No match found for body: '{note['body']}' of note: <{note}>.")
+        return {
+            "event": "DEFAULT_EVENT",
+            "imported": "DEFAULT_EVENT"
+        }
+    # if more than one match has been found
+    # choose the first one
     if len(matches) > 2:
-        raise Exception(f"More than one match for body : '{note['body']}' of note: <{note}>.")
-
+        pass
     attributes = {}
     attributes.update(matches[0])
     attributes.update(import_attributes(note["body"]))
-
     return attributes
 
 
