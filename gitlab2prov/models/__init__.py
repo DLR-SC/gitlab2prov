@@ -215,16 +215,17 @@ def add_event_chain(graph: ProvDocument, package: ResourceModelPackage) -> ProvD
 def release_tag_model(graph: ProvDocument, packages: ReleaseTagPackage):
     for package in packages:
         if package.release_package is not None:
-            r_user, release, release_event, release_evidence, assets = package.release_package
+            r_user, release, release_event, release_evidences, assets = package.release_package
             graph.agent(*r_user)
             graph.entity(*release)
             graph.activity(*release_event)
-            graph.entity(*release_evidence)
+            for evidence in release_evidences:
+                graph.entity(*evidence)
+                graph.hadMember(evidence.id, release.id)
             for asset in assets:
                 graph.entity(*asset)
                 graph.hadMember(asset.id, release.id)
-
-            graph.hadMember(release_evidence.id, release.id)
+            
             graph.wasGeneratedBy(release.id, release_event.id)
             graph.wasAttributedTo(release.id, r_user.id)
             graph.wasAssociatedWith(release_event.id, r_user.id)
