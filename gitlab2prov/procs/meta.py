@@ -522,7 +522,7 @@ class ReleasePackage(NamedTuple):
     user: Agent
     release: Entity
     release_event: Activity
-    release_evidence: Entity
+    release_evidences: List[Entity]
     assets: List[Entity]
 
     @classmethod
@@ -533,11 +533,9 @@ class ReleasePackage(NamedTuple):
             ReleaseAsset.from_asset(asset).to_prov_element()
             for asset in release["assets"]["sources"]
         ]
-        release_evidence = ReleaseEvidence.from_evidence(
-            release["evidences"][0]
-        ).to_prov_element()
+        release_evidences = [ReleaseEvidence.from_evidence(evidence).to_prov_element() for evidence in release["evidences"]]
         user = Author.from_release(release).to_prov_element()
-        return cls(user, _release, release_event, release_evidence, assets)
+        return cls(user, _release, release_event, release_evidences, assets)
 
 
 class TagPackage(NamedTuple):
