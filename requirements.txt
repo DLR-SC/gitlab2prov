@@ -1,4 +1,4 @@
 prov>=2.0.0
-pydot
-aiohttp
-yarl
+sqlalchemy
+git-python
+python-gitlab
