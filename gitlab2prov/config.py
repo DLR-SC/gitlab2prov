@@ -1,103 +1,206 @@
-import argparse
-import configparser
 import os
 import sys
-from distutils.util import strtobool
-from typing import Any, List, Tuple
+import csv
+import logging
+import argparse
+import configparser
+from dataclasses import dataclass
+from typing import Optional
+from pathlib import Path
 
 
-prog = "gitlab2prov"
-description = "Extract provenance information from GitLab projects."
+logger = logging.getLogger(__name__)
 
 
 class ConfigurationError(Exception):
     pass
 
 
-def get_config() -> argparse.Namespace:
-    """Return configuration namespace."""
-    parser = get_parser()
-    args = parser.parse_args()
-    if args.config_file:
-        if os.path.exists(args.config_file):
-            args = patch(args)
-
-    if is_under_configured(args):
-        missing_options = is_under_configured(args)
-        parser.print_help()
-        raise ConfigurationError(f"\nMissing values for config options: {missing_options}")
-
-    return args
-
-def get_parser() -> argparse.Namespace:
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(prog, None, description)
-
-    parser.add_argument("-p", "--project-urls",
-                       help="gitlab project urls", nargs="+", metavar="<string>")
-    parser.add_argument("-t", "--token",
-                       help="gitlab api access token", metavar="<string>")
-    parser.add_argument("-r", "--rate-limit",
-                       help="api client rate limit (in req/s)", metavar="<int>", type=int)
-    parser.add_argument("-c", "--config-file",
-                       help="config file path", metavar="<string>")
-    parser.add_argument("-f", "--format",
-                       help="provenance output format", choices=["provn", "json", "rdf", "xml", "dot"])
-    parser.add_argument("-q", "--quiet",
-                       help="suppress output to stdout", action="store_true")
-    parser.add_argument("--aliases", metavar="<string>",
-                       help="path to agent alias mapping json file")
-    parser.add_argument("--pseudonymize", action="store_true",
-                       help="pseudonymize agents")
-    return parser
+def parse_csv_str(s: str):
+    reader = csv.reader([s])
+    unqoute = lambda s: convert_string(s)
+    parsed = [unqoute(f) for fields in reader for f in fields if f]
+    return parsed
 
 
-def patch(args: argparse.Namespace) -> argparse.Namespace:
-    """Try to patch missing flag values with values from config file."""
-    if not args.config_file:
-        return args
+def convert_string(s: str):
+    return s.strip("'").strip('"')
 
-    projects = []
-    for (section, key), value in config_items(args.config_file):
+
+def convert_path(fp: str):
+    if fp is None:
+        return None
+    if fp in ["", '""', "''"]:
+        return None
+    return Path(fp)
+
+
+@dataclass
+class Configuration:
+    projects: list[str]
+    token: str
+    fmt: str = "json"
+    pseudonymous: bool = False
+    log: bool = False
+    cprofile: bool = False
+    double_agents: Optional[Path] = None
+    config_file: Optional[Path] = None
+
+    @staticmethod
+    def validate_config_file(parser, filepath):
         try:
-            if section == "PROJECTS":
-                projects.append(value)
-                continue
-            elif not getattr(args, key) and value:
-                setattr(args, key, value)
-        except AttributeError:
-            raise ConfigurationError(f"Config file key '{key}' is not a valid configuration option.\n")
+            parser["GITLAB"]
+        except configparser.NoSectionError:
+            raise ConfigurationError(
+                f"Config file {filepath} is missing the required section [GITLAB].\n"
+                f"Please check your config file and try again."
+            )
 
-    if not getattr(args, "project_urls"):
-        setattr(args, "project_urls", projects)
-    args.quiet = bool(strtobool(str(args.quiet)))
-    args.rate_limit = int(args.rate_limit)
-    return args
+        try:
+            parser["GITLAB"]["projects"]
+        except configparser.NoOptionError:
+            raise ConfigurationError(
+                f"Config file {filepath} is missing the required option 'projects'.\n"
+                f"gitlab2prov doesn't know which projects to mine, when no urls are specified.\n"
+                f"Please check your config file and try again."
+            )
+
+        try:
+            s = parser["GITLAB"]["projects"]
+            parse_csv_str(s)
+        except Exception:
+            raise ConfigurationError(
+                f"Could not parse a list of urls from {s}.\n"
+                f"Values for the config option 'projects' have to be seperated by commas (aka. csv).\n"
+                f"Please check your config file and try again."
+            )
+
+        try:
+            parser.getstring("GITLAB", "token")
+        except configparser.NoOptionError:
+            raise ConfigurationError(
+                f"Config file {filepath} is missing the required option 'token'.\n"
+                f"Without a token, gitlab2prov can't perform authenticated API request.\n"
+                f"Please check your config file and try again."
+            )
+
+        fmt = parser.getstring("OUTPUT", "format", fallback="json")
+        if fmt not in ["json", "rdf", "xml", "provn", "dot"]:
+            raise Warning(
+                f"Format {fmt} is not a supported output format.\n"
+                f"Using the fallback format 'json', gitlab2prov will continue.",
+                file=sys.stderr,
+            )
+
+        filepath = parser.getpath("MISC", "double_agents", fallback=None)
+        if filepath is not None:
+            if not os.path.exists(filepath):
+                raise Warning(
+                    f"Specified double agent mapping {filepath} could not be found.\n"
+                    f"Please check the specified file path in your config file.\n"
+                    f"gitlab2prov will continue without a mapping.",
+                )
+
+    @staticmethod
+    def validate_cli_args(args):
+        if args.config_file:
+            return
+        if not args.projects:
+            raise ConfigurationError(
+                "Gitlab project urls are required but where not provided. Please check your command line configuration and try again."
+            )
+        if not args.token:
+            raise ConfigurationError(
+                "Gitlab access token is required but was not provided. Please check your command line configuration and try again."
+            )
+
+    @classmethod
+    def from_file(cls, filepath):
+        parser = configparser.ConfigParser(
+            converters={"string": convert_string, "path": convert_path}
+        )
+        parser.read(filepath)
+        try:
+            cls.validate_config_file(parser, filepath)
+        except Warning as msg:
+            logger.warning(msg.replace("\n", " "))
+        except Exception as exeption:
+            raise exeption
+        return cls(
+            parse_csv_str(parser["GITLAB"]["projects"]),
+            parser.getstring("GITLAB", "token"),
+            parser.getstring("OUTPUT", "format"),
+            parser.getboolean("MISC", "pseudonymous", fallback=False),
+            parser.getboolean("MISC", "log", fallback=False),
+            parser.getboolean("MISC", "cprofile", fallback=False),
+            parser.getpath("MISC", "double_agents", fallback=None),
+            parser.getpath("MISC", "config_file", fallback=None),
+        )
+
+    @classmethod
+    def from_cli(cls):
+        parser = argparse.ArgumentParser(
+            prog="gitlab2prov",
+            description="Extract provenance information from GitLab projects.",
+        )
+        parser.add_argument("-p", "--projects", help="gitlab project urls", nargs="+", metavar="URLS")
+        parser.add_argument("-t", "--token", help="gitlab api access token", metavar="TOKEN")
+        parser.add_argument("-c", "--config-file", help="config file path", metavar="FILEPATH")
+        parser.add_argument(
+            "-f",
+            "--format",
+            help="provenance serialization format",
+            choices=["provn", "json", "rdf", "xml", "dot"],
+            default="json",
+            metavar="STRING"
+        )
+        parser.add_argument(
+            "--double-agents",
+            help=(
+                "Filepath to a file that contains equivalence classes for user names (agents). "
+                "A single user can have multiple names across his local git config and gitlab account. "
+                "The generated provenance graph can therefore contain multiple PROV agents that all represent the same user. "
+                "To merge these 'double agents' into one, you can provide a mapping in .json format. "
+                "More information about the mapping format can be found at 'https://github.com/dlr-sc/gitlab2prov'."
+            ),
+            metavar="FILEPATH"
+        )
+        parser.add_argument(
+            "--pseudonymous",
+            help="pseudonymize user names by enumeration",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
+            "--cprofile",
+            help="enable runtime profiling and store stats in 'gl2p.stats'",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
+            "--log",
+            help="enable logging, set the log level to debug and write log to 'gl2p.log'",
+            action="store_true",
+            default=False,
+        )
+        args = parser.parse_args()
+        try:
+            cls.validate_cli_args(args)
+        except Exception as exception:
+            raise exception
+        return cls(
+            args.projects,
+            args.token,
+            args.format,
+            args.pseudonymous,
+            args.log,
+            args.cprofile,
+            args.double_agents,
+            args.config_file,
+        )
 
 
-def is_under_configured(args: argparse.Namespace) -> str:
-    """Return string of missing keys if there are any."""
-    necessary = ["project_urls", "token", "format"]
-    missing = ""
-    for key in necessary:
-        if not getattr(args, key):
-            missing = ", ".join((missing, f"'--{key}'"))
-    return missing[2:]
-
-
-def config_items(path: str) -> List[Tuple[Tuple[str, str], Any]]:
-    """Return config file option, value pairs."""
-    config = configparser.ConfigParser()
-    config.read(path)
-
-    res = []
-    for section in config.sections():
-        for opt, val in config.items(section):
-            res.append(((section, opt), val))
-    return res
-
-
-def print_config_summary(args: argparse.Namespace) -> None:
-    print("Config summary:", file=sys.stderr)
-    for key, val in vars(args).items():
-        print(f"{key:14} -> {val}", file=sys.stderr)
+config: Optional[Configuration] = None
+config = Configuration.from_cli()
+if config.config_file:
+    config = Configuration.from_file(config.config_file)
