@@ -1,12 +1,9 @@
 from datetime import datetime, timedelta
 
-import pytest
-
 from gitlab2prov.adapters import repository
 from gitlab2prov.domain import objects
 
 
-pytestmark = pytest.mark.usefixtures("mappers")
 
 
 today = datetime.now()
