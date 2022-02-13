@@ -17,3 +17,4 @@ notebooks/.ipynb_checkpoints
 *.db
 .pytest_cache
 venv
+*.env
