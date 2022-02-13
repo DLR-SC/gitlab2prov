@@ -134,7 +134,6 @@ class Configuration:
             parser.getboolean("MISC", "log", fallback=False),
             parser.getboolean("MISC", "cprofile", fallback=False),
             parser.getpath("MISC", "double_agents", fallback=None),
-            parser.getpath("MISC", "config_file", fallback=None),
         )
 
     @classmethod
