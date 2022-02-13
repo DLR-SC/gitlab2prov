@@ -2,3 +2,5 @@ prov>=2.0.0
 sqlalchemy
 git-python
 python-gitlab
+regex
+pydot
