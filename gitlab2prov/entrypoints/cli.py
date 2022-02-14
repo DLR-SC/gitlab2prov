@@ -21,7 +21,7 @@ def cprofile(func):
             func()
         stats = pstats.Stats(pr)
         stats.sort_stats(pstats.SortKey.TIME)
-        stats.dump_stats(config.profiling)
+        stats.dump_stats("gl2p.stats")
 
     if config.cprofile:
         log.info("enabled profiling")
