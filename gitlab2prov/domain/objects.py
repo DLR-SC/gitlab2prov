@@ -7,10 +7,16 @@ from typing import Optional, Any, TypeAlias
 from urllib.parse import urlencode
 
 from prov.identifier import QualifiedName
-from prov.model import PROV_TYPE, PROV_ROLE, PROV_ATTR_STARTTIME, PROV_ATTR_ENDTIME
+from prov.model import (
+    PROV_TYPE,
+    PROV_ROLE,
+    PROV_ATTR_STARTTIME,
+    PROV_ATTR_ENDTIME,
+    PROV_LABEL,
+)
 
 from gitlab2prov.domain.constants import ProvType
-from gitlab2prov.prov.operations import graph_factory
+from gitlab2prov.prov.operations import qualified_name
 
 
 SKIP = {
@@ -20,6 +26,7 @@ SKIP = {
 PROV_FIELDS = {
     "prov_type": PROV_TYPE,
     "prov_role": PROV_ROLE,
+    "prov_label": PROV_LABEL,
     "prov_start": PROV_ATTR_STARTTIME,
     "prov_end": PROV_ATTR_ENDTIME,
 }
@@ -29,7 +36,7 @@ Attributes: TypeAlias = list[tuple[str, Any]]
 
 
 def prov_attributes(dataclass: BaseHooks) -> Attributes:
-    attrs: Attributes = []
+    attrs: Attributes = [(PROV_LABEL, dataclass.prov_label)]
     for field in fields(dataclass):
         if field.metadata == SKIP:
             continue
@@ -41,22 +48,21 @@ def prov_attributes(dataclass: BaseHooks) -> Attributes:
     return attrs
 
 
-def prov_identifier(localpart: str):
-    namespace = graph_factory().get_default_namespace()
-    return QualifiedName(namespace, localpart)
-
-
 @dataclass
 class BaseHooks(abc.ABC):
     @property
-    def prov_identifier(self):
+    def prov_identifier(self) -> QualifiedName:
         attrs = {f.name: getattr(self, f.name) for f in fields(self) if f.repr}
         query = urlencode(attrs)
-        return prov_identifier(f"{type(self).__name__}?{query}")
+        return qualified_name(f"{type(self).__name__}?{query}")
 
     @property
-    def prov_attributes(self):
+    def prov_attributes(self) -> Attributes:
         return prov_attributes(self)
+
+    @property
+    def prov_label(self) -> QualifiedName:
+        return qualified_name(repr(self))
 
     @abc.abstractmethod
     def __iter__(self):
@@ -259,7 +265,14 @@ class Version(EntityHooks):
     def prov_identifier(self):
         attrs = {f.name: getattr(self, f.name) for f in fields(self) if f.repr}
         query = urlencode(attrs)
-        return prov_identifier(f"{self.prov_type}?{query}")
+        return qualified_name(f"{self.prov_type}?{query}")
+
+    @property
+    def prov_label(self):
+        cls_name = self.prov_type
+        attributes = [f"{f.name}={getattr(self, f.name)}" for f in fields(self)]
+        label = f"{cls_name}({', '.join(attributes)})"
+        return qualified_name(label)
 
 
 @dataclass(unsafe_hash=True)
@@ -272,7 +285,14 @@ class AnnotatedVersion(EntityHooks):
     def prov_identifier(self):
         attrs = {f.name: getattr(self, f.name) for f in fields(self) if f.repr}
         query = urlencode(attrs)
-        return prov_identifier(f"{self.prov_type}?{query}")
+        return qualified_name(f"{self.prov_type}?{query}")
+
+    @property
+    def prov_label(self):
+        cls_name = self.prov_type
+        attributes = [f"{f.name}={getattr(self, f.name)}" for f in fields(self)]
+        label = f"{cls_name}({', '.join(attributes)})"
+        return qualified_name(label)
 
 
 @dataclass(unsafe_hash=True)
@@ -344,4 +364,11 @@ class Creation(ActivityHooks):
     def prov_identifier(self):
         attrs = {f.name: getattr(self, f.name) for f in fields(self) if f.repr}
         query = urlencode(attrs)
-        return prov_identifier(f"{self.prov_type}?{query}")
+        return qualified_name(f"{self.prov_type}?{query}")
+
+    @property
+    def prov_label(self):
+        cls_name = self.prov_type
+        attributes = [f"{f.name}={getattr(self, f.name)}" for f in fields(self)]
+        label = f"{cls_name}({', '.join(attributes)})"
+        return qualified_name(label)
