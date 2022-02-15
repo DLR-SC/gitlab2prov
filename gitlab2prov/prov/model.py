@@ -281,7 +281,7 @@ def add_release_and_tag(graph: ProvDocument, rls: objects.Release, tag: objects.
     return graph
 
 
-def add_tag_and_commit(graph: ProvDocument, tag_: objects.Tag, cmt: objects.GitCommit):
+def add_tag_and_commit(graph: ProvDocument, tag_: objects.Tag, cmt: objects.GitlabCommit):
     creation = graph.activity(*tag_.creation)
     author = graph.agent(*tag_.author)
     tag = graph.entity(*tag_)
