@@ -23,7 +23,7 @@ from prov.model import (
 log = logging.getLogger(__name__)
 
 
-def prov_identifier(localpart: str):
+def qualified_name(localpart: str) -> QualifiedName:
     namespace = graph_factory().get_default_namespace()
     return QualifiedName(namespace, localpart)
 
@@ -110,7 +110,7 @@ def uncover_double_agents(graph: ProvDocument, fp: str) -> ProvDocument:
         attrs[name].update(t for t in agent.attributes if t[0].localpart != "name")
 
         repr_attrs = [tpl for tpl in attrs[name] if tpl[1] in ("name", "email")]
-        identifier = prov_identifier(f"User?{urlencode(repr_attrs)}")
+        identifier = qualified_name(f"User?{urlencode(repr_attrs)}")
         records.append(ProvAgent(agent.bundle, identifier, attrs[name]))
 
         reroute[agent.identifier] = identifier
@@ -139,7 +139,7 @@ def pseudonymize(graph: ProvDocument):
             (key, val) for key, val in agent.extra_attributes if key.localpart == "name"
         ]
         attributes.append((qn, f"agent-{i}"))
-        identifier = prov_identifier(f"User?name=agent-{i}")
+        identifier = qualified_name(f"User?name=agent-{i}")
         records.append(ProvAgent(agent.bundle, identifier, attributes))
 
     return graph_factory(records)
