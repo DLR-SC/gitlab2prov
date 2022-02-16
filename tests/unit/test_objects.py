@@ -5,7 +5,7 @@ from prov.model import PROV_TYPE, PROV_ROLE, PROV_ATTR_STARTTIME, PROV_ATTR_ENDT
 
 from gitlab2prov.domain import objects
 from gitlab2prov.domain.constants import ProvType
-from gitlab2prov.prov import operations
+from gitlab2prov.prov.operations import qualified_name
 
 from tests.random_refs import random_suffix
 
@@ -14,10 +14,6 @@ today = datetime.now()
 yesterday = today - timedelta(days=1)
 next_week = today + timedelta(days=7)
 tomorrow = today + timedelta(days=1)
-
-
-def qualified_name(s: str):
-    return operations.prov_identifier(s)
 
 
 class TestUser:
