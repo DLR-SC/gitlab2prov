@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import abc
 
-from gitlab2prov.config import config
 from gitlab2prov.adapters import repository
 
 
