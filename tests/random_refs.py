@@ -1,5 +1,6 @@
 import uuid
 import random
+from gitlab2prov.domain.constants import ProvRole
 
 
 def random_suffix():
