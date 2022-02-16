@@ -1,12 +1,9 @@
 from prov.model import ProvAgent, ProvDocument, ProvRelation, PROV_ROLE, PROV_TYPE
 
 from gitlab2prov.prov import operations
+from gitlab2prov.prov.operations import qualified_name
 
 from tests.random_refs import random_suffix
-
-
-def qualified_name(s: str):
-    return operations.prov_identifier(s)
 
 
 class TestGraphFactory:
