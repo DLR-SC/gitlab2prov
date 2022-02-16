@@ -1,5 +1,6 @@
 import uuid
 import random
+from gitlab2prov.domain import objects
 from gitlab2prov.domain.constants import ProvRole
 
 
