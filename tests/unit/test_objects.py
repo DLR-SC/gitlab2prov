@@ -1,7 +1,13 @@
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
-from prov.model import PROV_TYPE, PROV_ROLE, PROV_ATTR_STARTTIME, PROV_ATTR_ENDTIME
+from prov.model import (
+    PROV_TYPE,
+    PROV_ROLE,
+    PROV_ATTR_STARTTIME,
+    PROV_ATTR_ENDTIME,
+    PROV_LABEL,
+)
 
 from gitlab2prov.domain import objects
 from gitlab2prov.domain.constants import ProvType
@@ -37,6 +43,7 @@ class TestUser:
         role = f"user-prov-role-{random_suffix()}"
         user = objects.User(name, email, username, id, role)
         expected_attributes = [
+            (PROV_LABEL, user.prov_label),
             ("name", name),
             ("email", email),
             ("gitlab_username", username),
@@ -69,6 +76,7 @@ class TestFile:
         hexsha = f"commit-hash-{random_suffix()}"
         f = objects.File(path, hexsha)
         expected_attributes = [
+            (PROV_LABEL, f.prov_label),
             ("path", path),
             ("commit_hexsha", hexsha),
             (PROV_TYPE, ProvType.File),
@@ -93,6 +101,7 @@ class TestFileRevision:
         change_type = f"change-type-{random_suffix()}"
         file_revision = objects.FileRevision(path, hexsha, change_type, None, None)
         expected_attributes = [
+            (PROV_LABEL, file_revision.prov_label),
             ("path", path),
             ("commit_hexsha", hexsha),
             ("change_type", change_type),
@@ -118,6 +127,7 @@ class TestGitCommit:
         title = f"commit-title-{random_suffix()}"
         commit = objects.GitCommit(hexsha, msg, title, None, None, [], today, tomorrow)
         expected_attributes = [
+            (PROV_LABEL, commit.prov_label),
             ("hexsha", hexsha),
             ("message", msg),
             ("title", title),
@@ -143,6 +153,7 @@ class TestAsset:
         fmt = f"asset-format-{random_suffix()}"
         asset = objects.Asset(url, fmt)
         expected_attributes = [
+            (PROV_LABEL, asset.prov_label),
             ("url", url),
             ("format", fmt),
             (PROV_TYPE, ProvType.Asset),
@@ -165,6 +176,7 @@ class TestEvidence:
         url = f"evidence-url-{random_suffix()}"
         evidence = objects.Evidence(sha, url, today)
         expected_attributes = [
+            (PROV_LABEL, evidence.prov_label),
             ("hexsha", sha),
             ("url", url),
             ("collected_at", today),
@@ -188,6 +200,7 @@ class TestAnnotatedVersion:
         aid = f"annotation-id-{random_suffix()}"
         annotated_version = objects.AnnotatedVersion(vid, aid, "TestAnnotatedVersion")
         expected_attributes = [
+            (PROV_LABEL, annotated_version.prov_label),
             ("version_id", vid),
             ("annotation_id", aid),
             (PROV_TYPE, "TestAnnotatedVersion"),
@@ -208,6 +221,7 @@ class TestCreation:
         id = f"creation-id-{random_suffix()}"
         creation = objects.Creation(id, today, tomorrow, "TestCreation")
         expected_attributes = [
+            (PROV_LABEL, creation.prov_label),
             ("creation_id", id),
             (PROV_ATTR_STARTTIME, today),
             (PROV_ATTR_ENDTIME, tomorrow),
@@ -233,6 +247,7 @@ class TestAnnotation:
         body = f"annotation-body-{random_suffix()}"
         annotation = objects.Annotation(id, type, body, None, today, tomorrow)
         expected_attributes = [
+            (PROV_LABEL, annotation.prov_label),
             ("id", id),
             ("type", type),
             ("body", body),
@@ -249,6 +264,7 @@ class TestAnnotation:
         kwargs = {"kwarg1": "value1", "kwarg2": "value2"}
         annotation = objects.Annotation(id, type, body, None, today, tomorrow, kwargs)
         expected_attributes = [
+            (PROV_LABEL, annotation.prov_label),
             ("id", id),
             ("type", type),
             ("body", body),
@@ -282,6 +298,7 @@ class TestIssue:
         url = f"issue-url-{random_suffix()}"
         issue = objects.Issue(id, iid, title, desc, url, None, [], today, tomorrow)
         expected_attributes = [
+            (PROV_LABEL, issue.prov_label),
             ("id", id),
             ("iid", iid),
             ("title", title),
@@ -340,6 +357,7 @@ class TestGitlabCommit:
         url = f"commit-url-{random_suffix()}"
         commit = objects.GitlabCommit(hexsha, url, None, [], today, tomorrow)
         expected_attributes = [
+            (PROV_LABEL, commit.prov_label),
             ("hexsha", hexsha),
             ("url", url),
             ("authored_at", today),
@@ -433,6 +451,7 @@ class TestMergeRequest:
             yesterday,
         )
         expected_attributes = [
+            (PROV_LABEL, merge_request.prov_label),
             ("id", id),
             ("iid", iid),
             ("title", title),
@@ -515,6 +534,7 @@ class TestTag:
         msg = f"tag-message-{random_suffix()}"
         tag = objects.Tag(name, hexsha, msg, None, today)
         expected_attributes = [
+            (PROV_LABEL, tag.prov_label),
             ("name", name),
             ("hexsha", hexsha),
             ("message", msg),
@@ -546,6 +566,7 @@ class TestRelease:
         tag_name = f"tag-name-{random_suffix()}"
         release = objects.Release(name, desc, tag_name, None, [], [], today, tomorrow)
         expected_attributes = [
+            (PROV_LABEL, release.prov_label),
             ("name", name),
             ("description", desc),
             ("tag_name", tag_name),
