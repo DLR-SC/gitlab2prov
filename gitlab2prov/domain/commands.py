@@ -9,15 +9,15 @@ class Command:
 
 
 @dataclass
-class Init(Command):
     url: str
+class Fetch(Command):
     token: str
     path: Path
 
 
 @dataclass
-class Update(Init):
     last_update: datetime
+class Update(Fetch):
 
 
 @dataclass

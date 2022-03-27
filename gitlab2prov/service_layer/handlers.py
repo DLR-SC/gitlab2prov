@@ -1,6 +1,7 @@
 import sys
 import logging
 from urllib.parse import urlsplit
+from tempfile import TemporaryDirectory
 
 from git import Repo
 from gitlab import Gitlab
@@ -21,14 +22,6 @@ def project_slug(url: str) -> str:
     return path.strip("/")
 
 
-def mine_git(cmd: commands.Init, uow, git_miner):
-    from_path = repository_filepath(cmd.url, cmd.path)
-    repo = git_miner.get_repo(from_path)
-    with uow:
-        for resource in git_miner.mine(repo):
-            log.debug(f"add {resource=}")
-            uow.resources.add(resource)
-        uow.commit()
 def gitlab_url(url: str) -> str:
     split = urlsplit(url)
     return f"{split.scheme}://{split.netloc}"
@@ -40,10 +33,23 @@ def clone_with_https_url(url: str, token: str) -> str:
 
 
 
-def mine_gitlab(cmd: commands.Init, uow, gitlab_miner):
-    project = gitlab_miner.get_project(cmd.url, cmd.token)
+def mine_git(cmd: commands.Fetch, uow, git_miner) -> None:
+    url = clone_with_https_url(cmd.project_url, cmd.token)
+    with TemporaryDirectory() as tmpdir:
+        repo = Repo.clone_from(url, to_path=tmpdir)
+        with uow:
+            for resource in git_miner(repo).mine():
+                log.debug(f"add {resource=}")
+                uow.resources.add(resource)
+            uow.commit()
+        repo.close()
+
+
+def mine_gitlab(cmd: commands.Fetch, uow, gitlab_miner) -> None:
+    gl = Gitlab(gitlab_url(cmd.project_url), cmd.token)
+    project = gl.projects.get(project_slug(cmd.project_url))
     with uow:
-        for resource in gitlab_miner.mine(project):
+        for resource in gitlab_miner(project).mine():
             log.debug(f"add {resource=}")
             uow.resources.add(resource)
         uow.commit()
