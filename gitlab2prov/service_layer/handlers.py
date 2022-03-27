@@ -79,7 +79,7 @@ def serialize(cmd: commands.Serialize, uow):
 
 
 HANDLERS = {
-    commands.Init: [
+    commands.Fetch: [
         mine_git,
         mine_gitlab,
     ],
