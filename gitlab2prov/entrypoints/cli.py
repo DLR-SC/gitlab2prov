@@ -1,5 +1,3 @@
-import cProfile
-import pstats
 import logging
 import tempfile
 
@@ -16,22 +14,9 @@ if CONFIG.log:
 log = logging.getLogger(__name__)
 
 
-def cprofile(func):
-    def profiled():
-        with cProfile.Profile() as pr:
-            func()
-        stats = pstats.Stats(pr)
-        stats.sort_stats(pstats.SortKey.TIME)
-        stats.dump_stats("gl2p.stats")
-
-    if CONFIG.cprofile:
-        log.info("enabled profiling")
-        return profiled
-    log.info("disabled profiling")
-    return func
 
 
-@cprofile
+
 def main():
     bus = bootstrap.bootstrap()
     token = CONFIG.token
