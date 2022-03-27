@@ -20,6 +20,6 @@ class Update(Fetch):
 
 @dataclass
 class Serialize(Command):
-    fmt: bool
+    format: str
     pseudonymize: bool
-    uncover_double_agents: Path
+    uncover_double_agents: str
