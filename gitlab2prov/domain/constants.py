@@ -1,10 +1,11 @@
 import types
 import enum
+import prov.constants
 
-from prov.constants import PROV_ATTR_COLLECTION
 
 
-class ChangeType(enum.Enum):
+
+class ChangeType:
     ADDED = "A"
     MODIFIED = "M"
     DELETED = "D"
@@ -16,51 +17,52 @@ class ChangeType(enum.Enum):
     CHANGED = "T"
 
 
-ProvRole = types.SimpleNamespace()
-ProvRole.Committer = "Committer"
-ProvRole.Author = "Author"
-ProvRole.GitlabCommitAuthor = "GitlabCommitAuthor"
-ProvRole.IssueAuthor = "IssueAuthor"
-ProvRole.MergeRequestAuthor = "MergeRequestAuthor"
-ProvRole.ReleaseAuthor = "ReleaseAuthor"
-ProvRole.TagAuthor = "TagAuthor"
-ProvRole.Annotator = "Annotator"
-ProvRole.File = "File"
-ProvRole.FileRevisionAtPointOfAddition = "FileRevisionAtPointOfAddition"
-ProvRole.FileRevisionToBeModified = "FileRevisionToBeModified"
-ProvRole.FileRevisionAfterModification = "FileRevisionAfterModification"
-ProvRole.FileRevisionAtPointOfDeletion = "FileRevisionAtPointOfDeletion"
-ProvRole.Resource = "Resource"
-ProvRole.ResourceVersionAtPointOfCreation = "ResourceVersionAtPointOfCreation"
-ProvRole.ResourceVersionToBeAnnotated = "ResourceVersionToBeAnnotated"
-ProvRole.ResourceVersionAfterAnnotation = "ResourceVersionAfterAnnotation"
-ProvRole.Release = "Release"
-ProvRole.Tag = "Tag"
-ProvRole.GitCommit = "GitCommit"
+class ProvRole:
+    GIT_COMMIT = "GitCommit"
+    COMMITTER = "Committer"
+    AUTHOR = "Author"
+    AUTHOR_GITLAB_COMMIT = "GitlabCommitAuthor"
+    AUTHOR_ISSUE = "IssueAuthor"
+    AUTHOR_MERGE_REQUEST = "MergeRequestAuthor"
+    AUTHOR_RELEASE = "ReleaseAuthor"
+    AUTHOR_TAG = "TagAuthor"
+    ANNOTATOR = "Annotator"
+    FILE = "File"
+    FILE_REVISION_TO_BE_MODIFIED = "FileRevisionToBeModified"
+    FILE_REVISION_AFTER_MODIFICATION = "FileRevisionAfterModification"
+    FILE_REVISION_AT_POINT_OF_ADDITION = "FileRevisionAtPointOfAddition"
+    FILE_REVISION_AT_POINT_OF_DELETION = "FileRevisionAtPointOfDeletion"
+    RESOURCE = "Resource"
+    RESOURCE_VERSION_AT_POINT_OF_CREATION = "ResourceVersionAtPointOfCreation"
+    RESOURCE_VERSION_TO_BE_ANNOTATED = "ResourceVersionToBeAnnotated"
+    RESOURCE_VERSION_AFTER_ANNOTATION = "ResourceVersionAfterAnnotation"
+    RELEASE = "Release"
+    TAG = "Tag"
+    GitCommit = "GitCommit"
 
 
-ProvType = types.SimpleNamespace()
-ProvType.User = "User"
-ProvType.GitCommit = "GitCommit"
-ProvType.File = "File"
-ProvType.FileRevision = "FileVersion"
-ProvType.GitlabCommit = "GitlabCommit"
-ProvType.GitlabCommitVersion = "GitlabCommitVersion"
-ProvType.GitlabCommitCreation = "GitlabCommitCreation"
-ProvType.AnnotatedGitlabCommitVersion = "AnnotatedGitlabCommitVersion"
-ProvType.Issue = "Issue"
-ProvType.IssueVersion = "IssueVersion"
-ProvType.AnnotatedIssueVersion = "AnnotatedIssueVersion"
-ProvType.IssueCreation = "IssueCreation"
-ProvType.MergeRequest = "MergeRequest"
-ProvType.MergeRequestVersion = "MergeRequestVersion"
-ProvType.MergeRequestCreation = "MergeRequestCreation"
-ProvType.AnnotatedMergeRequestVersion = "AnnotatedMergeRequestVersion"
-ProvType.Annotation = "Annotation"
-ProvType.Tag = "Tag"
-ProvType.TagCreation = "TagCreation"
-ProvType.Release = "Release"
-ProvType.ReleaseCreation = "ReleaseCreation"
-ProvType.Asset = "Asset"
-ProvType.Evidence = "Evidence"
-ProvType.Collection = PROV_ATTR_COLLECTION
+class ProvType:
+    USER = "User"
+    GIT_COMMIT = "GitCommit"
+    FILE = "File"
+    FILE_REVISION = "FileRevision"
+    GITLAB_COMMIT = "GitlabCommit"
+    GITLAB_COMMIT_VERSION = "GitlabCommitVersion"
+    GITLAB_COMMIT_VERSION_ANNOTATED = "AnnotatedGitlabCommitVersion"
+    GITLAB_COMMIT_CREATION = "GitlabCommitCreation"
+    ISSUE = "Issue"
+    ISSUE_VERSION = "IssueVersion"
+    ISSUE_VERSION_ANNOTATED = "AnnotatedIssueVersion"
+    ISSUE_CREATION = "IssueCreation"
+    MERGE_REQUEST = "MergeRequest"
+    MERGE_REQUEST_VERSION = "MergeRequestVersion"
+    MERGE_REQUEST_VERSION_ANNOTATED = "AnnotatedMergeRequestVersion"
+    MERGE_REQUEST_CREATION = "MergeRequestCreation"
+    ANNOTATION = "Annotation"
+    TAG = "Tag"
+    TAG_CREATION = "TagCreation"
+    RELEASE = "Release"
+    RELEASE_CREATION = "ReleaseCreation"
+    ASSET = "Asset"
+    EVIDENCE = "Evidence"
+    COLLECTION = prov.constants.PROV_ATTR_COLLECTION
