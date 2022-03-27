@@ -70,11 +70,11 @@ def dedupe(graph: ProvDocument) -> ProvDocument:
 def read(fp: Path) -> dict[str, list[str]]:
     with open(fp, "r") as f:
         data = f.read()
-        json = json.loads(data)
-    if not json:
+        d = json.loads(data)
+    if not d:
         log.info(f"empty agent mapping")
         return dict()
-    return json
+    return d
 
 
 def xform(d: dict[str, list[str]]) -> dict[str, str]:
