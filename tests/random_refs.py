@@ -1,3 +1,4 @@
+import inspect
 import uuid
 import random
 from gitlab2prov.domain import objects
@@ -9,10 +10,14 @@ def random_suffix():
 
 
 def random_user():
-    name = f"user-name-{random_suffix()}"
-    email = f"user-email-{random_suffix()}"
-    username = f"gitlab-user-name-{random_suffix()}"
-    id = f"gitlab-user-id-{random_suffix()}"
-    role = random.choice(list(vars(ProvRole).values()))
-    return objects.User(name, email, username, id, role)
+    def isprop(v):
+        return isinstance(v, property)
+
+    return objects.User(
+        name=f"user-name-{random_suffix()}",
+        email=f"user-email-{random_suffix()}",
+        gitlab_username=f"gitlab-user-name-{random_suffix()}",
+        gitlab_id=f"gitlab-user-id-{random_suffix()}",
+        prov_role=random.choice([value for (_, value) in inspect.getmembers(ProvRole, isprop)]),
+    )
 
