@@ -1,34 +1,16 @@
 import sys
 import logging
 
-import git
 from prov.dot import prov_to_dot
 
 from gitlab2prov.domain import commands
 from gitlab2prov.prov import operations
 from gitlab2prov.prov import model
-from gitlab2prov.adapters.miners.git import repository_filepath, https_clone_url
 
 
 log = logging.getLogger(__name__)
 
 
-def clone_git_repository_to_path(cmd: commands.Init):
-    path = repository_filepath(cmd.url, cmd.path)
-    try:
-        _ = git.Repo(path).git_dir
-        exists = True
-    except:
-        exists = False
-    if exists:
-        repo = git.Repo(path)
-        for remote in repo.remotes:
-            log.info(f"fetching {remote=}")
-            remote.fetch()
-    else:
-        url = https_clone_url(cmd.url, cmd.token)
-        log.info(f"clone repository {cmd.url} to {path}")
-        git.Repo.clone_from(url, to_path=path, quiet=True)
 
 
 def mine_git(cmd: commands.Init, uow, git_miner):
@@ -75,7 +57,6 @@ def serialize(cmd: commands.Serialize, uow):
 
 HANDLERS = {
     commands.Init: [
-        clone_git_repository_to_path,
         mine_git,
         mine_gitlab,
     ],
