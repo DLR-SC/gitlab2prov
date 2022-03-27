@@ -1,8 +1,14 @@
-import types
-import enum
+import prov.model
 import prov.constants
 
 
+PROV_FIELD_MAP = {
+    "prov_type": prov.model.PROV_TYPE,
+    "prov_role": prov.model.PROV_ROLE,
+    "prov_label": prov.model.PROV_LABEL,
+    "prov_start": prov.model.PROV_ATTR_STARTTIME,
+    "prov_end": prov.model.PROV_ATTR_ENDTIME,
+}
 
 
 class ChangeType:

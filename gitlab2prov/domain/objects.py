@@ -7,13 +7,6 @@ from typing import Optional, Any, TypeAlias
 from urllib.parse import urlencode
 
 from prov.identifier import QualifiedName
-from prov.model import (
-    PROV_TYPE,
-    PROV_ROLE,
-    PROV_ATTR_STARTTIME,
-    PROV_ATTR_ENDTIME,
-    PROV_LABEL,
-)
 
 from gitlab2prov.domain.constants import ProvType
 from gitlab2prov.prov.operations import qualified_name
@@ -23,13 +16,6 @@ SKIP = {
     "SKIP": "This field should not be included in the prov attributes of a dataclass."
 }
 
-PROV_FIELDS = {
-    "prov_type": PROV_TYPE,
-    "prov_role": PROV_ROLE,
-    "prov_label": PROV_LABEL,
-    "prov_start": PROV_ATTR_STARTTIME,
-    "prov_end": PROV_ATTR_ENDTIME,
-}
 
 
 Attributes: TypeAlias = list[tuple[str, Any]]
