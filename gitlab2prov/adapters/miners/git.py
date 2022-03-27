@@ -1,111 +1,126 @@
-import abc
-import itertools
+from abc import ABC, abstractmethod
 from datetime import datetime
+from dataclasses import dataclass
+from itertools import zip_longest
 
+from git import Repo
 
-from gitlab2prov.domain import objects
-from gitlab2prov.domain.constants import ProvRole
+from gitlab2prov.domain.constants import ProvRole, ChangeType
+from gitlab2prov.domain.objects import User, GitCommit, File, FileRevision
 
 
 EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 
-
-
-class AbstractGitMiner(abc.ABC):
-    def mine(self, repo: git.Repo):
-        resources = self._mine(repo)
-        return resources
-
-    def get_repo(self, filepath: str):
-        return self._get_repo(filepath)
-
-    @abc.abstractmethod
-    def _get_repo(self, filepath: str):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def _mine(self, repo: git.Repo):
+@dataclass
+class AbstractMiner(ABC):
+    @abstractmethod
+    def mine(self):
         raise NotImplementedError
 
 
-class GitRepositoryMiner(AbstractGitMiner):
-    def _get_repo(self, filepath):
-        try:
-            return git.Repo(filepath)
-        except (git.NoSuchPathError, git.InvalidGitRepositoryError) as err:
-            return None
+@dataclass
+class GitRepositoryMiner(AbstractMiner):
+    repo: Repo
 
-    def _mine(self, repo: git.Repo):
-        return itertools.chain(extract_commits(repo), extract_files(repo))
+    def mine(self):
+        yield from extract_commits(self.repo)
+        yield from extract_files(self.repo)
+        yield from extract_revisions(self.repo)
 
 
-def extract_commits(repo: git.Repo):
-    for commit in repo.iter_commits("--all"):
-        author, committer = commit.author, commit.committer
-        author = objects.User(author.name, author.email, prov_role=ProvRole.Author)
-        committer = objects.User(
-            committer.name, committer.email, prov_role=ProvRole.Committer
+def get_author(commit):
+    return User(
+        name=commit.author.name,
+        email=commit.author.email,
+        gitlab_username=None,
+        gitlab_id=None,
+        prov_role=ProvRole.AUTHOR,
+    )
+
+
+def get_committer(commit):
+    return User(
+        name=commit.committer.name,
+        email=commit.committer.email,
+        gitlab_username=None,
+        gitlab_id=None,
+        prov_role=ProvRole.COMMITTER,
+    )
+
+
+def parse_log(log: str):
+    """Parse 'git log' output into file paths, commit hexshas, file status (aka change type).
+    Example:
+    >>> parse_log(
+            '''
+            34db8646fe1648bef9b7ce6613ae4a06acffba66
+            A   foo.py
+            9b65f80b44acffc8036fef932f801134533b99bd
+            M   foo.py
+            '''
         )
-        parents = [parent.hexsha for parent in commit.parents]
-        yield objects.GitCommit(
-            commit.hexsha,
-            commit.message,
-            commit.summary,
-            author,
-            committer,
-            parents,
-            datetime.fromtimestamp(commit.authored_date),
-            datetime.fromtimestamp(commit.committed_date),
-        )
-
-
-def parse_log_cmd(log: str):
-    """Parse 'git log' output into file paths, commit hexshas, file status (or change types).
-
-    Log example:
-        34db8646fe1648bef9b7ce6613ae4a06acffba66
-        A   foo.py
-        9b65f80b44acffc8036fef932f801134533b99bd
-        M   foo.py
-
-    Parsed output:
-        (foo.py, 34db8646fe1648bef9b7ce6613ae4a06acffba66, A)
-        (foo.py, 9b65f80b44acffc8036fef932f801134533b99bd, M)
+    [(foo.py, 34db8646fe1648bef9b7ce6613ae4a06acffba66, A), (foo.py, 9b65f80b44acffc8036fef932f801134533b99bd, M)]
     """
-    # split at line breaks, remove empty lines and superfluos whitespace
+    # split at line breaks, strip whitespace, remove empty lines
     lines = [line.strip() for line in log.split("\n") if line]
-    # reorder such that file path, hexsha and status are on the same line
+    # every second line contains the SHA1 of a commit
     hexshas = lines[::2]
+    # every other line contains a type, aswell as a file path
     types = [line.split()[0][0] for line in lines[1::2]]
     paths = [line.split()[1][:] for line in lines[1::2]]
+    # zip all three together
     return zip(paths, hexshas, types)
 
 
-def extract_versions(repo: git.Repo, file: objects.File):
-    versions = list()
-    for path, hexsha, status in parse_log_cmd(
-        repo.git.log(
-            "--all", "--follow", "--name-status", "--pretty=format:%H", "--", file.path
+def extract_commits(repo):
+    for commit in repo.iter_commits("--all"):
+        yield GitCommit(
+            hexsha=commit.hexsha,
+            message=commit.message,
+            title=commit.summary,
+            author=get_author(commit),
+            committer=get_committer(commit),
+            parents=[parent.hexsha for parent in commit.parents],
+            prov_start=datetime.fromtimestamp(commit.authored_date),
+            prov_end=datetime.fromtimestamp(commit.committed_date),
         )
-    ):
-        versions.append(objects.FileRevision(path, hexsha, status, file))
-    # versions are sorted young to old (last elem is oldest)
-    for version, previous_version in itertools.zip_longest(versions, versions[1:]):
-        version.previous = previous_version
-    return list(versions)
 
 
-def extract_files(repo: git.Repo):
-    files = []
+def extract_files(repo):
     for commit in repo.iter_commits("--all"):
         # choose the parent commit to diff against
-        # use the *magic* empty tree sha for commits without parents
+        # use *magic* empty tree sha for commits without parents
         parent = commit.parents[0] if commit.parents else EMPTY_TREE_SHA
-        # diff against parent, set reverse to true TODO: why again?
+        # diff against parent
         diff = commit.diff(parent, R=True)
-        for entry in diff.iter_change_type("A"):
-            # file path for new files is stored in b_path
-            file = objects.File(entry.b_path, commit.hexsha)
-            files.extend(extract_versions(repo, file))
-    return files
+        # only consider files that have been added to the repository
+        # disregard modifications and deletions
+        for diff_item in diff.iter_change_type(ChangeType.ADDED):
+            # path for new files is stored in diff b_path
+            yield File(path=diff_item.b_path, committed_in=commit.hexsha)
+
+
+def extract_revisions(repo):
+    for file in extract_files(repo):
+        revs = []
+
+        for path, hexsha, status in parse_log(
+            repo.git.log(
+                "--all",
+                "--follow",
+                "--name-status",
+                "--pretty=format:%H",
+                "--",
+                file.path,
+            )
+        ):
+            revs.append(
+                FileRevision(
+                    path=path, committed_in=hexsha, change_type=status, original=file
+                )
+            )
+        # revisions remeber their predecessor (previous revision)
+        for rev, prev in zip_longest(revs, revs[1:]):
+            rev.previous = prev
+            yield rev
