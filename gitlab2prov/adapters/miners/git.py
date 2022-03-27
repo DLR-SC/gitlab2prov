@@ -1,10 +1,7 @@
 import abc
 import itertools
-from urllib.parse import urlsplit
-from pathlib import Path
 from datetime import datetime
 
-import git
 
 from gitlab2prov.domain import objects
 from gitlab2prov.domain.constants import ProvRole
@@ -13,17 +10,6 @@ from gitlab2prov.domain.constants import ProvRole
 EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 
-def repository_filepath(url, fp):
-    slug = urlsplit(url).path
-    if not slug:
-        return
-    project = slug[1:].split("/")[1]
-    return Path(fp) / project
-
-
-def https_clone_url(url, token):
-    _, gitlab, slug, *_ = urlsplit(url)
-    return f"https://gitlab.com:{token}@{gitlab}{slug}"
 
 
 class AbstractGitMiner(abc.ABC):

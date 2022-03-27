@@ -1,9 +1,7 @@
 import abc
 from typing import TypeAlias
-from urllib.parse import urlparse
 import itertools
 
-import gitlab
 import gitlab.v4.objects
 
 from gitlab2prov.domain import objects
@@ -33,11 +31,6 @@ class AbstractGitlabMiner(abc.ABC):
 
 
 class GitlabProjectMiner(AbstractGitlabMiner):
-    def _get_project(self, url: str, token: str):
-        parsed = urlparse(url)
-        url = f"https://{parsed.netloc}"
-        project = parsed.path[1:] if parsed.path.startswith("/") else parsed.path
-        return gitlab.Gitlab(url, token).projects.get(project)
 
     def _mine(self, project: Project):
         return itertools.chain(

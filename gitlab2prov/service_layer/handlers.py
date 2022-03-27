@@ -1,6 +1,9 @@
 import sys
 import logging
+from urllib.parse import urlsplit
 
+from git import Repo
+from gitlab import Gitlab
 from prov.dot import prov_to_dot
 
 from gitlab2prov.domain import commands
@@ -11,6 +14,11 @@ from gitlab2prov.prov import model
 log = logging.getLogger(__name__)
 
 
+def project_slug(url: str) -> str:
+    path = urlsplit(url).path
+    if path is None:
+        return None
+    return path.strip("/")
 
 
 def mine_git(cmd: commands.Init, uow, git_miner):
@@ -21,6 +29,15 @@ def mine_git(cmd: commands.Init, uow, git_miner):
             log.debug(f"add {resource=}")
             uow.resources.add(resource)
         uow.commit()
+def gitlab_url(url: str) -> str:
+    split = urlsplit(url)
+    return f"{split.scheme}://{split.netloc}"
+
+
+def clone_with_https_url(url: str, token: str) -> str:
+    split = urlsplit(url)
+    return f"https://gitlab.com:{token}@{split.netloc}/{project_slug(url)}"
+
 
 
 def mine_gitlab(cmd: commands.Init, uow, gitlab_miner):
