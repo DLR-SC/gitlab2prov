@@ -49,25 +49,19 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
         pass
 
 
-class FakeGitRepositoryMiner(miners.AbstractGitMiner):
+class FakeGitRepositoryMiner(miners.AbstractMiner):
     def __init__(self, resources):
         self.resources = resources
 
-    def _get_repo(self, filepath):
-        return self.resources
-
-    def _mine(self, resources):
+    def mine(self):
         return iter(self.resources)
 
 
-class FakeGitlabProjectMiner(miners.AbstractGitlabMiner):
+class FakeGitlabProjectMiner(miners.AbstractMiner):
     def __init__(self, resources):
         self.resources = resources
 
-    def _get_project(self, url, token):
-        return self.resources
-
-    def _mine(self, resources):
+    def mine(self):
         return iter(self.resources)
 
 
@@ -88,7 +82,7 @@ class TestCloneGitRepository:
         repo = mocker.patch("git.Repo.clone_from")
         netloc, path = "gitlab.com", "/group/project"
         bus = bootstrap_test_app()
-        bus.handle(commands.Init(f"https://{netloc}{path}", "token", Path("gitdir")))
+        bus.handle(commands.Fetch(f"https://{netloc}{path}", "token", Path("gitdir")))
         expected_url = f"https://gitlab.com:token@gitlab.com/group/project"
         expected_path = Path("gitdir/project")
         repo.assert_called_once_with(expected_url, to_path=expected_path, quiet=True)
@@ -99,7 +93,7 @@ class TestMineGit:
         mocker.patch("git.Repo")
         user = random_refs.random_user()
         bus = bootstrap_test_app(git_resources=[user])
-        bus.handle(commands.Init("https://gitlab.com/group/project", "token", "path"))
+        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
         user = bus.uow.resources.get(objects.User, name=user.name)
         assert user
 
@@ -107,13 +101,13 @@ class TestMineGit:
         mocker.patch("git.Repo")
         user = random_refs.random_user()
         bus = bootstrap_test_app(git_resources=[user])
-        bus.handle(commands.Init("https://gitlab.com/group/project", "token", "path"))
+        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
         assert bus.uow.committed
 
     def test_errors_for_invalid_repository_file_path(self, mocker):
         mocker.patch("git.Repo")
         bus = bootstrap_test_app()
-        bus.handle(commands.Init("https://gitlab.com/group/project", "token", "path"))
+        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
         assert True
 
 
@@ -122,7 +116,7 @@ class TestMineGitlab:
         mocker.patch("git.Repo")
         user = random_refs.random_user()
         bus = bootstrap_test_app(gitlab_resources=[user])
-        bus.handle(commands.Init("https://gitlab.com/group/project", "token", "path"))
+        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
         user = bus.uow.resources.get(objects.User, name=user.name)
         assert user
 
@@ -130,11 +124,11 @@ class TestMineGitlab:
         mocker.patch("git.Repo")
         user = random_refs.random_user()
         bus = bootstrap_test_app(gitlab_resources=[user])
-        bus.handle(commands.Init("https://gitlab.com/group/project", "token", "path"))
+        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
         assert bus.uow.committed
 
     def test_errors_for_invalid_url(self, mocker):
         mocker.patch("git.Repo")
         bus = bootstrap_test_app()
-        bus.handle(commands.Init("https://gitlab.com/group/project", "token", "path"))
+        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
         assert True
