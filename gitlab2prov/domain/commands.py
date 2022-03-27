@@ -9,8 +9,8 @@ class Command:
 
 
 @dataclass
-    url: str
 class Fetch(Command):
+    project_url: str
     token: str
     path: Path
 
