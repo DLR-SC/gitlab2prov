@@ -1,5 +1,6 @@
 import inspect
 import logging
+import typing
 
 from gitlab2prov.service_layer import handlers, messagebus, unit_of_work
 from gitlab2prov.adapters import miners
@@ -10,8 +11,8 @@ log = logging.getLogger(__name__)
 
 def bootstrap(
     uow: unit_of_work.AbstractUnitOfWork = unit_of_work.InMemoryUnitOfWork(),
-    git_miner: miners.AbstractGitMiner = miners.GitRepositoryMiner(),
-    gitlab_miner: miners.AbstractGitlabMiner = miners.GitlabProjectMiner(),
+    git_miner: typing.Type[miners.AbstractMiner] = miners.GitRepositoryMiner,
+    gitlab_miner: typing.Type[miners.AbstractMiner] = miners.GitlabProjectMiner,
 ):
     dependencies = {
         "uow": uow,
