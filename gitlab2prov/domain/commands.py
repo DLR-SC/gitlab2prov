@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 
 
 @dataclass
@@ -12,7 +11,6 @@ class Command:
 class Fetch(Command):
     project_url: str
     token: str
-    path: Path
 
 
 @dataclass
