@@ -66,7 +66,7 @@ def serialize(cmd: commands.Serialize, uow) -> None:
     for prov_model in model.MODELS:
         with uow:
             log.info(f"populate model {prov_model}")
-            subgraph = prov_model(operations.graph_factory(), uow.resources)
+            subgraph = prov_model(uow.resources)
         subgraphs.append(subgraph)
 
     graph = operations.combine(subgraphs)
