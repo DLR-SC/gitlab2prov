@@ -1,180 +1,185 @@
-import abc
-from typing import TypeAlias
-import itertools
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
-import gitlab.v4.objects
+from gitlab.v4.objects import Project
 
-from gitlab2prov.domain import objects
 from gitlab2prov.domain.constants import ProvRole
 from gitlab2prov.adapters.miners.annotation_parsing import parse_annotations
+from gitlab2prov.domain.objects import (
+    Asset,
+    Evidence,
+    GitlabCommit,
+    Issue,
+    MergeRequest,
+    Release,
+    User,
+    Tag,
+)
 
 
-Project: TypeAlias = gitlab.v4.objects.Project
-
-
-
-class AbstractGitlabMiner(abc.ABC):
-    def mine(self, project: Project):
-        resources = self._mine(project)
-        return resources
-
-    def get_project(self, url, token):
-        return self._get_project(url, token)
-
-    @abc.abstractmethod
-    def _get_project(self, url: str, token: str):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def _mine(self, project: Project):
+@dataclass
+class AbstractMiner(ABC):
+    @abstractmethod
+    def mine(self):
         raise NotImplementedError
 
 
-class GitlabProjectMiner(AbstractGitlabMiner):
+@dataclass
+class GitlabProjectMiner(AbstractMiner):
+    project: Project
 
-    def _mine(self, project: Project):
-        return itertools.chain(
-            extract_gitlab_commits(project),
-            extract_issues(project),
-            extract_mergerequests(project),
-            extract_releases(project),
-            extract_tags(project),
+    def mine(self):
+        yield from extract_commits(self.project)
+        yield from extract_issues(self.project)
+        yield from extract_mergerequests(self.project)
+        yield from extract_releases(self.project)
+        yield from extract_tags(self.project)
+
+
+def get_commit_author(commit):
+    return User(
+        name=commit.committer_name,
+        email=commit.committer_email,
+        gitlab_username=None,
+        gitlab_id=None,
+        prov_role=ProvRole.AUTHOR_GITLAB_COMMIT,
+    )
+
+
+def get_tag_author(tag):
+    return User(
+        name=tag.commit.get("author_name"),
+        email=tag.commit.get("author_email"),
+        gitlab_username=None,
+        gitlab_id=None,
+        prov_role=ProvRole.AUTHOR_TAG,
+    )
+
+
+def get_resource_author(resource, role: ProvRole):
+    if not hasattr(resource, "author"):
+        return None
+    return User(
+        name=resource.author.get("name"),
+        email=resource.author.get("email"),
+        gitlab_username=resource.author.get("username"),
+        gitlab_id=resource.author.get("id"),
+        prov_role=role,
+    )
+
+
+def get_assets(release):
+    return [
+        Asset(url=asset.get("url"), format=asset.get("format"))
+        for asset in release.assets.get("sources", [])
+    ]
+
+
+def get_evidences(release):
+    return [
+        Evidence(
+            hexsha=evidence.get("sha"),
+            url=evidence.get("filepath"),
+            collected_at=evidence.get("collected_at"),
         )
+        for evidence in release.evidences
+    ]
 
 
-def extract_gitlab_commits(project: Project):
+def extract_commits(project):
     for commit in project.commits.list(all=True):
-        parseables = set()
-        parseables.update(commit.comments.list(all=True))
-        parseables.update(commit.comments.list(all=True, system=True))
-        annotations = parse_annotations(parseables)
-        author = objects.User(
-            commit.committer_name,
-            commit.committer_email,
-            prov_role=ProvRole.GitlabCommitAuthor,
-        )
-        yield objects.GitlabCommit(
-            commit.id,
-            commit.web_url,
-            author,
-            annotations,
-            commit.authored_date,
-            commit.committed_date,
+        parseables = {
+            *commit.comments.list(all=True, system=False),
+            *commit.comments.list(all=True, system=True),
+        }
+        yield GitlabCommit(
+            hexsha=commit.id,
+            url=commit.web_url,
+            author=get_commit_author(commit),
+            annotations=parse_annotations(parseables),
+            authored_at=commit.authored_date,
+            committed_at=commit.committed_date,
         )
 
 
-def extract_issues(project: Project):
+def extract_issues(project):
     for issue in project.issues.list(all=True):
-        parseables = set()
-        parseables.update(issue.notes.list(all=True))
-        parseables.update(issue.notes.list(all=True, system=True))
-        parseables.update(issue.resourcelabelevents.list(all=True))
-        parseables.update(issue.awardemojis.list(all=True))
-        parseables.update(
-            award
-            for note in issue.notes.list(all=True)
-            for award in note.awardemojis.list(all=True)
-        )
-        annotations = parse_annotations(parseables)
-        author = objects.User(
-            issue.author.get("name"),
-            issue.author.get("email"),
-            issue.author.get("username"),
-            issue.author.get("id"),
-            ProvRole.IssueAuthor,
-        )
-        yield objects.Issue(
-            issue.id,
-            issue.iid,
-            issue.title,
-            issue.description,
-            issue.web_url,
-            author,
-            annotations,
-            issue.created_at,
-            issue.closed_at,
+        parseables = {
+            *issue.notes.list(all=True, system=False),
+            *issue.notes.list(all=True, system=True),
+            *issue.awardemojis.list(all=True),
+            *issue.resourcelabelevents.list(all=True),
+            *(
+                award
+                for note in issue.notes.list(all=True)
+                for award in note.awardemojis.list(all=True)
+            ),
+        }
+        yield Issue(
+            id=issue.id,
+            iid=issue.iid,
+            title=issue.title,
+            description=issue.description,
+            url=issue.web_url,
+            author=get_resource_author(issue, ProvRole.AUTHOR_ISSUE),
+            annotations=parse_annotations(parseables),
+            created_at=issue.created_at,
+            closed_at=issue.closed_at,
         )
 
 
-def extract_mergerequests(project: Project):
+def extract_mergerequests(project):
     for mergerequest in project.mergerequests.list(all=True):
-        parseables = set()
-        parseables.update(mergerequest.notes.list(all=True))
-        parseables.update(mergerequest.notes.list(all=True, system=True))
-        parseables.update(mergerequest.awardemojis.list(all=True))
-        parseables.update(mergerequest.resourcelabelevents.list(all=True))
-        parseables.update(
-            award
-            for note in mergerequest.notes.list(all=True)
-            for award in note.awardemojis.list(all=True)
-        )
-        annotations = parse_annotations(parseables)
-        author = objects.User(
-            mergerequest.author.get("name"),
-            mergerequest.author.get("email"),
-            mergerequest.author.get("username"),
-            mergerequest.author.get("id"),
-            ProvRole.MergeRequestAuthor,
-        )
-        yield objects.MergeRequest(
-            mergerequest.id,
-            mergerequest.iid,
-            mergerequest.title,
-            mergerequest.description,
-            mergerequest.web_url,
-            mergerequest.source_branch,
-            mergerequest.target_branch,
-            author,
-            annotations,
-            mergerequest.created_at,
-            mergerequest.closed_at,
-            mergerequest.merged_at,
-            getattr(mergerequest, "first_deployed_to_production_at", None),
-        )
+        parseables = {
+            *mergerequest.notes.list(all=True, system=False),
+            *mergerequest.notes.list(all=True, system=True),
+            *mergerequest.awardemojis.list(all=True),
+            *mergerequest.resourcelabelevents.list(all=True),
+            *(
+                award
+                for note in mergerequest.notes.list(all=True)
+                for award in note.awardemojis.list(all=True)
+            ),
+        }
+    yield MergeRequest(
+        id=mergerequest.id,
+        iid=mergerequest.iid,
+        title=mergerequest.title,
+        description=mergerequest.description,
+        url=mergerequest.web_url,
+        source_branch=mergerequest.source_branch,
+        target_branch=mergerequest.target_branch,
+        author=get_resource_author(mergerequest, ProvRole.AUTHOR_MERGE_REQUEST),
+        annotations=parse_annotations(parseables),
+        created_at=mergerequest.created_at,
+        closed_at=mergerequest.closed_at,
+        merged_at=mergerequest.merged_at,
+        first_deployed_to_production_at=getattr(
+            mergerequest, "first_deployed_to_production_at", None
+        ),
+    )
 
 
-def extract_releases(project: Project):
+def extract_releases(project):
     for release in project.releases.list(all=True):
-        author = None
-        if hasattr(release, "author"):
-            author = objects.User(
-                release.author.get("name"),
-                release.author.get("email"),
-                release.author.get("username"),
-                release.author.get("id"),
-                ProvRole.ReleaseAuthor,
-            )
-        assets = [
-            objects.Asset(asset.get("url"), asset.get("format"))
-            for asset in release.assets.get("sources")
-        ]
-        evidences = [
-            objects.Evidence(
-                evidence.get("sha"),
-                evidence.get("filepath"),
-                evidence.get("collected_at"),
-            )
-            for evidence in release.evidences
-        ]
-        yield objects.Release(
-            release.name,
-            release.description,
-            release.tag_name,
-            author,
-            assets,
-            evidences,
-            release.created_at,
-            release.released_at,
+        yield Release(
+            name=release.name,
+            description=release.description,
+            tag_name=release.tag_name,
+            author=get_resource_author(release, ProvRole.AUTHOR_RELEASE),
+            assets=get_assets(release),
+            evidences=get_evidences(release),
+            created_at=release.created_at,
+            released_at=release.released_at,
         )
 
 
-def extract_tags(project: Project):
+def extract_tags(project):
     for tag in project.tags.list(all=True):
-        author = objects.User(
-            tag.commit.get("author_name"),
-            tag.commit.get("author_email"),
-            prov_role=ProvRole.TagAuthor,
-        )
-        yield objects.Tag(
-            tag.name, tag.target, tag.message, author, tag.commit.get("created_at")
+        yield Tag(
+            name=tag.name,
+            hexsha=tag.target,
+            message=tag.message,
+            author=get_tag_author(tag),
+            created_at=tag.commit.get("created_at"),
         )
