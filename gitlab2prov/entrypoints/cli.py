@@ -1,4 +1,3 @@
-import logging
 import tempfile
 
 from gitlab2prov.config import CONFIG, set_config
@@ -9,9 +8,6 @@ from gitlab2prov import bootstrap
 from gitlab2prov.domain import commands
 
 
-if CONFIG.log:
-    logging.basicConfig(level=logging.DEBUG, filename="gl2p.log")
-log = logging.getLogger(__name__)
 
 
 
