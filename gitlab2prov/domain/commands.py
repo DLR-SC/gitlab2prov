@@ -14,8 +14,8 @@ class Fetch(Command):
 
 
 @dataclass
-    last_update: datetime
 class Update(Fetch):
+    last_updated_at: datetime
 
 
 @dataclass
