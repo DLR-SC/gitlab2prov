@@ -141,23 +141,23 @@ def extract_mergerequests(project):
                 for award in note.awardemojis.list(all=True)
             ),
         }
-    yield MergeRequest(
-        id=mergerequest.id,
-        iid=mergerequest.iid,
-        title=mergerequest.title,
-        description=mergerequest.description,
-        url=mergerequest.web_url,
-        source_branch=mergerequest.source_branch,
-        target_branch=mergerequest.target_branch,
-        author=get_resource_author(mergerequest, ProvRole.AUTHOR_MERGE_REQUEST),
-        annotations=parse_annotations(parseables),
-        created_at=mergerequest.created_at,
-        closed_at=mergerequest.closed_at,
-        merged_at=mergerequest.merged_at,
-        first_deployed_to_production_at=getattr(
-            mergerequest, "first_deployed_to_production_at", None
-        ),
-    )
+        yield MergeRequest(
+            id=mergerequest.id,
+            iid=mergerequest.iid,
+            title=mergerequest.title,
+            description=mergerequest.description,
+            url=mergerequest.web_url,
+            source_branch=mergerequest.source_branch,
+            target_branch=mergerequest.target_branch,
+            author=get_resource_author(mergerequest, ProvRole.AUTHOR_MERGE_REQUEST),
+            annotations=parse_annotations(parseables),
+            created_at=mergerequest.created_at,
+            closed_at=mergerequest.closed_at,
+            merged_at=mergerequest.merged_at,
+            first_deployed_to_production_at=getattr(
+                mergerequest, "first_deployed_to_production_at", None
+            ),
+        )
 
 
 def extract_releases(project):
