@@ -56,21 +56,23 @@ def prov_label(obj: DataclassWithProvType) -> QualifiedName:
     return qualified_name(f"{prov_type(obj)}({', '.join(attrs)})")
 
 
-def prov_attribute_generator(obj: DataclassWithProvType):
-    for field in (f for f in fields(obj) if not is_relation(f)):
+def prov_attributes(obj: DataclassWithProvType) -> list[Attribute]:
+    if not is_dataclass(obj):
+        raise ValueError()
+    attributes = []
+    for field in fields(obj):
         key = PROV_FIELD_MAP.get(field.name, field.name)
+        if is_relation(field):
+            continue
+        if field.type.startswith("dict"):
+            continue
         if field.type.startswith("list"):
             for val in getattr(obj, field.name):
-                yield (key, val)
+                attributes.append((key, val))
         else:
-            yield (key, getattr(obj, field.name))
-    yield (PROV_LABEL, prov_label(obj))
-
-
-def prov_attributes(obj: DataclassWithProvType) -> list[Attribute]:
-    if not is_dataclass(obj) and not isinstance(obj, type):
-        raise ValueError(f"{obj} is not an instance of a dataclass!")
-    return list(prov_attribute_generator(obj))
+            attributes.append((key, getattr(obj, field.name)))
+    attributes.append((PROV_LABEL, prov_label(obj)))
+    return attributes
 
 
 @dataclass
@@ -108,9 +110,6 @@ class Entity(ProvInterface):
 
 @dataclass(kw_only=True)
 class Activity(ProvInterface):
-    prov_start: datetime
-    prov_end: datetime
-
     def __iter__(self):
         yield self.prov_identifier
         yield self.prov_start
@@ -139,7 +138,9 @@ class File(Entity):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class FileRevision(File):
+class FileRevision(Entity):
+    path: str
+    committed_in: str
     change_type: str
     original: File = field(repr=False, metadata=IS_RELATION)
     previous: FileRevision | None = field(
@@ -153,7 +154,9 @@ class Annotation(Activity):
     id: str
     type: str
     body: str = field(repr=False)
-    kwargs: dict[str, Any] = field(repr=False, default_factory=dict)
+    kwargs: dict[str, Any] = field(
+        repr=False, default_factory=dict, metadata=IS_RELATION
+    )
     annotator: User = field(repr=False, metadata=IS_RELATION)
     prov_start: datetime = field(repr=False)
     prov_end: datetime = field(repr=False)
