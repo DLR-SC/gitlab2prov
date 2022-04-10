@@ -1,13 +1,10 @@
 from typing import TypeVar, Type, Optional
-from pathlib import Path
 
 from gitlab2prov import bootstrap
 from gitlab2prov.adapters import repository
 from gitlab2prov.adapters import miners
 from gitlab2prov.service_layer import unit_of_work
-from gitlab2prov.domain import commands, objects
-
-import tests.random_refs as random_refs
+from gitlab2prov.service_layer import handlers
 
 
 R = TypeVar("R")
@@ -49,20 +46,26 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
         pass
 
 
-class FakeGitRepositoryMiner(miners.AbstractMiner):
-    def __init__(self, resources):
-        self.resources = resources
+def FakeGitRepositoryMiner(resources):
+    class FakeGitRepositoryMiner(miners.AbstractMiner):
+        def __init__(self, repo):
+            self.resources = resources
 
-    def mine(self):
-        return iter(self.resources)
+        def mine(self):
+            return iter(self.resources)
+
+    return FakeGitRepositoryMiner
 
 
-class FakeGitlabProjectMiner(miners.AbstractMiner):
-    def __init__(self, resources):
-        self.resources = resources
+def FakeGitlabProjectMiner(resources):
+    class FakeGitlabProjectMiner(miners.AbstractMiner):
+        def __init__(self, project):
+            self.resources = resources
 
-    def mine(self):
-        return iter(self.resources)
+        def mine(self):
+            return iter(self.resources)
+
+    return FakeGitlabProjectMiner
 
 
 def bootstrap_test_app(git_resources=None, gitlab_resources=None):
@@ -77,58 +80,19 @@ def bootstrap_test_app(git_resources=None, gitlab_resources=None):
     )
 
 
-class TestCloneGitRepository:
-    def test_https_clone_url_composition(self, mocker):
-        repo = mocker.patch("git.Repo.clone_from")
-        netloc, path = "gitlab.com", "/group/project"
-        bus = bootstrap_test_app()
-        bus.handle(commands.Fetch(f"https://{netloc}{path}", "token", Path("gitdir")))
-        expected_url = f"https://gitlab.com:token@gitlab.com/group/project"
-        expected_path = Path("gitdir/project")
-        repo.assert_called_once_with(expected_url, to_path=expected_path, quiet=True)
+class TestHelpers:
+    def test_project_slug(self):
+        expected_slug = "group/project"
+        assert expected_slug == handlers.project_slug(
+            "https://gitlab.com/group/project"
+        )
 
+    def test_gitlab_url(self):
+        expected_url = "https://gitlab.com"
+        assert expected_url == handlers.gitlab_url("https://gitlab.com/group/project")
 
-class TestMineGit:
-    def test_adds(self, mocker):
-        mocker.patch("git.Repo")
-        user = random_refs.random_user()
-        bus = bootstrap_test_app(git_resources=[user])
-        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
-        user = bus.uow.resources.get(objects.User, name=user.name)
-        assert user
-
-    def test_commits(self, mocker):
-        mocker.patch("git.Repo")
-        user = random_refs.random_user()
-        bus = bootstrap_test_app(git_resources=[user])
-        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
-        assert bus.uow.committed
-
-    def test_errors_for_invalid_repository_file_path(self, mocker):
-        mocker.patch("git.Repo")
-        bus = bootstrap_test_app()
-        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
-        assert True
-
-
-class TestMineGitlab:
-    def test_adds(self, mocker):
-        mocker.patch("git.Repo")
-        user = random_refs.random_user()
-        bus = bootstrap_test_app(gitlab_resources=[user])
-        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
-        user = bus.uow.resources.get(objects.User, name=user.name)
-        assert user
-
-    def test_commits(self, mocker):
-        mocker.patch("git.Repo")
-        user = random_refs.random_user()
-        bus = bootstrap_test_app(gitlab_resources=[user])
-        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
-        assert bus.uow.committed
-
-    def test_errors_for_invalid_url(self, mocker):
-        mocker.patch("git.Repo")
-        bus = bootstrap_test_app()
-        bus.handle(commands.Fetch("https://gitlab.com/group/project", "token"))
-        assert True
+    def test_clone_with_https_url(self):
+        expected_url = "https://gitlab.com:TOKEN@gitlab.com/group/project"
+        assert expected_url == handlers.clone_with_https_url(
+            "https://gitlab.com/group/project", "TOKEN"
+        )
