@@ -28,7 +28,6 @@ class TestUser:
         email = f"user-email-{random_suffix()}"
         username = f"user-username-{random_suffix()}"
         id = f"user-id-{random_suffix()}"
-        # role = f"user-prov-role-{random_suffix()}"
         role = ProvRole.AUTHOR
         user = objects.User(
             name=name,
@@ -284,7 +283,7 @@ class TestCreation:
             ("creation_id", id),
             (PROV_ATTR_STARTTIME, today),
             (PROV_ATTR_ENDTIME, tomorrow),
-            (PROV_TYPE, "TestCreation"),
+            (PROV_TYPE, "TagCreation"),
             (PROV_LABEL, creation.prov_label),
         ]
         assert creation.prov_attributes == expected_attributes
@@ -427,8 +426,8 @@ class TestIssue:
         )
         expected_creation = objects.Creation(
             creation_id=id,
-            created_at=today,
-            closed_at=tomorrow,
+            prov_start=today,
+            prov_end=tomorrow,
             prov_type=ProvType.ISSUE_CREATION,
         )
         assert issue.creation == expected_creation
@@ -455,15 +454,40 @@ class TestIssue:
         hexsha = f"commit-sha-{random_suffix()}"
         aid1 = f"annotation-id-{random_suffix()}"
         aid2 = f"annotation-id-{random_suffix()}"
-        annot1 = objects.Annotation(id=aid1, type="", body="", annotator=None, prov_start=today, prov_end=tomorrow)
-        annot2 = objects.Annotation(id=aid2, type="", body="", annotator=None, prov_start=today, prov_end=tomorrow)
+        annot1 = objects.Annotation(
+            id=aid1,
+            type="",
+            body="",
+            annotator=None,
+            prov_start=today,
+            prov_end=tomorrow,
+        )
+        annot2 = objects.Annotation(
+            id=aid2,
+            type="",
+            body="",
+            annotator=None,
+            prov_start=today,
+            prov_end=tomorrow,
+        )
         annots = [annot1, annot2]
-        commit = objects.GitlabCommit(hexsha=hexsha, url="", author=None, annotations=annots, authored_at=today, committed_at=tomorrow)
+        commit = objects.GitlabCommit(
+            hexsha=hexsha,
+            url="",
+            author=None,
+            annotations=annots,
+            authored_at=today,
+            committed_at=tomorrow,
+        )
         ver1 = objects.AnnotatedVersion(
-            version_id=hexsha, annotation_id=annot1.id, prov_type=ProvType.GITLAB_COMMIT_VERSION_ANNOTATED
+            version_id=hexsha,
+            annotation_id=annot1.id,
+            prov_type=ProvType.GITLAB_COMMIT_VERSION_ANNOTATED,
         )
         ver2 = objects.AnnotatedVersion(
-            version_id=hexsha, annotation_id=annot2.id, prov_type=ProvType.GITLAB_COMMIT_VERSION_ANNOTATED
+            version_id=hexsha,
+            annotation_id=annot2.id,
+            prov_type=ProvType.GITLAB_COMMIT_VERSION_ANNOTATED,
         )
         expected_versions = [ver1, ver2]
         assert commit.annotated_versions == expected_versions
@@ -473,16 +497,30 @@ class TestGitlabCommit:
     def test_identifier(self):
         hexsha = f"commit-hash-{random_suffix()}"
         url = f"commit-url-{random_suffix()}"
-        commit = objects.GitlabCommit(hexsha=hexsha, url=url, author=None, annotations=[], authored_at=today, committed_at=tomorrow)
+        commit = objects.GitlabCommit(
+            hexsha=hexsha,
+            url=url,
+            author=None,
+            annotations=[],
+            authored_at=today,
+            committed_at=tomorrow,
+        )
         expected_identifier = qualified_name(
-            f"GitlabCommit?{urlencode([('hexsha', hexsha), ('url', url)])}"
+            f"GitlabCommit?{urlencode([('hexsha', hexsha)])}"
         )
         assert commit.prov_identifier == expected_identifier
 
     def test_attributes(self):
         hexsha = f"commit-hash-{random_suffix()}"
         url = f"commit-url-{random_suffix()}"
-        commit = objects.GitlabCommit(hexsha=hexsha, url=url, author=None, annotations=[], authored_at=today, committed_at=tomorrow)
+        commit = objects.GitlabCommit(
+            hexsha=hexsha,
+            url=url,
+            author=None,
+            annotations=[],
+            authored_at=today,
+            committed_at=tomorrow,
+        )
         expected_attributes = [
             ("hexsha", hexsha),
             ("url", url),
@@ -495,31 +533,75 @@ class TestGitlabCommit:
 
     def test_creation(self):
         hexsha = f"commit-sha-{random_suffix()}"
-        commit = objects.GitlabCommit(hexsha=hexsha, url="", author=None, annotations=[], authored_at=today, committed_at=tomorrow)
+        commit = objects.GitlabCommit(
+            hexsha=hexsha,
+            url="",
+            author=None,
+            annotations=[],
+            authored_at=today,
+            committed_at=tomorrow,
+        )
         expected_creation = objects.Creation(
-            creation_id=hexsha, prov_start=today, prov_end=tomorrow, prov_type=ProvType.GITLAB_COMMIT_CREATION
+            creation_id=hexsha,
+            prov_start=today,
+            prov_end=tomorrow,
+            prov_type=ProvType.GITLAB_COMMIT_CREATION,
         )
         assert commit.creation == expected_creation
 
     def test_first_version(self):
         hexsha = f"commit-sha-{random_suffix()}"
-        commit = objects.GitlabCommit(hexsha=hexsha, url="", author=None, annotations=[], authored_at=today, committed_at=tomorrow)
-        expected_first_version = objects.Version(version_id=hexsha, prov_type=ProvType.GITLAB_COMMIT_VERSION)
+        commit = objects.GitlabCommit(
+            hexsha=hexsha,
+            url="",
+            author=None,
+            annotations=[],
+            authored_at=today,
+            committed_at=tomorrow,
+        )
+        expected_first_version = objects.Version(
+            version_id=hexsha, prov_type=ProvType.GITLAB_COMMIT_VERSION
+        )
         assert commit.first_version == expected_first_version
 
     def test_annotated_versions(self):
         hexsha = f"commit-sha-{random_suffix()}"
         aid1 = f"annotation-id-{random_suffix()}"
         aid2 = f"annotation-id-{random_suffix()}"
-        annot1 = objects.Annotation(id=aid1, type="", body="", annotator=None, prov_start=today, prov_end=tomorrow)
-        annot2 = objects.Annotation(id=aid2, type="", body="", annotator=None, prov_start=today, prov_end=tomorrow)
+        annot1 = objects.Annotation(
+            id=aid1,
+            type="",
+            body="",
+            annotator=None,
+            prov_start=today,
+            prov_end=tomorrow,
+        )
+        annot2 = objects.Annotation(
+            id=aid2,
+            type="",
+            body="",
+            annotator=None,
+            prov_start=today,
+            prov_end=tomorrow,
+        )
         annots = [annot1, annot2]
-        commit = objects.GitlabCommit(hexsha=hexsha, url="", author=None, annotations=annots, authored_at=today, committed_at=tomorrow)
+        commit = objects.GitlabCommit(
+            hexsha=hexsha,
+            url="",
+            author=None,
+            annotations=annots,
+            authored_at=today,
+            committed_at=tomorrow,
+        )
         ver1 = objects.AnnotatedVersion(
-            version_id=hexsha, annotation_id=annot1.id, prov_type=ProvType.GITLAB_COMMIT_VERSION_ANNOTATED
+            version_id=hexsha,
+            annotation_id=annot1.id,
+            prov_type=ProvType.GITLAB_COMMIT_VERSION_ANNOTATED,
         )
         ver2 = objects.AnnotatedVersion(
-            version_id=hexsha, annotation_id=annot2.id, prov_type=ProvType.GITLAB_COMMIT_VERSION_ANNOTATED
+            version_id=hexsha,
+            annotation_id=annot2.id,
+            prov_type=ProvType.GITLAB_COMMIT_VERSION_ANNOTATED,
         )
         expected_versions = [ver1, ver2]
         assert commit.annotated_versions == expected_versions
@@ -597,27 +679,72 @@ class TestMergeRequest:
     def test_creation(self):
         id = f"merge-request-id-{random_suffix()}"
         merge_request = objects.MergeRequest(
-            id=id, iid="", title="", description="", url="", source_branch="", target_branch="", author=None, annotations=[], created_at=today, closed_at=tomorrow, merged_at=yesterday, first_deployed_to_production_at=next_week
+            id=id,
+            iid="",
+            title="",
+            description="",
+            url="",
+            source_branch="",
+            target_branch="",
+            author=None,
+            annotations=[],
+            created_at=today,
+            closed_at=tomorrow,
+            merged_at=yesterday,
+            first_deployed_to_production_at=next_week,
         )
         expected_creation = objects.Creation(
-            creation_id=id, prov_start=today, prov_end=tomorrow, prov_type=ProvType.MERGE_REQUEST_CREATION
+            creation_id=id,
+            prov_start=today,
+            prov_end=tomorrow,
+            prov_type=ProvType.MERGE_REQUEST_CREATION,
         )
         assert merge_request.creation == expected_creation
 
     def test_first_version(self):
         id = f"merge-request-id-{random_suffix()}"
         merge_request = objects.MergeRequest(
-            id=id, iid="", title="", description="", url="", source_branch="", target_branch="", author=None, annotations=[], created_at=today, closed_at=tomorrow, merged_at=yesterday, first_deployed_to_production_at=next_week
+            id=id,
+            iid="",
+            title="",
+            description="",
+            url="",
+            source_branch="",
+            target_branch="",
+            author=None,
+            annotations=[],
+            created_at=today,
+            closed_at=tomorrow,
+            merged_at=yesterday,
+            first_deployed_to_production_at=next_week,
         )
-        expected_version = objects.Version(version_id=id, prov_type=ProvType.MERGE_REQUEST_VERSION)
+        expected_version = objects.Version(
+            version_id=id, prov_type=ProvType.MERGE_REQUEST_VERSION
+        )
         assert merge_request.first_version == expected_version
 
     def test_annotated_versions(self):
         id = f"merge-request-id-{random_suffix()}"
         aid1 = f"annotation-id-{random_suffix()}"
         aid2 = f"annotation-id-{random_suffix()}"
-        annot1 = objects.Annotation(aid1, "", "", None, today, tomorrow)
-        annot2 = objects.Annotation(aid2, "", "", None, today, tomorrow)
+        annot1 = objects.Annotation(
+            id=aid1,
+            type="",
+            body="",
+            kwargs=None,
+            annotator=None,
+            prov_start=today,
+            prov_end=tomorrow,
+        )
+        annot2 = objects.Annotation(
+            id=aid2,
+            type="",
+            body="",
+            kwargs=None,
+            annotator=None,
+            prov_start=today,
+            prov_end=tomorrow,
+        )
         annots = [annot1, annot2]
         merge_request = objects.MergeRequest(
             id=id,
@@ -635,10 +762,14 @@ class TestMergeRequest:
             first_deployed_to_production_at=next_week,
         )
         ver1 = objects.AnnotatedVersion(
-            version_id=id, annotation_id=annot1.id, prov_type=ProvType.MERGE_REQUEST_VERSION_ANNOTATED
+            version_id=id,
+            annotation_id=annot1.id,
+            prov_type=ProvType.MERGE_REQUEST_VERSION_ANNOTATED,
         )
         ver2 = objects.AnnotatedVersion(
-            version_id=id, annotation_id=annot2.id, prov_type=ProvType.MERGE_REQUEST_VERSION_ANNOTATED
+            version_id=id,
+            annotation_id=annot2.id,
+            prov_type=ProvType.MERGE_REQUEST_VERSION_ANNOTATED,
         )
         expected_versions = [ver1, ver2]
         assert merge_request.annotated_versions == expected_versions
@@ -649,7 +780,9 @@ class TestTag:
         name = f"tag-name-{random_suffix()}"
         hexsha = f"commit-sha-{random_suffix()}"
         msg = f"tag-message-{random_suffix()}"
-        tag = objects.Tag(name=name, hexsha=hexsha, message=msg, author=None, created_at=today)
+        tag = objects.Tag(
+            name=name, hexsha=hexsha, message=msg, author=None, created_at=today
+        )
         expected_identifier = qualified_name(
             f"Tag?{urlencode([('name', name), ('hexsha', hexsha)])}"
         )
@@ -659,7 +792,9 @@ class TestTag:
         name = f"tag-name-{random_suffix()}"
         hexsha = f"commit-sha-{random_suffix()}"
         msg = f"tag-message-{random_suffix()}"
-        tag = objects.Tag(name=name, hexsha=hexsha, message=msg, author=None, created_at=today)
+        tag = objects.Tag(
+            name=name, hexsha=hexsha, message=msg, author=None, created_at=today
+        )
         expected_attributes = [
             ("name", name),
             ("hexsha", hexsha),
@@ -673,8 +808,15 @@ class TestTag:
 
     def test_creation(self):
         name = f"tag-name-{random_suffix()}"
-        tag = objects.Tag(name=name, hexsha="", message="", author=None, created_at=today)
-        expected_creation = objects.Creation(creation_id=name, prov_start=today, prov_end=today, prov_type=ProvType.TAG_CREATION)
+        tag = objects.Tag(
+            name=name, hexsha="", message="", author=None, created_at=today
+        )
+        expected_creation = objects.Creation(
+            creation_id=name,
+            prov_start=today,
+            prov_end=today,
+            prov_type=ProvType.TAG_CREATION,
+        )
         assert tag.creation == expected_creation
 
 
@@ -683,7 +825,16 @@ class TestRelease:
         name = f"release-name-{random_suffix()}"
         desc = f"release-description-{random_suffix()}"
         tag_name = f"tag-name-{random_suffix()}"
-        release = objects.Release(name=name, description=desc, tag_name=tag_name, author=None, assets=[], evidences=[], created_at=today, released_at=tomorrow)
+        release = objects.Release(
+            name=name,
+            description=desc,
+            tag_name=tag_name,
+            author=None,
+            assets=[],
+            evidences=[],
+            created_at=today,
+            released_at=tomorrow,
+        )
         expected_identifier = qualified_name(f"Release?{urlencode([('name', name)])}")
         assert release.prov_identifier == expected_identifier
 
@@ -691,7 +842,16 @@ class TestRelease:
         name = f"release-name-{random_suffix()}"
         desc = f"release-description-{random_suffix()}"
         tag_name = f"tag-name-{random_suffix()}"
-        release = objects.Release(name=name, description=desc, tag_name=tag_name, author=None, assets=[], evidences=[], created_at=today, released_at=tomorrow)
+        release = objects.Release(
+            name=name,
+            description=desc,
+            tag_name=tag_name,
+            author=None,
+            assets=[],
+            evidences=[],
+            created_at=today,
+            released_at=tomorrow,
+        )
         expected_attributes = [
             ("name", name),
             ("description", desc),
@@ -706,8 +866,20 @@ class TestRelease:
 
     def test_creation(self):
         name = f"release-name-{random_suffix()}"
-        release = objects.Release(name=name, description="", tag_name="", author=None, assets=[], evidences=[], created_at=today, released_at=tomorrow)
+        release = objects.Release(
+            name=name,
+            description="",
+            tag_name="",
+            author=None,
+            assets=[],
+            evidences=[],
+            created_at=today,
+            released_at=tomorrow,
+        )
         expected_creation = objects.Creation(
-            creation_id=name, prov_start=today, prov_end=tomorrow, prov_type=ProvType.RELEASE_CREATION
+            creation_id=name,
+            prov_start=today,
+            prov_end=tomorrow,
+            prov_type=ProvType.RELEASE_CREATION,
         )
         assert release.creation == expected_creation
