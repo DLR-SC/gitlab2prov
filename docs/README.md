@@ -1,7 +1,7 @@
 # `gitlab2prov` Provenance Graphs
 
 ### A Note on Figures
-You can generate all figures in `json`, `provn`, `rdf`, `xml` or `dot` format. 
+You can generate all figures in `json`, `provn`, `rdf`, `xml` or `dot` format.
 Simply run the provided `figures.py` script.
 For a quick setup use the provided `requirements.txt` to install all required packages.
 
@@ -11,7 +11,7 @@ pip install -r requirements.txt
 
 ## The GitLab2PROV Provenance Model
 The provenance model for GitLab2PROV provenance graphs consists of multiple submodels, that are concerned with various types of interactions that users can have with a GitLab project aswell as with the `git` repository contained within the project.
-A few models have been compiled without prior examples others are derivations of related projects such as `git2prov` or `github2prov`. 
+A few models have been compiled without prior examples others are derivations of related projects such as `git2prov` or `github2prov`.
 
 In total, the GitLab2PROV provenance model includes the following submodels:
 
@@ -25,17 +25,23 @@ In total, the GitLab2PROV provenance model includes the following submodels:
 
 This document contains a brief explanation for each model.
 This includes, but is not limited to, a reference table for each PROV element of a model that defines which attributes are attached to the element.
+Reference tables for qualified relations, i.e. relations that with attached attributes, are also provided.
 
-## Git: Addition of a File 
+This document uses the Cypher query language notation to denote relationships/relations.
+The following ASCII art based notation represents a directed relation `r` of type `R` between the vertices `S` and `T`.
+
+`(S)-[r:R]->(T)`
+
+## Git: Addition of a File
 
 ![Addition of a File.](./svgs/git_commit_model_add.svg)
 
 This model captures the addition of a new file to the git repository of a GitLab project by a git commit.
 
-The model includes all human actors involved in the process. 
+The model includes all human actors involved in the process.
 In this case these actors are the author and the committer of the git commit represented as agents in the model.
 The author represents the user that originally wrote the code contained in the commit.
-The committer represents the user that committed the code on behalf of the author. 
+The committer represents the user that committed the code on behalf of the author.
 Committer and author can be the same person but do not have to be.
 
 The commit aswell as all of its parents are captured as activities.
@@ -86,7 +92,7 @@ Both entities are attributed to the author of the commit, the actor responsible 
 | Attribute     | Fixed Value | Description                                                        |
 |---------------|-------------|--------------------------------------------------------------------|
 | path          | -           | Original file path. The path at which this file was first created. |
-| commit_hexsha | -           | SHA1 of the commit that added this file to the repository.         |
+| committed_in  | -           | SHA1 of the commit that added this file to the repository.         |
 | prov:type     | File        | Entity type.                                                       |
 | prov:label    | -           | Human readable representation of the entity.                       |
 
@@ -95,15 +101,15 @@ Both entities are attributed to the author of the commit, the actor responsible 
 | Attribute     | Fixed Value  | Description                                                                  |
 |---------------|--------------|------------------------------------------------------------------------------|
 | path          | -            | Current file path of this revision.                                          |
-| commit_hexsha | -            | SHA1 of the commit that added this revision to the repository.               |
+| committed_in  | -            | SHA1 of the commit that added this revision to the repository.               |
 | change_type   | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
 | prov:type     | FileRevision | Entity type.                                                                 |
 | prov:label    | -            | Human readable representation of the entity.                                 |
 
 
-Some PROV relations in this model are "qualified" relations.  
-In simple terms: Some PROV relations have attributes attached to them.   
-The following tables define the attributes attached to these relations.  
+Some PROV relations in this model are "qualified" relations.
+In simple terms: Some PROV relations have attributes attached to them.
+The following tables define the attributes attached to these relations.
 
 
 **`File - [wasGeneratedBy] -> Commit`**
@@ -138,10 +144,10 @@ The following tables define the attributes attached to these relations.
 
 This model captures the modification of a file from the git repository of a GitLab project by a git commit.
 
-The model includes all human actors involved in the process. 
+The model includes all human actors involved in the process.
 In this case these actors are the author and the committer of the git commit represented as agents in the model.
 The author represents the user that originally wrote the code contained in the commit.
-The committer represents the user that committed the code on behalf of the author. 
+The committer represents the user that committed the code on behalf of the author.
 Committer and author can be the same person but do not have to be.
 
 The commit aswell as all of its parents are captured as activities.
@@ -195,7 +201,7 @@ All revisions are marked as specializations of the File entity.
 | Attribute     | Fixed Value | Description                                                        |
 |---------------|-------------|--------------------------------------------------------------------|
 | path          | -           | Original file path. The path at which this file was first created. |
-| commit_hexsha | -           | SHA1 of the commit that added this file to the repository.         |
+| committed_in  | -           | SHA1 of the commit that added this file to the repository.         |
 | prov:type     | File        | Entity type.                                                       |
 | prov:label    | -           | Human readable representation of the entity.                       |
 
@@ -204,7 +210,7 @@ All revisions are marked as specializations of the File entity.
 | Attribute     | Fixed Value  | Description                                                                  |
 |---------------|--------------|------------------------------------------------------------------------------|
 | path          | -            | Current file path of this revision.                                          |
-| commit_hexsha | -            | SHA1 of the commit that added this revision to the repository.               |
+| committed_in  | -            | SHA1 of the commit that added this revision to the repository.               |
 | change_type   | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
 | prov:type     | FileRevision | Entity type.                                                                 |
 | prov:label    | -            | Human readable representation of the entity.                                 |
@@ -214,14 +220,14 @@ All revisions are marked as specializations of the File entity.
 | Attribute     | Fixed Value  | Description                                                                  |
 |---------------|--------------|------------------------------------------------------------------------------|
 | path          | -            | Current file path of this revision.                                          |
-| commit_hexsha | -            | SHA1 of the commit that added this revision to the repository.               |
+| committed_in  | -            | SHA1 of the commit that added this revision to the repository.               |
 | change_type   | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
 | prov:type     | FileRevision | Entity type.                                                                 |
 | prov:label    | -            | Human readable representation of the entity.                                 |
 
-Some PROV relations in this model are "qualified" relations.  
-In simple terms: Some PROV relations have attributes attached to them.   
-The following tables define the attributes attached to these relations.  
+Some PROV relations in this model are "qualified" relations.
+In simple terms: Some PROV relations have attributes attached to them.
+The following tables define the attributes attached to these relations.
 
 
 **`Commit - [used] -> Previous File Revision`**
@@ -256,10 +262,10 @@ The following tables define the attributes attached to these relations.
 
 This model captures the deletion of a file from the git repository of a GitLab project by a git commit.
 
-The model includes all human actors involved in the process. 
+The model includes all human actors involved in the process.
 In this case these actors are the author and the committer of the git commit represented as agents in the model.
 The author represents the user that originally wrote the code contained in the commit.
-The committer represents the user that committed the code on behalf of the author. 
+The committer represents the user that committed the code on behalf of the author.
 Committer and author can be the same person but do not have to be.
 
 The commit aswell as all of its parents are captured as activities.
@@ -309,7 +315,7 @@ The deleted revision is marked as a specialization of the original File entity.
 | Attribute     | Fixed Value | Description                                                        |
 |---------------|-------------|--------------------------------------------------------------------|
 | path          | -           | Original file path. The path at which this file was first created. |
-| commit_hexsha | -           | SHA1 of the commit that added this file to the repository.         |
+| committed_in  | -           | SHA1 of the commit that added this file to the repository.         |
 | prov:type     | File        | Entity type.                                                       |
 | prov:label    | -           | Human readable representation of the entity.                       |
 
@@ -318,15 +324,15 @@ The deleted revision is marked as a specialization of the original File entity.
 | Attribute     | Fixed Value  | Description                                                                  |
 |---------------|--------------|------------------------------------------------------------------------------|
 | path          | -            | Current file path of this revision.                                          |
-| commit_hexsha | -            | SHA1 of the commit that added this revision to the repository.               |
+| committed_in  | -            | SHA1 of the commit that added this revision to the repository.               |
 | change_type   | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
 | prov:type     | FileRevision | Entity type.                                                                 |
 | prov:label    | -            | Human readable representation of the entity.                                 |
 
 
-Some PROV relations in this model are "qualified" relations.  
-In simple terms: Some PROV relations have attributes attached to them.   
-The following tables define the attributes attached to these relations.  
+Some PROV relations in this model are "qualified" relations.
+In simple terms: Some PROV relations have attributes attached to them.
+The following tables define the attributes attached to these relations.
 
 
 **`Commit - [wasAssociatedWith] -> Author`**
@@ -356,7 +362,7 @@ This model captures the creation and annotation of a GitLab commit web resource,
 
 GitLab creates a webpage for a commit as soon as the commit is pushed to the GitLab remote.
 Users can interact with the webpage by, among other interactions, leaving a comment in the comment section.
-GitLab captures some of these interactions and stores them in internal data structures. 
+GitLab captures some of these interactions and stores them in internal data structures.
 Comments written by users are therefore retrievable through the GitLab API.
 Retrievable interactions such as comments are considered to "annotate" the web resource.
 
@@ -440,6 +446,12 @@ Each annotated commit version is attributed to its annotator.
 | prov:label     | -           | Human readable representation of the activity.                                |
 
 
+The set of attributes for annotations can change according to the annotation type.
+Annotations of type "assign_user" carry the attribute "user_name" which stores the name of the assigned user.
+Other annotation types may have different additional attributes.
+All recognized annotation types are listed in the "Annotations" section of this document.
+
+
 **`Commit`**
 | Attribute  | Fixed Value | Description                                           |
 |------------|-------------|-------------------------------------------------------|
@@ -466,9 +478,9 @@ Each annotated commit version is attributed to its annotator.
 | prov:label    | -                        | Human readable representation of the entity. |
 
 
-Some PROV relations in this model are "qualified" relations.  
-In simple terms: Some PROV relations have attributes attached to them.   
-The following tables define the attributes attached to these relations.  
+Some PROV relations in this model are "qualified" relations.
+In simple terms: Some PROV relations have attributes attached to them.
+The following tables define the attributes attached to these relations.
 
 
 **`Creation - [wasAssociatedWith] -> Gitlab Commit Author`**
@@ -589,6 +601,12 @@ Each annotated issue version is attributed to its annotator.
 | prov:label     | -           | Human readable representation of the activity.                                |
 
 
+The set of attributes for annotations can change according to the annotation type.
+Annotations of type "assign_user" carry the attribute "user_name" which stores the name of the assigned user.
+Other annotation types may have different additional attributes.
+All recognized annotation types are listed in the "Annotations" section of this document.
+
+
 **`Issue`**
 | Attribute   | Fixed Value | Description                                  |
 |-------------|-------------|----------------------------------------------|
@@ -620,9 +638,9 @@ Each annotated issue version is attributed to its annotator.
 | prov:label    | -                     | Human readable representation of the entity.                      |
 
 
-Some PROV relations in this model are "qualified" relations.  
-In simple terms: Some PROV relations have attributes attached to them.   
-The following tables define the attributes attached to these relations.  
+Some PROV relations in this model are "qualified" relations.
+In simple terms: Some PROV relations have attributes attached to them.
+The following tables define the attributes attached to these relations.
 
 
 **`Creation - [wasAssociatedWith] -> Issue Author`**
@@ -742,6 +760,12 @@ Each annotated merge request version is attributed to its annotator.
 | prov:label     | -           | Human readable representation of the activity.                                |
 
 
+The set of attributes for annotations can change according to the annotation type.
+Annotations of type "assign_user" carry the attribute "user_name" which stores the name of the assigned user.
+Other annotation types may have different additional attributes.
+All recognized annotation types are listed in the "Annotations" section of this document.
+
+
 **`Merge Request`**
 | Attribute                       | Fixed Value  | Description                                                       |
 |---------------------------------|--------------|-------------------------------------------------------------------|
@@ -777,9 +801,9 @@ Each annotated merge request version is attributed to its annotator.
 | prov:label    | -                            | Human readable representation of the entity.                      |
 
 
-Some PROV relations in this model are "qualified" relations.  
-In simple terms: Some PROV relations have attributes attached to them.   
-The following tables define the attributes attached to these relations.  
+Some PROV relations in this model are "qualified" relations.
+In simple terms: Some PROV relations have attributes attached to them.
+The following tables define the attributes attached to these relations.
 
 
 **`Creation - [wasAssociatedWith] -> Merge Request Author`**
@@ -963,9 +987,9 @@ The commit is generated by the commit creation activity.
 | prov:label     | -               | Human readable representation of the activity. |
 
 
-Some PROV relations in this model are "qualified" relations.  
-In simple terms: Some PROV relations have attributes attached to them.   
-The following tables define the attributes attached to these relations.  
+Some PROV relations in this model are "qualified" relations.
+In simple terms: Some PROV relations have attributes attached to them.
+The following tables define the attributes attached to these relations.
 
 
 **`Release Creation - [wasAssociatedWith] -> Release Author`**
@@ -1009,29 +1033,29 @@ The following tables define the attributes attached to these relations.
 
 ## Annotations
 
-GitLab displays annotations that occur on resources on the webpages of the respective resources. 
+GitLab displays annotations that occur on resources on the webpages of the respective resources.
 For example, if a resource was mentioned in the comment thread of another resource, this mention is displayed in the comment section of the mentioned target.
 
 ![comment thread](issue-thread.png)
 
-These annotations can be parsed from multiple sources that are provided by the official GitLab API. 
+These annotations can be parsed from multiple sources that are provided by the official GitLab API.
 Sadly there is no dedicated endpoint for all annotations that are of interest.
-Especially annotations that connect resources are difficult to get. 
+Especially annotations that connect resources are difficult to get.
 Here a quick summary of what data needs to be retrieved, how to parse it and the workarounds that we deployed to achieve annotation parsing.
 
 For label events we use the official API endpoint from which we parse the appropriate annotations ("add_label", "remove_label").
 Emoji awards can be retrieved from the appropriate API endpoint.
-We parse everything else - such as mentions, time tracking stats, due dates, TODO's, etc. - from system notes that GitLab uses to display annotations in their web-interface. 
+We parse everything else - such as mentions, time tracking stats, due dates, TODO's, etc. - from system notes that GitLab uses to display annotations in their web-interface.
 
-System notes include a string that describe the annotation that they represent. 
+System notes include a string that describe the annotation that they represent.
 We classify the annotation that the string denotes using regular expressions.
-If necessary we include named groups in the regular expressions to extract relevant information from the annotation strings. 
+If necessary we include named groups in the regular expressions to extract relevant information from the annotation strings.
 These are later added to PROV element attributes.
 
-Noted, this is not optimal as older GitLab versions employ different string notations for the same annotation. 
+Noted, this is not optimal as older GitLab versions employ different string notations for the same annotation.
 Sometimes only differing by a few characters and other times having a completly different string for the same annotation.
-In addition there is a problem when parsing imported projects. 
-For example, while parsing a project that was imported from SVN, relevant annotations wheren't recorded as system notes but rather as normal notes. 
+In addition there is a problem when parsing imported projects.
+For example, while parsing a project that was imported from SVN, relevant annotations wheren't recorded as system notes but rather as normal notes.
 This is not accounted for and is - as of right now - not covered by the current note parsing approach.
 
 Here a list of annotations that we are currently able to parse with a short description of what the annotation is and the API resource from which we parse that annotation.
