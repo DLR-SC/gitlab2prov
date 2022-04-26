@@ -13,3 +13,8 @@ build
 notebooks/.ipynb_checkpoints
 .ipynb_checkpoints
 .idea
+*.log
+*.db
+.pytest_cache
+venv
+*.env

@@ -7,9 +7,7 @@
 `gitlab2prov` is a Python library and command line tool for extracting provenance information from GitLab projects.  
 
 The data model employed by `gitlab2prov` has been modelled according to [W3C PROV](https://www.w3.org/TR/prov-overview/) [![PROV](https://www.w3.org/Icons/SW/Buttons/sw-prov-blue.png)](https://www.w3.org/TR/prov-overview/) specification.  
-A representation of the model can be found in `\docs`.
-
-**Note: Work in progress. Expect breaking changes until v1.0**.
+A representation of the model can be found in `/docs`.
 
 ## Installation :wrench:
 
@@ -27,10 +25,8 @@ To extract provenance from a project, follow these steps:
 | Instructions                                                                                                                                                      | Config Option    |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|
 | 1. Obtain an API Token for the GitLab API ([Token Guide](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token)) | `--token`        |
-| 2. Set the URL for the GitLab Project                                                                                                                             | `--project_urls` |
-| 3. Set a rate limit for API requests                                                                                                                              | `--rate_limit`   |
-| 4. Choose a PROV serialization format                                                                                                                             | `--format`       |
-| 5. Choose whether to print to stdout or not                                                                                                                       | `--quiet`        |
+| 2. Set the URL[s] for the GitLab Project[s]                                                                                                                             | `--project_urls` |
+| 3. Choose a PROV serialization format                                                                                                                             | `--format`       |
 
 ### As a Command Line Script
 
@@ -39,43 +35,45 @@ To extract provenance from a project, follow these steps:
 
 ##### Config File :clipboard:
 
-An example of a configuration file can be found in `config\examples`.
+An example of a configuration file can be found in `/config`.
 
 ```ini
-[GITLAB2PROV]
+[GITLAB]
+project_urls = project_a_url, project_b_url
 token = token
-quiet = False
-format = json
-rate_limit = 10
 
-[PROJECTS]
-project_a = project_a_url
-project_b = project_b_url
+[OUTPUT]
+format = json
+
+[MISC]
+profile = False
+verbose = False
+pseudonymous = False
+double_agents = path/to/alias/mapping
 ```
 
 ##### Command Line Flags :flags:
 
 ```
-usage: GitLab2PROV [-h] [-p <string> [<string> ...]] [-t <string>] [-r <int>] [-c <string>]
-                   [-f {provn,json,rdf,xml,dot}] [-q] [--aliases <string>] [--pseudonymize]
+usage: gitlab2prov [-h] -p PROJECT_URLS [PROJECT_URLS ...] -t TOKEN [-c CONFIG_FILE] [-f {json,rdf,xml,provn,dot}] [-v] [--double-agents DOUBLE_AGENTS] [--pseudonymous] [--profile]
 
 Extract provenance information from GitLab projects.
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -p <string> [<string> ...], --project-urls <string> [<string> ...]
+  -p PROJECT_URLS [PROJECT_URLS ...], --project-urls PROJECT_URLS [PROJECT_URLS ...]
                         gitlab project urls
-  -t <string>, --token <string>
+  -t TOKEN, --token TOKEN
                         gitlab api access token
-  -r <int>, --rate-limit <int>
-                        api client rate limit (in req/s)
-  -c <string>, --config-file <string>
+  -c CONFIG_FILE, --config-file CONFIG_FILE
                         config file path
-  -f {provn,json,rdf,xml,dot}, --format {provn,json,rdf,xml,dot}
-                        provenance output format
-  -q, --quiet           suppress output to stdout
-  --aliases <string>    path to agent alias mapping json file
-  --pseudonymize        pseudonymize agents
+  -f {json,rdf,xml,provn,dot}, --format {json,rdf,xml,provn,dot}
+                        provenance serialization format
+  -v, --verbose         write log to stderr, set log level to DEBUG
+  --double-agents DOUBLE_AGENTS
+                        agent mapping file path
+  --pseudonymous        pseudonymize user names by enumeration
+  --profile             enable deterministic profiling, write profile to 'gitlab2prov-run-$TIMESTAMP.profile' where $TIMESTAMP is the current timestamp in 'YYYY-MM-DD-hh-mm-ss' format
 ```
 
 ### Provenance Output Formats
