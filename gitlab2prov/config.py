@@ -76,7 +76,7 @@ def read_cli() -> Config:
 
     subparsers = parser.add_subparsers(help="")
     multiformat = subparsers.add_parser(
-        "multiformat", help="serialize output in multiple formats"
+        "multi-format", help="serialize output in multiple formats"
     )
     multiformat.add_argument(
         "-f",
