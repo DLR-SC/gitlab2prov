@@ -52,8 +52,8 @@ def prov_identifier(obj: DataclassWithProvType) -> QualifiedName:
 
 
 def prov_label(obj: DataclassWithProvType) -> QualifiedName:
-    attrs = [f"{f.name}={getattr(obj, f.name)}" for f in fields(obj) if f.repr]
-    return qualified_name(f"{prov_type(obj)}({', '.join(attrs)})")
+    attrs = {f.name: getattr(obj, f.name) for f in fields(obj) if f.repr}
+    return qualified_name(f"{prov_type(obj)}?{urlencode(attrs)}")
 
 
 def prov_attributes(obj: DataclassWithProvType) -> list[Attribute]:
