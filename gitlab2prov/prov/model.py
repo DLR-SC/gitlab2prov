@@ -37,7 +37,12 @@ def choose_rev_model(rev: FileRevision):
     """Add the file change models based on the change type of each file version."""
     if rev.change_type == ChangeType.ADDED:
         return addition
-    if rev.change_type == ChangeType.MODIFIED:
+    if (
+        rev.change_type == ChangeType.MODIFIED
+        or rev.change_type == ChangeType.RENAMED
+        or rev.change_type == ChangeType.COPIED
+        or rev.change_type == ChangeType.CHANGED
+    ):
         return modification
     if rev.change_type == ChangeType.DELETED:
         return deletion
