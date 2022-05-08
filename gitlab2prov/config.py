@@ -81,7 +81,7 @@ def read_cli() -> Config:
     multiformat.add_argument(
         "-f",
         "--format",
-        help="serialization formats",
+        help="provenance serialization formats",
         nargs="+",
         choices=SUPPORTED_FORMATS,
         default=["json"],
@@ -89,7 +89,7 @@ def read_cli() -> Config:
     multiformat.add_argument(
         "-o",
         "--outfile",
-        help="serialization will happen to {outfile}.{format} for each specified format",
+        help="serialize to {outfile}.{format} for each specified format",
         required=True,
     )
 
