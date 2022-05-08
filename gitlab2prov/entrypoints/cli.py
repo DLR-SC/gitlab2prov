@@ -19,8 +19,11 @@ def main():
         cmd = commands.Fetch(url, config.token)
         bus.handle(cmd)
 
-    cmd = commands.Serialize(config.format, config.pseudonymous, config.double_agents)
-    bus.handle(cmd)
+    for fmt in config.format:
+        cmd = commands.Serialize(
+            fmt, config.pseudonymous, config.double_agents, config.outfile
+        )
+        bus.handle(cmd)
 
 
 if __name__ == "__main__":
