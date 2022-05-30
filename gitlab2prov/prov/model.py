@@ -29,6 +29,8 @@ def git_commit_model(
         parents = [parent for parent in parents if parent is not None]
         for rev in file_revisions:
             model = choose_rev_model(rev)
+            if model is None:
+                continue
             graph.update(model(commit, parents, rev))
     return graph
 
@@ -46,6 +48,7 @@ def choose_rev_model(rev: FileRevision):
         return modification
     if rev.change_type == ChangeType.DELETED:
         return deletion
+    return None
 
 
 def addition(
