@@ -32,6 +32,15 @@ def convert_csv(csv_string: str) -> list[str]:
     return urls
 
 
+def read_config():
+    conf, file = read_cli()
+    if file:
+        conf = read_file(file)
+    if conf is None:
+        return None
+    return conf
+
+
 def read_file(config_file: str) -> Config:
     config = configparser.ConfigParser(
         converters={"string": convert_string, "csv": convert_csv}
@@ -48,7 +57,15 @@ def read_file(config_file: str) -> Config:
     )
 
 
-def read_cli() -> Config:
+def token_required(argv):
+    if not argv[1:]:
+        return False
+    if "-c" in argv or "--config-file" in argv:
+        return False
+    return True
+
+
+def read_cli() -> tuple[Optional[Config], Optional[str]]:
     parser = argparse.ArgumentParser(
         prog="gitlab2prov",
         description="Extract provenance information from GitLab projects.",
@@ -58,13 +75,13 @@ def read_cli() -> Config:
         "--project-urls",
         help="gitlab project urls",
         nargs="+",
-        required="--config-file" not in sys.argv and "-c" not in sys.argv,
+        required=token_required(sys.argv),
     )
     parser.add_argument(
         "-t",
         "--token",
         help="gitlab api access token",
-        required="--config-file" not in sys.argv and "-c" not in sys.argv,
+        required=token_required(sys.argv),
     )
     parser.add_argument("-c", "--config-file", help="config file path")
     parser.add_argument(
@@ -98,15 +115,24 @@ def read_cli() -> Config:
         action="store_true",
         default=False,
     )
+
+    if not sys.argv[1:]:
+        print(parser.format_help())
+        return None, None
+
     args = parser.parse_args()
     if args.config_file:
-        return read_file(args.config_file)
-    return Config(
-        args.project_urls,
-        args.token,
-        args.format,
-        args.pseudonymous,
-        args.verbose,
-        args.profile,
-        args.double_agents,
+        return None, args.config_file
+
+    return (
+        Config(
+            args.project_urls,
+            args.token,
+            args.format,
+            args.pseudonymous,
+            args.verbose,
+            args.profile,
+            args.double_agents,
+        ),
+        None,
     )
