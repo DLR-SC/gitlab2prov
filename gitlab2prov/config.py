@@ -49,6 +49,14 @@ def read_file(config_file: str) -> Config:
 
 
 def read_cli() -> Config:
+def token_required(argv):
+    if not argv[1:]:
+        return False
+    if "-c" in argv or "--config-file" in argv:
+        return False
+    return True
+
+
     parser = argparse.ArgumentParser(
         prog="gitlab2prov",
         description="Extract provenance information from GitLab projects.",
@@ -58,13 +66,13 @@ def read_cli() -> Config:
         "--project-urls",
         help="gitlab project urls",
         nargs="+",
-        required="--config-file" not in sys.argv and "-c" not in sys.argv,
+        required=token_required(sys.argv),
     )
     parser.add_argument(
         "-t",
         "--token",
         help="gitlab api access token",
-        required="--config-file" not in sys.argv and "-c" not in sys.argv,
+        required=token_required(sys.argv),
     )
     parser.add_argument("-c", "--config-file", help="config file path")
     parser.add_argument(
