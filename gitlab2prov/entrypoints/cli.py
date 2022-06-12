@@ -1,29 +1,33 @@
 from gitlab2prov import bootstrap
-from gitlab2prov.config import read_cli
+from gitlab2prov.config import read_config
 from gitlab2prov.domain import commands
 from gitlab2prov.log import create_logger
 from gitlab2prov.profile import profiling
 
 
-config = read_cli()
-
-
-@profiling(enabled=config.profile)
 def main():
-    bus = bootstrap.bootstrap()
+    config = read_config()
+    if config is None:
+        return
 
-    if config.verbose:
-        create_logger()
+    @profiling(enabled=config.profile)
+    def run():
+        bus = bootstrap.bootstrap()
 
-    for url in config.project_urls:
-        cmd = commands.Fetch(url, config.token)
-        bus.handle(cmd)
+        if config.verbose:
+            create_logger()
 
-    for fmt in config.format:
-        cmd = commands.Serialize(
-            fmt, config.pseudonymous, config.double_agents, config.outfile
-        )
-        bus.handle(cmd)
+        for url in config.project_urls:
+            cmd = commands.Fetch(url, config.token)
+            bus.handle(cmd)
+
+        for fmt in config.formats:
+            cmd = commands.Serialize(
+                fmt, config.pseudonymous, config.double_agents, config.outfile
+            )
+            bus.handle(cmd)
+
+    run()
 
 
 if __name__ == "__main__":

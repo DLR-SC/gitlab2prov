@@ -29,6 +29,8 @@ def git_commit_model(
         parents = [parent for parent in parents if parent is not None]
         for rev in file_revisions:
             model = choose_rev_model(rev)
+            if model is None:
+                continue
             graph.update(model(commit, parents, rev))
     return graph
 
@@ -46,6 +48,7 @@ def choose_rev_model(rev: FileRevision):
         return modification
     if rev.change_type == ChangeType.DELETED:
         return deletion
+    return None
 
 
 def addition(
@@ -59,21 +62,27 @@ def addition(
     at = graph.agent(*commit.author)
     ct = graph.agent(*commit.committer)
 
-    c.wasAssociatedWith(at, None, [(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])])
-    c.wasAssociatedWith(ct, None, [(PROV_ROLE, list(ct.get_attribute(PROV_ROLE))[0])])
+    c.wasAssociatedWith(
+        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
+    )
+    c.wasAssociatedWith(
+        ct, plan=None, attributes=[(PROV_ROLE, list(ct.get_attribute(PROV_ROLE))[0])]
+    )
 
     for parent in parents:
         graph.activity(*commit).wasInformedBy(graph.activity(*parent))
 
     f = graph.entity(*rev.original)
     f.wasAttributedTo(at)
-    f.wasGeneratedBy(c, c.get_startTime(), [(PROV_ROLE, ProvRole.FILE)])
+    f.wasGeneratedBy(c, time=c.get_startTime(), attributes=[(PROV_ROLE, ProvRole.FILE)])
 
     rev = graph.entity(*rev)
     rev.wasAttributedTo(at)
     rev.specializationOf(f)
     rev.wasGeneratedBy(
-        c, c.get_startTime(), [(PROV_ROLE, ProvRole.FILE_REVISION_AT_POINT_OF_ADDITION)]
+        c,
+        time=c.get_startTime(),
+        attributes=[(PROV_ROLE, ProvRole.FILE_REVISION_AT_POINT_OF_ADDITION)],
     )
     return graph
 
@@ -88,8 +97,12 @@ def modification(
     at = graph.agent(*commit.author)
     ct = graph.agent(*commit.committer)
 
-    c.wasAssociatedWith(at, None, [(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])])
-    c.wasAssociatedWith(ct, None, [(PROV_ROLE, list(ct.get_attribute(PROV_ROLE))[0])])
+    c.wasAssociatedWith(
+        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
+    )
+    c.wasAssociatedWith(
+        ct, plan=None, attributes=[(PROV_ROLE, list(ct.get_attribute(PROV_ROLE))[0])]
+    )
 
     for parent in parents:
         graph.activity(*commit).wasInformedBy(graph.activity(*parent))
@@ -105,8 +118,8 @@ def modification(
     )  # NOTE: rev.wasRevisionOf(prev) is not impl in prov pkg
     rev.wasGeneratedBy(
         c,
-        c.get_startTime(),
-        [(PROV_ROLE, ProvRole.FILE_REVISION_AFTER_MODIFICATION)],
+        time=c.get_startTime(),
+        attributes=[(PROV_ROLE, ProvRole.FILE_REVISION_AFTER_MODIFICATION)],
     )
     c.used(
         prev,
@@ -126,8 +139,12 @@ def deletion(
     at = graph.agent(*commit.author)
     ct = graph.agent(*commit.committer)
 
-    c.wasAssociatedWith(at, None, [(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])])
-    c.wasAssociatedWith(ct, None, [(PROV_ROLE, list(ct.get_attribute(PROV_ROLE))[0])])
+    c.wasAssociatedWith(
+        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
+    )
+    c.wasAssociatedWith(
+        ct, plan=None, attributes=[(PROV_ROLE, list(ct.get_attribute(PROV_ROLE))[0])]
+    )
 
     for parent in parents:
         graph.activity(*commit).wasInformedBy(graph.activity(*parent))
@@ -178,15 +195,17 @@ def commit_creation(
 
     resource.wasAttributedTo(author)
     creation.wasAssociatedWith(
-        author, None, [(PROV_ROLE, ProvRole.AUTHOR_GITLAB_COMMIT)]
+        author, plan=None, attributes=[(PROV_ROLE, ProvRole.AUTHOR_GITLAB_COMMIT)]
     )
     resource.wasGeneratedBy(
-        creation, creation.get_startTime(), [(PROV_ROLE, ProvRole.RESOURCE)]
+        creation,
+        time=creation.get_startTime(),
+        attributes=[(PROV_ROLE, ProvRole.RESOURCE)],
     )
     first_version.wasGeneratedBy(
         creation,
-        creation.get_startTime(),
-        [(PROV_ROLE, ProvRole.RESOURCE_VERSION_AT_POINT_OF_CREATION)],
+        time=creation.get_startTime(),
+        attributes=[(PROV_ROLE, ProvRole.RESOURCE_VERSION_AT_POINT_OF_CREATION)],
     )
     first_version.specializationOf(resource)
     first_version.wasAttributedTo(author)
@@ -196,7 +215,9 @@ def commit_creation(
 
     commit = graph.activity(*git_commit)
     committer = graph.agent(*git_commit.committer)
-    commit.wasAssociatedWith(committer, None, [(PROV_ROLE, ProvRole.COMMITTER)])
+    commit.wasAssociatedWith(
+        committer, plan=None, attributes=[(PROV_ROLE, ProvRole.COMMITTER)]
+    )
     creation.wasInformedBy(commit)
 
     return graph
@@ -208,20 +229,24 @@ def resource_creation(resource: Resource, graph: ProvDocument = graph_factory())
     rv = graph.entity(*resource.first_version)
     at = graph.agent(*resource.author)
 
-    c.wasAssociatedWith(at, [(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])])
+    c.wasAssociatedWith(
+        at,
+        plan=None,
+        attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])],
+    )
 
     r.wasAttributedTo(at)
     rv.wasAttributedTo(at)
     rv.specializationOf(r)
     r.wasGeneratedBy(
         c,
-        c.get_startTime(),
-        [(PROV_ROLE, ProvRole.RESOURCE)],
+        time=c.get_startTime(),
+        attributes=[(PROV_ROLE, ProvRole.RESOURCE)],
     )
     rv.wasGeneratedBy(
         c,
-        c.get_startTime(),
-        [(PROV_ROLE, ProvRole.RESOURCE_VERSION_AT_POINT_OF_CREATION)],
+        time=c.get_startTime(),
+        attributes=[(PROV_ROLE, ProvRole.RESOURCE_VERSION_AT_POINT_OF_CREATION)],
     )
     return graph
 
@@ -247,7 +272,9 @@ def annotation_chain(resource, graph=graph_factory()):
         annot_ver.specializationOf(r)
 
         annot.wasAssociatedWith(
-            annotator, None, [(PROV_ROLE, list(annotator.get_attribute(PROV_ROLE))[0])]
+            annotator,
+            plan=None,
+            attributes=[(PROV_ROLE, list(annotator.get_attribute(PROV_ROLE))[0])],
         )
 
         annot.used(
@@ -257,8 +284,8 @@ def annotation_chain(resource, graph=graph_factory()):
         )
         annot_ver.wasGeneratedBy(
             annot,
-            annot.get_startTime(),
-            [(PROV_ROLE, ProvRole.RESOURCE_VERSION_AFTER_ANNOTATION)],
+            time=annot.get_startTime(),
+            attributes=[(PROV_ROLE, ProvRole.RESOURCE_VERSION_AFTER_ANNOTATION)],
         )
         prev_annot = annot
         prev_annot_ver = annot_ver
@@ -285,7 +312,9 @@ def release_and_tag(
     r = graph.collection(*release)
     c = graph.activity(*release.creation)
     t.hadMember(r)
-    r.wasGeneratedBy(c, c.get_startTime(), [(PROV_ROLE, ProvRole.RELEASE)])
+    r.wasGeneratedBy(
+        c, time=c.get_startTime(), attributes=[(PROV_ROLE, ProvRole.RELEASE)]
+    )
     for asset in release.assets:
         graph.entity(*asset).hadMember(graph.entity(*release))
     for evidence in release.evidences:
@@ -296,7 +325,9 @@ def release_and_tag(
 
     at = graph.agent(*release.author)
     r.wasAttributedTo(at)
-    c.wasAssociatedWith(at, None, [(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])])
+    c.wasAssociatedWith(
+        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
+    )
 
     return graph
 
@@ -308,8 +339,12 @@ def tag_and_commit(
     tc = graph.activity(*tag.creation)
     at = graph.agent(*tag.author)
     t.wasAttributedTo(at)
-    t.wasGeneratedBy(tc, tc.get_startTime(), [(PROV_ROLE, ProvRole.TAG)])
-    tc.wasAssociatedWith(at, None, [(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])])
+    t.wasGeneratedBy(
+        tc, time=tc.get_startTime(), attributes=[(PROV_ROLE, ProvRole.TAG)]
+    )
+    tc.wasAssociatedWith(
+        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
+    )
 
     if commit is None:
         return graph
@@ -319,8 +354,12 @@ def tag_and_commit(
     at = graph.agent(*commit.author)
     cmt.hadMember(t)
     cmt.wasAttributedTo(at)
-    cmt.wasGeneratedBy(cc, cc.get_startTime(), [(PROV_ROLE, ProvRole.GIT_COMMIT)])
-    cc.wasAssociatedWith(at, None, [(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])])
+    cmt.wasGeneratedBy(
+        cc, time=cc.get_startTime(), attributes=[(PROV_ROLE, ProvRole.GIT_COMMIT)]
+    )
+    cc.wasAssociatedWith(
+        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
+    )
 
     return graph
 
