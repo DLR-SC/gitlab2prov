@@ -21,7 +21,7 @@ def main():
             cmd = commands.Fetch(url, config.token)
             bus.handle(cmd)
 
-        for fmt in config.formats:
+        for fmt in config.format:
             cmd = commands.Serialize(
                 fmt, config.pseudonymous, config.double_agents, config.outfile
             )
