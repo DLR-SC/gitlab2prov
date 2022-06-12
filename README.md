@@ -1,15 +1,15 @@
-# :seedling: `gitlab2prov`: Extract Provenance from GitLab Projects 
+# :seedling: `gitlab2prov`: Extract Provenance from GitLab Projects
 
 [![License: MIT](https://img.shields.io/github/license/dlr-sc/gitlab2prov?label=License)](https://opensource.org/licenses/MIT) [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/) [![PyPI version fury.io](https://badge.fury.io/py/gitlab2prov.svg)](https://pypi.python.org/pypi/gitlab2prov/) [![DOI](https://zenodo.org/badge/215042878.svg)](https://zenodo.org/badge/latestdoi/215042878) [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/DLR-SC/gitlab2prov)
 
 [![Git commits (by Cauldron.io)](https://cauldron.io/project/4509/export/svg/git_commits.svg)](https://cauldron.io/project/4509) [![Issues created (by Cauldron.io)](https://cauldron.io/project/4509/export/svg/issues_created.svg)](https://cauldron.io/project/4509) [![Issues closed (by Cauldron.io)](https://cauldron.io/project/4509/export/svg/issues_closed.svg)](https://cauldron.io/project/4509)
 
-`gitlab2prov` is a Python library and command line tool for extracting provenance information from GitLab projects.  
+`gitlab2prov` is a Python library and command line tool for extracting provenance information from GitLab projects.
 
-The data model employed by `gitlab2prov` has been modelled according to [W3C PROV](https://www.w3.org/TR/prov-overview/) [![PROV](https://www.w3.org/Icons/SW/Buttons/sw-prov-blue.png)](https://www.w3.org/TR/prov-overview/) specification.  
-A representation of the model can be found in `/docs`.
+The data model employed by `gitlab2prov` has been modelled according to [W3C PROV](https://www.w3.org/TR/prov-overview/) [![PROV](https://www.w3.org/Icons/SW/Buttons/sw-prov-blue.png)](https://www.w3.org/TR/prov-overview/) specification.
+More information regarding the provenance model can be found in `/docs`.
 
-## Installation :wrench:
+## ️🏗️ ️Installation
 
 Clone the project and use the provided `setup.py` to install `gitlab2prov`.
 
@@ -17,47 +17,79 @@ Clone the project and use the provided `setup.py` to install `gitlab2prov`.
 python setup.py install --user
 ```
 
-## Usage :computer:
+## 👩‍💻 Usage
 
-`gitlab2prov` can be used either as a command line script or as a Python lib.
+`gitlab2prov` can be used as a command line script and as a Python lib.
 
-To extract provenance from a project, follow these steps:
+To extract provenance from a gitlab project, follow these steps:
 | Instructions                                                                                                                                                      | Config Option    |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|
 | 1. Obtain an API Token for the GitLab API ([Token Guide](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token)) | `--token`        |
 | 2. Set the URL[s] for the GitLab Project[s]                                                                                                                             | `--project_urls` |
 | 3. Choose a PROV serialization format                                                                                                                             | `--format`       |
 
-### As a Command Line Script
 
 `gitlab2prov` can be configured either by command line flags or by using a config file.
 
+### 📋 Config File Example
 
-##### Config File :clipboard:
-
-An example of a configuration file can be found in `/config`.
+An example of a configuration file can be found in `/config/example.ini`.
 
 ```ini
+# This is an example of a configuration file as used by gitlab2prov.
+# The configuration options match the command line flags in function.
+
 [GITLAB]
+# Gitlab project urls as a comma seperated list.
 project_urls = project_a_url, project_b_url
+
+# Gitlab personal access token.
+# More about tokens and how to create them:
+# https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#create-a-personal-access-token
 token = token
 
 [OUTPUT]
-format = json
+# Provenance serialization format.
+# Supported formats: json, rdf, xml, provn, dot
+format = json, rdf, xml
+
+# File location to write provenance output to.
+# Each specified format will result in a seperate file.
+# For example:
+#     format = json, xml
+#     outfile = out/example
+# Creates the files:
+#     out/example.json
+#     out/example.xml
+outfile = provout/example
 
 [MISC]
+# Enables/Disables profiling using the cprofile lib.
+# The runtime profile is written to a file called gitlab2prov-run-$TIMESTAMP.profile
+# where $TIMESTAMP is the current time in 'YYYY-MM-DD-hh-mm-ss' format.
+# The profile can be visualized using tools such as snakeviz.
 profile = False
+
+# Enables/Disables verbose output (DEBUG mode logging to stdout)
 verbose = False
-pseudonymous = False
+
+# Path to double agent mapping to unify duplicated agents.
 double_agents = path/to/alias/mapping
+
+# Enables/Disables agent pseudonymization by enumeration.
+pseudonymous = False
 ```
 
-##### Command Line Flags :flags:
+### 🖥️ Command Line Usage ☝ Single Format Serialization
 
 ```
-usage: gitlab2prov [-h] -p PROJECT_URLS [PROJECT_URLS ...] -t TOKEN [-c CONFIG_FILE] [-f {json,rdf,xml,provn,dot}] [-v] [--double-agents DOUBLE_AGENTS] [--pseudonymous] [--profile]
+  usage: gitlab2prov [-h] -p PROJECT_URLS [PROJECT_URLS ...] -t TOKEN [-c CONFIG_FILE] [-f {json,rdf,xml,provn,dot}] [-v] [--double-agents DOUBLE_AGENTS] [--pseudonymous] [--profile] {multi-format} ...
 
 Extract provenance information from GitLab projects.
+
+positional arguments:
+  {multi-format}
+    multi-format        serialize output in multiple formats
 
 options:
   -h, --help            show this help message and exit
@@ -75,8 +107,21 @@ options:
   --pseudonymous        pseudonymize user names by enumeration
   --profile             enable deterministic profiling, write profile to 'gitlab2prov-run-$TIMESTAMP.profile' where $TIMESTAMP is the current timestamp in 'YYYY-MM-DD-hh-mm-ss' format
 ```
+### 🖥️ Command Line Usage 🖐 Multi Format Serialization
+To serialize the extracted provenance information into multiple formats in one go, use the provided `multi-format` mode.
 
-### Provenance Output Formats
+```
+usage: gitlab2prov multi-format [-h] [-f {json,rdf,xml,provn,dot} [{json,rdf,xml,provn,dot} ...]] -o OUTFILE
+
+options:
+  -h, --help            show this help message and exit
+  -f {json,rdf,xml,provn,dot} [{json,rdf,xml,provn,dot} ...], --format {json,rdf,xml,provn,dot} [{json,rdf,xml,provn,dot} ...]
+                        provenance serialization formats
+  -o OUTFILE, --outfile OUTFILE
+                        serialize to {outfile}.{format} for each specified format
+```
+
+### 🎨 Provenance Output Formats
 
 `gitlab2prov` supports output formats that the [`prov`](https://github.com/trungdong/prov) library provides:
 * [PROV-N](http://www.w3.org/TR/prov-n/)
@@ -84,7 +129,6 @@ options:
 * [PROV-XML](http://www.w3.org/TR/prov-xml/)
 * [PROV-JSON](http://www.w3.org/Submission/prov-json/)
 * [Graphviz](https://graphviz.org/) (DOT)
-
 
 ## Contributing
 
@@ -115,7 +159,7 @@ You can also cite specific releases published on Zenodo: [![DOI](https://zenodo.
 ## References
 
 **Influencial Software for `gitlab2prov`**
-* Martin Stoffers: "Gitlab2Graph", v1.0.0, October 13. 2019, [GitHub Link](https://github.com/DLR-SC/Gitlab2Graph), DOI 10.5281/zenodo.3469385  
+* Martin Stoffers: "Gitlab2Graph", v1.0.0, October 13. 2019, [GitHub Link](https://github.com/DLR-SC/Gitlab2Graph), DOI 10.5281/zenodo.3469385
 
 * Quentin Pradet: "How do you rate limit calls with aiohttp?", [GitHub Gist](https://gist.github.com/pquentin/5d8f5408cdad73e589d85ba509091741), MIT LICENSE
 
@@ -131,4 +175,4 @@ You can also cite specific releases published on Zenodo: [![DOI](https://zenodo.
 
 * Tim Sonnekalb, Thomas S. Heinze, Lynn von Kurnatowski, Andreas Schreiber, Jesus M. Gonzalez-Barahona, and Heather Packer (2020). [Towards automated, provenance-driven security audit for git-based repositories: applied to germany's corona-warn-app: vision paper](https://doi.org/10.1145/3416507.3423190). In *Proceedings of the 3rd ACM SIGSOFT International Workshop on Software Security from Design to Deployment* (pp. 15–18).
 
-* Andreas Schreiber (2020). [Visualization of contributions to open-source projects](https://doi.org/10.1145/3430036.3430057). In *Proceedings of the 13th International Symposium on Visual Information Communication and Interaction*. ACM, USA. 
+* Andreas Schreiber (2020). [Visualization of contributions to open-source projects](https://doi.org/10.1145/3430036.3430057). In *Proceedings of the 13th International Symposium on Visual Information Communication and Interaction*. ACM, USA.

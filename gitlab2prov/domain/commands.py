@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 
 @dataclass
@@ -23,3 +24,4 @@ class Serialize(Command):
     format: str
     pseudonymize: bool
     uncover_double_agents: str
+    out: Optional[str] = None

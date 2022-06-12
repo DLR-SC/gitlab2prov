@@ -3,7 +3,7 @@ import csv
 import argparse
 import configparser
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple, Union
 
 
 SUPPORTED_FORMATS = ["json", "rdf", "xml", "provn", "dot"]
@@ -13,11 +13,16 @@ SUPPORTED_FORMATS = ["json", "rdf", "xml", "provn", "dot"]
 class Config:
     project_urls: list[str]
     token: str
-    format: str
+    format: Union[str, list[str]]
+    outfile: Optional[str]
     pseudonymous: bool
     verbose: bool
     profile: bool
     double_agents: Optional[str]
+
+
+class ConfigError(Exception):
+    pass
 
 
 def convert_string(s: str) -> str:
@@ -27,9 +32,18 @@ def convert_string(s: str) -> str:
 def convert_csv(csv_string: str) -> list[str]:
     lines = csv_string.splitlines()
     reader = csv.reader(lines)
-    [urls] = list(reader)
-    urls = [url.strip().strip("'").strip('"') for url in urls]
-    return urls
+    [items] = list(reader)
+    items = [item.strip().strip("'").strip('"') for item in items]
+    return items
+
+
+def check_mode_requirements(config: configparser.ConfigParser) -> Tuple[bool, str]:
+    if len(config.getstring("OUTPUT", "format")) > 1:
+        if "outfile" not in config["OUTPUT"]:
+            return False, "Missing option 'outfile' in section 'OUTPUT'"
+        if config.getstring("OUTPUT", "outfile") is None:
+            return False, "Missing value for option 'outfile' in section 'OUTPUT'"
+    return True, ""
 
 
 def read_config():
@@ -46,10 +60,16 @@ def read_file(config_file: str) -> Config:
         converters={"string": convert_string, "csv": convert_csv}
     )
     config.read(config_file)
+
+    ok, msg = check_mode_requirements(config)
+    if not ok:
+        raise ConfigError(msg)
+
     return Config(
         config.getcsv("GITLAB", "project_urls"),
         config.getstring("GITLAB", "token"),
-        config.getstring("OUTPUT", "format", fallback="json"),
+        config.getcsv("OUTPUT", "format", fallback=["json"]),
+        config.getstring("OUTPUT", "outfile", fallback=None),
         config.getboolean("MISC", "pseudonymous", fallback=False),
         config.getboolean("MISC", "verbose", fallback=False),
         config.getboolean("MISC", "profile", fallback=False),
@@ -70,6 +90,26 @@ def read_cli() -> tuple[Optional[Config], Optional[str]]:
         prog="gitlab2prov",
         description="Extract provenance information from GitLab projects.",
     )
+
+    subparsers = parser.add_subparsers(help="")
+    multiformat = subparsers.add_parser(
+        "multi-format", help="serialize output in multiple formats"
+    )
+    multiformat.add_argument(
+        "-f",
+        "--format",
+        help="provenance serialization formats",
+        nargs="+",
+        choices=SUPPORTED_FORMATS,
+        default=["json"],
+    )
+    multiformat.add_argument(
+        "-o",
+        "--outfile",
+        help="serialize to {outfile}.{format} for each specified format",
+        required=True,
+    )
+
     parser.add_argument(
         "-p",
         "--project-urls",
@@ -129,6 +169,7 @@ def read_cli() -> tuple[Optional[Config], Optional[str]]:
             args.project_urls,
             args.token,
             args.format,
+            getattr(args, "outfile", None),
             args.pseudonymous,
             args.verbose,
             args.profile,

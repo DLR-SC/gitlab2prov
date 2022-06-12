@@ -1,6 +1,7 @@
 import logging
-from urllib.parse import urlsplit
+from pathlib import Path
 from tempfile import TemporaryDirectory
+from urllib.parse import urlsplit
 
 from git import Repo
 from gitlab import Gitlab
@@ -8,9 +9,7 @@ from prov.dot import prov_to_dot
 from prov.model import ProvDocument
 
 from gitlab2prov.domain import commands
-from gitlab2prov.prov import operations
-from gitlab2prov.prov import model
-
+from gitlab2prov.prov import model, operations
 
 log = logging.getLogger(__name__)
 
@@ -32,10 +31,14 @@ def clone_with_https_url(url: str, token: str) -> str:
     return f"https://gitlab.com:{token}@{split.netloc}/{project_slug(url)}"
 
 
-def serialize_graph(graph: ProvDocument, fmt: str):
+def serialize_graph(graph: ProvDocument, fmt: str) -> str:
     if fmt == "dot":
         return prov_to_dot(graph)
     return graph.serialize(format=fmt)
+
+
+def strip_file_extension(s: str) -> Path:
+    return Path(s).with_suffix("")
 
 
 def mine_git(cmd: commands.Fetch, uow, git_miner) -> None:
@@ -79,7 +82,11 @@ def serialize(cmd: commands.Serialize, uow) -> None:
     if cmd.pseudonymize:
         graph = operations.pseudonymize(graph)
 
-    # write to stdout
+    if cmd.out is not None:
+        with open(f"{strip_file_extension(cmd.out)}.{cmd.format}", "w") as f:
+            print(serialize_graph(graph, cmd.format), file=f)
+        return
+
     print(serialize_graph(graph, cmd.format))
 
 
