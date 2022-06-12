@@ -169,6 +169,7 @@ def read_cli() -> tuple[Optional[Config], Optional[str]]:
             args.project_urls,
             args.token,
             args.format,
+            getattr(args, "outfile", None),
             args.pseudonymous,
             args.verbose,
             args.profile,
