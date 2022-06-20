@@ -19,10 +19,10 @@ from gitlab2prov.domain.objects import (
 Resource = Union[GitlabCommit, Issue, MergeRequest]
 
 
-def git_commit_model(
-    resources: AbstractRepository, graph: ProvDocument = graph_factory()
-):
+def git_commit_model(resources: AbstractRepository, graph: ProvDocument = None):
     """Commit model implementation."""
+    if graph is None:
+        graph = graph_factory()
     for commit in resources.list_all(GitCommit):
         file_revisions = resources.list_all(FileRevision, committed_in=commit.hexsha)
         parents = [resources.get(GitCommit, hexsha=hexsha) for hexsha in commit.parents]
@@ -55,9 +55,11 @@ def addition(
     commit: GitCommit,
     parents: list[GitCommit],
     rev: FileRevision,
-    graph: ProvDocument = graph_factory(),
+    graph: ProvDocument = None,
 ):
     """Add model for the addition of a new file in a commit."""
+    if graph is None:
+        graph = graph_factory()
     c = graph.activity(*commit)
     at = graph.agent(*commit.author)
     ct = graph.agent(*commit.committer)
@@ -91,8 +93,10 @@ def modification(
     commit: GitCommit,
     parents: list[GitCommit],
     fv: FileRevision,
-    graph: ProvDocument = graph_factory(),
+    graph: ProvDocument = None,
 ):
+    if graph is None:
+        graph = graph_factory()
     c = graph.activity(*commit)
     at = graph.agent(*commit.author)
     ct = graph.agent(*commit.committer)
@@ -133,8 +137,10 @@ def deletion(
     commit: GitCommit,
     parents: list[GitCommit],
     fv: FileRevision,
-    graph: ProvDocument = graph_factory(),
+    graph: ProvDocument = None,
 ):
+    if graph is None:
+        graph = graph_factory()
     c = graph.activity(*commit)
     at = graph.agent(*commit.author)
     ct = graph.agent(*commit.committer)
@@ -160,7 +166,9 @@ def deletion(
     return graph
 
 
-def gitlab_commit_model(resources, graph: ProvDocument = graph_factory()):
+def gitlab_commit_model(resources, graph: ProvDocument = None):
+    if graph is None:
+        graph = graph_factory()
     for gitlab_commit in resources.list_all(GitlabCommit):
         git_commit = resources.get(GitCommit, hexsha=gitlab_commit.hexsha)
         graph.update(commit_creation(gitlab_commit, git_commit))
@@ -169,14 +177,18 @@ def gitlab_commit_model(resources, graph: ProvDocument = graph_factory()):
     return graph
 
 
-def gitlab_issue_model(resources, graph: ProvDocument = graph_factory()):
+def gitlab_issue_model(resources, graph: ProvDocument = None):
+    if graph is None:
+        graph = graph_factory()
     for issue in resources.list_all(Issue):
         graph.update(resource_creation(issue))
         graph.update(annotation_chain(issue))
     return graph
 
 
-def gitlab_merge_request_model(resources, graph: ProvDocument = graph_factory()):
+def gitlab_merge_request_model(resources, graph: ProvDocument = None):
+    if graph is None:
+        graph = graph_factory()
     for merge_request in resources.list_all(MergeRequest):
         graph.update(resource_creation(merge_request))
         graph.update(annotation_chain(merge_request))
@@ -186,8 +198,10 @@ def gitlab_merge_request_model(resources, graph: ProvDocument = graph_factory())
 def commit_creation(
     gitlab_commit: GitlabCommit,
     git_commit: Optional[GitCommit],
-    graph: ProvDocument = graph_factory(),
+    graph: ProvDocument = None,
 ):
+    if graph is None:
+        graph = graph_factory()
     resource = graph.entity(*gitlab_commit)
     creation = graph.activity(*gitlab_commit.creation)
     first_version = graph.entity(*gitlab_commit.first_version)
@@ -223,7 +237,9 @@ def commit_creation(
     return graph
 
 
-def resource_creation(resource: Resource, graph: ProvDocument = graph_factory()):
+def resource_creation(resource: Resource, graph: ProvDocument = None):
+    if graph is None:
+        graph = graph_factory()
     r = graph.entity(*resource)
     c = graph.activity(*resource.creation)
     rv = graph.entity(*resource.first_version)
@@ -251,7 +267,9 @@ def resource_creation(resource: Resource, graph: ProvDocument = graph_factory())
     return graph
 
 
-def annotation_chain(resource, graph=graph_factory()):
+def annotation_chain(resource, graph=None):
+    if graph is None:
+        graph = graph_factory()
     r = graph.entity(*resource)
     c = graph.activity(*resource.creation)
     fv = graph.entity(*resource.first_version)
@@ -292,7 +310,9 @@ def annotation_chain(resource, graph=graph_factory()):
     return graph
 
 
-def gitlab_release_tag_model(resources, graph: ProvDocument = graph_factory()):
+def gitlab_release_tag_model(resources, graph: ProvDocument = None):
+    if graph is None:
+        graph = graph_factory()
     for tag in resources.list_all(Tag):
         release = resources.get(Release, tag_name=tag.name)
         commit = resources.get(GitlabCommit, hexsha=tag.hexsha)
@@ -301,9 +321,9 @@ def gitlab_release_tag_model(resources, graph: ProvDocument = graph_factory()):
     return graph
 
 
-def release_and_tag(
-    release: Optional[Release], tag: Tag, graph: ProvDocument = graph_factory()
-):
+def release_and_tag(release: Optional[Release], tag: Tag, graph: ProvDocument = None):
+    if graph is None:
+        graph = graph_factory()
     t = graph.collection(*tag)
 
     if release is None:
@@ -333,8 +353,10 @@ def release_and_tag(
 
 
 def tag_and_commit(
-    tag: Tag, commit: Optional[GitlabCommit], graph: ProvDocument = graph_factory()
+    tag: Tag, commit: Optional[GitlabCommit], graph: ProvDocument = None
 ):
+    if graph is None:
+        graph = graph_factory()
     t = graph.collection(*tag)
     tc = graph.activity(*tag.creation)
     at = graph.agent(*tag.author)
