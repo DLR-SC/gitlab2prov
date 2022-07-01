@@ -12,6 +12,9 @@ from gitlab2prov.domain.constants import ProvRole
 log = logging.getLogger(__name__)
 
 
+DEFAULT = "default_annotation"
+
+
 # python versions below 3.10 do not support
 # isinstance calls with type hints or type aliases
 Note = Union[v4.ProjectIssueNote, v4.ProjectMergeRequestNote]
@@ -314,11 +317,12 @@ def classify_annotation(body: str, patterns: dict[str, Pattern] = CLASSIFIERS):
             continue
         matches[classifier] = match
 
-    classifier = max(matches, key=matches.get, default="default_annotation")
-    attributes.update(matches[classifier].groupdict())
+    classifier = max(matches, key=matches.get, default=DEFAULT)
 
-    if classifier == "default_annotation":
-        log.info(f"")
+    if classifier == DEFAULT:
+        log.info(f"Unknown system note body: {body}")
+    else:
+        attributes.update(matches[classifier].groupdict())
 
     return classifier, attributes
 
