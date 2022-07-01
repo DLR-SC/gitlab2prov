@@ -1,7 +1,9 @@
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from gitlab.v4.objects import Project
+from gitlab.exceptions import GitlabListError
 
 from gitlab2prov.domain.constants import ProvRole
 from gitlab2prov.adapters.miners.annotation_parsing import parse_annotations
@@ -17,6 +19,9 @@ from gitlab2prov.domain.objects import (
 )
 
 
+log = logging.getLogger(__name__)
+
+
 @dataclass
 class AbstractMiner(ABC):
     @abstractmethod
@@ -29,11 +34,36 @@ class GitlabProjectMiner(AbstractMiner):
     project: Project
 
     def mine(self):
-        yield from extract_commits(self.project)
-        yield from extract_issues(self.project)
-        yield from extract_mergerequests(self.project)
-        yield from extract_releases(self.project)
-        yield from extract_tags(self.project)
+        try:
+            yield from extract_commits(self.project)
+        except GitlabListError as e:
+            log.info(
+                f"Project {self.project} raised GitlabListError when requesting commits"
+            )
+        try:
+            yield from extract_issues(self.project)
+        except GitlabListError:
+            log.info(
+                f"Project {self.project} raised GitlabListError when requesting issues"
+            )
+        try:
+            yield from extract_mergerequests(self.project)
+        except GitlabListError:
+            log.info(
+                f"Project {self.project} raised GitlabListError when requesting merge requests"
+            )
+        try:
+            yield from extract_releases(self.project)
+        except GitlabListError:
+            log.info(
+                f"Project {self.project} raised GitlabListError when requesting releases"
+            )
+        try:
+            yield from extract_tags(self.project)
+        except GitlabListError:
+            log.info(
+                f"Project {self.project} raised GitlabListError when requesting tags"
+            )
 
 
 def get_commit_author(commit):
