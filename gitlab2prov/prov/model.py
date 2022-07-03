@@ -112,19 +112,24 @@ def modification(
         graph.activity(*commit).wasInformedBy(graph.activity(*parent))
 
     f = graph.entity(*fv.original)
-    prev = graph.entity(*fv.previous)
-    prev.specializationOf(f)
     rev = graph.entity(*fv)
     rev.wasAttributedTo(at)
     rev.specializationOf(f)
-    graph.wasRevisionOf(
-        rev, prev
-    )  # NOTE: rev.wasRevisionOf(prev) is not impl in prov pkg
     rev.wasGeneratedBy(
         c,
         time=c.get_startTime(),
         attributes=[(PROV_ROLE, ProvRole.FILE_REVISION_AFTER_MODIFICATION)],
     )
+
+    # skip previous revisions if none exist
+    if fv.previous is None:
+        return graph
+
+    prev = graph.entity(*fv.previous)
+    prev.specializationOf(f)
+    graph.wasRevisionOf(
+        rev, prev
+    )  # NOTE: rev.wasRevisionOf(prev) is not impl in prov pkg
     c.used(
         prev,
         c.get_startTime(),
