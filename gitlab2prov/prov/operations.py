@@ -1,9 +1,12 @@
 import json
 import logging
+import hashlib
+
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Any
 from urllib.parse import urlencode
+
 
 from prov.identifier import QualifiedName
 from prov.model import (
@@ -21,6 +24,10 @@ from prov.model import (
 
 
 log = logging.getLogger(__name__)
+
+
+USERNAME = "name"
+USEREMAIL = "email"
 
 
 def qualified_name(localpart: str) -> QualifiedName:
@@ -116,30 +123,85 @@ def uncover_double_agents(graph: ProvDocument, fp: str) -> ProvDocument:
         reroute[agent.identifier] = identifier
 
     for relation in graph.get_records(ProvRelation):
-        attrs = [(k, reroute.get(v, v)) for k, v in relation.formal_attributes]
-        # attrs.extend((k, reroute.get(v, v)) for k, v in relation.attributes)
-        attrs.extend((k, reroute.get(v, v)) for k, v in relation.extra_attributes)
+        formal = [
+            (key, reroute.get(val, val)) for key, val in relation.formal_attributes
+        ]
+        extra = [(key, reroute.get(val, val)) for key, val in relation.extra_attributes]
         r_type = PROV_REC_CLS.get(relation.get_type())
-        records.append(r_type(relation.bundle, relation.identifier, attrs))
+        records.append(r_type(relation.bundle, relation.identifier, formal + extra))
 
     return graph_factory(records).unified()
 
 
-def pseudonymize(graph: ProvDocument):
+def get_username(agent: ProvAgent) -> str | None:
+    names = list(agent.get_attribute(USERNAME))
+    return names[0] if names else None
+
+
+def get_usermail(agent: ProvAgent) -> str | None:
+    emails = list(agent.get_attribute(USEREMAIL))
+    return emails[0] if emails else None
+
+
+def pseudonymize_agent(
+    agent: ProvAgent,
+    identifier: QualifiedName,
+    keep: list[QualifiedName],
+    replace: dict[str, Any],
+) -> ProvAgent:
+    kept = [(key, val) for key, val in agent.extra_attributes if key in keep]
+    replaced = [
+        (key, replace.get(key.localpart, val))
+        for key, val in agent.extra_attributes
+        if key.localpart in replace
+    ]
+    return ProvAgent(agent.bundle, identifier, kept + replaced)
+
+
+def pseudonymize(graph: ProvDocument) -> ProvDocument:
     log.info(f"pseudonymize agents in {graph=}")
-    keep = [PROV_ROLE, PROV_TYPE]
 
-    agents = set(graph.get_records(ProvAgent))
-    records = list(graph.get_records((ProvActivity, ProvEntity, ProvRelation)))
+    # get all records except for agents and relations
+    records = list(graph.get_records((ProvActivity, ProvEntity)))
 
-    for i, agent in enumerate(agents, start=1):
-        # keep role, keep type, "forget" email, substitute name
-        attributes = [(key, val) for key, val in agent.extra_attributes if key in keep]
-        [(qn, _)] = [
-            (key, val) for key, val in agent.extra_attributes if key.localpart == "name"
+    pseudonyms = dict()
+    for agent in graph.get_records(ProvAgent):
+        name = get_username(agent)
+        mail = get_usermail(agent)
+
+        if name is None:
+            raise ValueError("ProvAgent representing a user has to have a name!")
+
+        # hash name & mail if present
+        namehash = hashlib.sha256(bytes(name, "utf-8")).hexdigest()
+        mailhash = hashlib.sha256(bytes(mail, "utf-8")).hexdigest() if mail else None
+        # create a new id as a pseudonym using the hashes
+        pseudonym = qualified_name(f"User?name={namehash}&email={mailhash}")
+
+        # map the old id to the pseudonym
+        pseudonyms[agent.identifier] = pseudonym
+
+        # keep only prov role & prov type
+        # replace name & mail with hashes
+        pseudonymized = pseudonymize_agent(
+            agent,
+            identifier=pseudonym,
+            keep=[PROV_ROLE, PROV_TYPE],
+            replace={USERNAME: namehash, USEREMAIL: mailhash},
+        )
+
+        # add pseudonymized agent to the list of records
+        records.append(pseudonymized)
+
+    # replace old id occurences with the pseudonymized id
+    for relation in graph.get_records(ProvRelation):
+        formal = [
+            (key, pseudonyms.get(val, val)) for key, val in relation.formal_attributes
         ]
-        attributes.append((qn, f"agent-{i}"))
-        identifier = qualified_name(f"User?name=agent-{i}")
-        records.append(ProvAgent(agent.bundle, identifier, attributes))
+        extra = [
+            (key, pseudonyms.get(val, val)) for key, val in relation.extra_attributes
+        ]
+        r_type = PROV_REC_CLS.get(relation.get_type())
+        records.append(r_type(relation.bundle, relation.identifier, formal + extra))
 
     return graph_factory(records)
