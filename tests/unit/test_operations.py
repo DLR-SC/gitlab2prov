@@ -183,7 +183,12 @@ class TestPseudonymize:
         graph = operations.pseudonymize(graph)
 
         agent = next(graph.get_records(ProvAgent))
-        expected_attributes = [PROV_ROLE, PROV_TYPE, qualified_name("name")]
+        expected_attributes = [
+            PROV_ROLE,
+            PROV_TYPE,
+            qualified_name("name"),
+            qualified_name("email"),
+        ]
         assert all(
             [(attr in expected_attributes) for (attr, _) in agent.extra_attributes]
         )
