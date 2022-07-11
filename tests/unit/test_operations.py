@@ -168,8 +168,8 @@ class TestPseudonymize:
 
         agent = next(graph.get_records(ProvAgent))
         assert agent.identifier == expected_identifier
-        assert agent.get_attribute("name") == expected_name
-        assert agent.get_attribute("email") == expected_email
+        assert list(agent.get_attribute("name"))[0] == expected_name
+        assert list(agent.get_attribute("email"))[0] == expected_email
 
     def test_pseudonymize_deletes_non_name_attributes_apart_from_role_and_type(self):
         graph = operations.graph_factory()
