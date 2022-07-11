@@ -1,3 +1,5 @@
+import hashlib
+
 from prov.model import ProvAgent, ProvDocument, ProvRelation, PROV_ROLE, PROV_TYPE
 
 from gitlab2prov.prov import operations
@@ -154,17 +156,20 @@ class TestUncoverDoubleAgents:
 class TestPseudonymize:
     def test_pseudonymize_changes_agent_name_and_identifier(self):
         graph = operations.graph_factory()
-        graph.agent("agent1", {"name": f"agent-name-{random_suffix()}"})
+        name = f"agent-name-{random_suffix()}"
+        email = f"agent-email-{random_suffix()}"
+        graph.agent("agent1", {"name": name, "email": email})
 
         graph = operations.pseudonymize(graph)
 
-        expected_name = "agent-1"
-        expected_identifier = qualified_name(f"User?name={expected_name}")
+        expected_name = hashlib.sha256(bytes(name, "utf-8")).hexdigest()
+        expected_email = hashlib.sha256(bytes(email, "utf-8")).hexdigest()
+        expected_identifier = qualified_name(f"User?name={expected_name}&email={expected_email}")
 
         agent = next(graph.get_records(ProvAgent))
         assert agent.identifier == expected_identifier
-        [(_, name)] = [(k, v) for k, v in agent.extra_attributes]
-        assert name == expected_name
+        assert agent.get_attribute("name") == expected_name
+        assert agent.get_attribute("email") == expected_email
 
     def test_pseudonymize_deletes_non_name_attributes_apart_from_role_and_type(self):
         graph = operations.graph_factory()
