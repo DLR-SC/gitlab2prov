@@ -1,25 +1,53 @@
-# :seedling: `gitlab2prov`: Extract Provenance from GitLab Projects
+<h1 align="center">Welcome to `gitlab2prov`! 👋</h1>
+<p align="center">
+  <a href="https://github.com/dlr-sc/gitlab2prov/master/LICENSE">
+    <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-yellow.svg" target="_blank" />
+  </a>
+  <a href="https://img.shields.io/badge/Made%20with-Python-1f425f.svg">
+    <img src="https://img.shields.io/badge/Made%20with-Python-1f425f.svg" alt="Badge: Made with Python"/>
+  </a>
+  <a href="https://pypi.org/project/gitlab2prov/">
+    <img src="https://img.shields.io/pypi/v/gitlab2prov" alt="Badge: PyPi Version">
+  </a>
+  <a href="https://twitter.com/dlr_software">
+    <img alt="Twitter: DLR Software" src="https://img.shields.io/twitter/follow/dlr_software.svg?style=social" target="_blank" />
+  </a>
+  <a href="https://open.vscode.dev/DLR-SC/gitlab2prov">
+    <img alt="Badge: Open in VSCode" src="https://img.shields.io/static/v1?logo=visualstudiocode&label=&message=open%20in%20visual%20studio%20code&labelColor=2c2c32&color=007acc&logoColor=007acc" target="_blank" />
+  </a>
+  <a href="https://zenodo.org/badge/latestdoi/215042878">
+    <img alt="Badge: DOI" src="https://zenodo.org/badge/215042878.svg" target="_blank" />
+  </a>
+  <a href="https://www.w3.org/TR/prov-overview/">
+    <img alt="Badge: W3C PROV" src="https://img.shields.io/static/v1?logo=w3c&label=&message=PROV&labelColor=2c2c32&color=007acc&logoColor=007acc?logoWidth=200" target="_blank" />
+  </a>
+  <a href="https://citation-file-format.github.io/">
+    <img alt="Badge: Citation File Format Inside" src="https://img.shields.io/badge/-citable%20software-green" target="_blank" />
+  </a>
+</p>
 
-[![License: MIT](https://img.shields.io/github/license/dlr-sc/gitlab2prov?label=License)](https://opensource.org/licenses/MIT) [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/) [![PyPI version fury.io](https://badge.fury.io/py/gitlab2prov.svg)](https://pypi.python.org/pypi/gitlab2prov/) [![DOI](https://zenodo.org/badge/215042878.svg)](https://zenodo.org/badge/latestdoi/215042878) [![Open in Visual Studio Code](https://open.vscode.dev/badges/open-in-vscode.svg)](https://open.vscode.dev/DLR-SC/gitlab2prov)
 
-[![Git commits (by Cauldron.io)](https://cauldron.io/project/4509/export/svg/git_commits.svg)](https://cauldron.io/project/4509) [![Issues created (by Cauldron.io)](https://cauldron.io/project/4509/export/svg/issues_created.svg)](https://cauldron.io/project/4509) [![Issues closed (by Cauldron.io)](https://cauldron.io/project/4509/export/svg/issues_closed.svg)](https://cauldron.io/project/4509)
+> `gitlab2prov` is a Python library and command line tool that extracts provenance information from GitLab projects.
 
-`gitlab2prov` is a Python library and command line tool for extracting provenance information from GitLab projects.
+---
 
-The data model employed by `gitlab2prov` has been modelled according to [W3C PROV](https://www.w3.org/TR/prov-overview/) [![PROV](https://www.w3.org/Icons/SW/Buttons/sw-prov-blue.png)](https://www.w3.org/TR/prov-overview/) specification.
-More information regarding the provenance model can be found in `/docs`.
+The `gitlab2prov` data model has been designed according to [W3C PROV](https://www.w3.org/TR/prov-overview/) specification.
+The model documentation can be found [here](https://github.com/DLR-SC/gitlab2prov/tree/master/docs).
+
 
 ## ️🏗️ ️Installation
 
-Clone the project and use the provided `setup.py` to install `gitlab2prov`.
-
+Clone the project and use the provided `setup.py`:
 ```bash
 python setup.py install --user
 ```
 
-## 👩‍💻 Usage
+Or install the latest release from [PyPi](https://pypi.org/project/gitlab2prov/):
+```bash
+pip install gitlab2prov
+```
 
-`gitlab2prov` can be used as a command line script and as a Python lib.
+## 🚀‍ Usage
 
 To extract provenance from a gitlab project, follow these steps:
 | Instructions                                                                                                                                                      | Config Option    |
@@ -130,7 +158,7 @@ options:
 * [PROV-JSON](http://www.w3.org/Submission/prov-json/)
 * [Graphviz](https://graphviz.org/) (DOT)
 
-## Contributing
+## 🤝 Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
