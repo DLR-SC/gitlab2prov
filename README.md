@@ -1,4 +1,4 @@
-<h1 align="center">Welcome to `gitlab2prov`! 👋</h1>
+<h1 align="center">Welcome to <code>gitlab2prov</code>! 👋</h1>
 <p align="center">
   <a href="https://github.com/dlr-sc/gitlab2prov/master/LICENSE">
     <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-yellow.svg" target="_blank" />
