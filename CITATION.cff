@@ -2,6 +2,7 @@ cff-version: 1.2.0
 message: "If you use GitLab2PROV in your research, please cite it using these metadata."
 title: GitLab2PROV
 abstract: "GitLab2PROV is a Python library and command line tool for extracting provenance information from GitLab projects."
+type: software
 authors: 
   - family-names: "de Boer"
     given-names: Claas
