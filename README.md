@@ -1,6 +1,6 @@
 <h1 align="center">Welcome to <code>gitlab2prov</code>! 👋</h1>
 <p align="center">
-  <a href="https://github.com/dlr-sc/gitlab2prov/master/LICENSE">
+  <a href="https://github.com/dlr-sc/gitlab2prov/blob/master/LICENSE">
     <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-yellow.svg" target="_blank" />
   </a>
   <a href="https://img.shields.io/badge/Made%20with-Python-1f425f.svg">
@@ -8,6 +8,9 @@
   </a>
   <a href="https://pypi.org/project/gitlab2prov/">
     <img src="https://img.shields.io/pypi/v/gitlab2prov" alt="Badge: PyPi Version">
+  </a>
+  <a href="https://pypistats.org/packages/gitlab2prov">
+    <img src="https://img.shields.io/pypi/dm/gitlab2prov" alt="Badge: PyPi Downloads Monthly">
   </a>
   <a href="https://twitter.com/dlr_software">
     <img alt="Twitter: DLR Software" src="https://img.shields.io/twitter/follow/dlr_software.svg?style=social" target="_blank" />
