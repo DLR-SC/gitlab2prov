@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, Sequence, Any
 from urllib.parse import urlencode
 
-
+from prov.dot import prov_to_dot
 from prov.identifier import QualifiedName
 from prov.model import (
     ProvDocument,
@@ -28,6 +28,31 @@ log = logging.getLogger(__name__)
 
 USERNAME = "name"
 USEREMAIL = "email"
+SERIALIZATION_FORMATS = ["json", "xml", "rdf", "provn", "dot"]
+DESERIALIZATION_FORMATS = ["rdf", "xml", "json"]
+
+
+def serialize_graph(
+    graph: ProvDocument, format: str = "json", destination=None, encoding="utf-8"
+) -> str | None:
+    if format not in SERIALIZATION_FORMATS:
+        raise ValueError("Unsupported serialization format.")
+    if format == "dot":
+        return prov_to_dot(graph).to_string().encode(encoding)
+    return graph.serialize(format=format, destination=destination)
+
+
+def deserialize_graph(source: str = None, content: str = None):
+    for format in DESERIALIZATION_FORMATS:
+        try:
+            return ProvDocument.deserialize(
+                source=source, content=content, format=format
+            )
+        except:
+            continue
+    raise Exception
+
+
 
 
 def qualified_name(localpart: str) -> QualifiedName:
