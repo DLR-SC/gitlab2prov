@@ -3,3 +3,4 @@ git-python
 python-gitlab
 regex
 pydot
+ruamel.yaml
