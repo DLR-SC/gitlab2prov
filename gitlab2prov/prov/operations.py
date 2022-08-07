@@ -106,26 +106,37 @@ def combine(graphs: Iterable[ProvDocument]) -> ProvDocument:
     return dedupe(acc)
 
 
+class StrippedRelation(NamedTuple):
+    s: QualifiedName
+    t: QualifiedName
+    type: Type[ProvRelation]
 
 
 def dedupe(graph: ProvDocument) -> ProvDocument:
     log.info(f"deduplicate ProvElement's and ProvRelation's in {graph=}")
     graph = graph.unified()
     records = list(graph.get_records((ProvElement)))
-    attrs = defaultdict(set)
+
     bundles = dict()
+    attributes = defaultdict(set)
 
     for relation in graph.get_records(ProvRelation):
-        rel = (type(relation), tuple(relation.formal_attributes))
-        bundles[rel] = relation.bundle
-        attrs[rel].update(relation.extra_attributes)
+        stripped = StrippedRelation(
+            relation.formal_attributes[0],
+            relation.formal_attributes[1],
+            PROV_REC_CLS[relation.get_type()],
+        )
+        bundles[stripped] = relation.bundle
+        attributes[stripped].update(relation.extra_attributes)
 
-    for rel in attrs:
-        bundle = bundles[rel]
-        rtype, formal_attributes = rel
-        attributes = list(formal_attributes)
-        attributes.extend(attrs[rel])
-        records.append(rtype(bundle, None, attributes))
+    records.extend(
+        relation.type(
+            bundles[relation],
+            None,
+            [relation.s, relation.t] + list(attributes[relation]),
+        )
+        for relation in attributes
+    )
     return graph_factory(records)
 
 
