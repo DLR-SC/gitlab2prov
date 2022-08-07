@@ -42,8 +42,9 @@ def serialize(cmd: commands.Serialize, uow) -> ProvDocument:
 
 HANDLERS = {
     commands.Fetch: [
-        mine_git,
-        mine_gitlab,
+        fetch_git,
+        fetch_gitlab,
     ],
+    commands.Reset: [reset],
     commands.Serialize: [serialize],
 }
