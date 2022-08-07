@@ -72,7 +72,6 @@ class TestDedupe:
         r1 = graph.wasAttributedTo(entity, agent)
         r2 = graph.wasAttributedTo(entity, agent)
         assert list(graph.get_records(ProvRelation)) == [r1, r2]
-        print(list(operations.dedupe(graph).get_records(ProvRelation)))
         assert list(operations.dedupe(graph).get_records(ProvRelation)) == [r1]
 
     def test_merges_attributes_of_duplicate_relations(self):
