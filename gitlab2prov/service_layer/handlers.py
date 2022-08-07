@@ -30,6 +30,9 @@ def fetch_gitlab(cmd: commands.Fetch, uow, gitlab_fetcher) -> None:
 
 def serialize(cmd: commands.Serialize, uow) -> None:
     subgraphs = []
+def reset(cmd: commands.Reset, uow):
+    log.info(f"reset repository {uow.resources=}")
+    uow.reset()
 
     for prov_model in model.MODELS:
         with uow:
