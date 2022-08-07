@@ -15,8 +15,6 @@ log = logging.getLogger(__name__)
 DEFAULT = "default_annotation"
 
 
-# python versions below 3.10 do not support
-# isinstance calls with type hints or type aliases
 Note = Union[v4.ProjectIssueNote, v4.ProjectMergeRequestNote]
 
 Comment = v4.ProjectCommitComment
@@ -38,11 +36,11 @@ Parseable = Union[Note, Label, AwardEmoji, Comment]
 
 def compile_branch_reset(*regular_expressions: str):
     # combine multiple regular expressions into one by 'or'-ing
-    ored = "|".join(regular_expressions)
+    or_expr = "|".join(regular_expressions)
     # wrap in branch reset expression (?|...|...)
     # to be able to reuse the same capture group names
     # across alternative branches
-    branch_reset = f"(?|{ored})"
+    branch_reset = f"(?|{or_expr})"
     # compile the pattern and return it
     # the regex pkg pattern is compatible with pythons re implementation
     return regex.compile(branch_reset)
