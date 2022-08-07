@@ -98,6 +98,13 @@
                         },
                         "coarse": {
                             "type": "boolean"
+                        },
+                        "formatter": {
+                            "type": "string",
+                            "enum": [
+                                "table",
+                                "csv"
+                            ]
                         }
                     }
                 }
