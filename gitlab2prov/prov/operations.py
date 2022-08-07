@@ -2,7 +2,7 @@ import json
 import logging
 import hashlib
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 from pathlib import Path
 from typing import Optional, Sequence, Any
 from urllib.parse import urlencode
@@ -53,6 +53,32 @@ def deserialize_graph(source: str = None, content: str = None):
     raise Exception
 
 
+def format_stats_as_ascii_table(stats: dict[str, int]) -> str:
+    table = f"|{'Record Type':20}|{'Count':20}|\n+{'-'*20}+{'-'*20}+\n"
+    for record_type, count in stats.items():
+        table += f"|{record_type:20}|{count:20}|\n"
+    return table
+
+
+def format_stats_as_csv(stats: dict[str, int]) -> str:
+    csv = f"Record Type, Count\n"
+    for record_type, count in stats.items():
+        csv += f"{record_type}, {count}\n"
+    return csv
+
+
+def stats(
+    graph: ProvDocument, resolution: str, formatter=format_stats_as_ascii_table
+) -> str:
+    elements = Counter(e.get_type().localpart for e in graph.get_records(ProvElement))
+    relations = Counter(r.get_type().localpart for r in graph.get_records(ProvRelation))
+
+    stats = dict(sorted(elements.items()))
+    if resolution == "coarse":
+        stats.update({"Relations": relations.total()})
+    if resolution == "fine":
+        stats.update(sorted(relations.items()))
+    return formatter(stats)
 
 
 def qualified_name(localpart: str) -> QualifiedName:
