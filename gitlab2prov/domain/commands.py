@@ -10,7 +10,7 @@ class Command:
 
 @dataclass
 class Fetch(Command):
-    project_url: str
+    url: str
     token: str
 
 
