@@ -1,2 +1,2 @@
-from gitlab2prov.adapters.miners.git import AbstractMiner, GitRepositoryMiner
-from gitlab2prov.adapters.miners.gitlab import AbstractMiner, GitlabProjectMiner
+from gitlab2prov.adapters.fetch.git import GitFetcher
+from gitlab2prov.adapters.fetch.gitlab import GitlabFetcher
