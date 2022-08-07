@@ -1,179 +1,59 @@
-import sys
-import csv
-import argparse
-import configparser
-from dataclasses import dataclass
-from typing import Optional, Tuple, Union
+import os
+from typing import Any
+
+import json
+import jsonschema
+from ruamel.yaml import YAML
+from gitlab2prov.root import get_package_root
 
 
-SUPPORTED_FORMATS = ["json", "rdf", "xml", "provn", "dot"]
+def parse_option(name: str, value: list[str] | str | bool):
+    if isinstance(value, list):
+        for item in value:
+            yield f"--{name}"
+            yield item
+    elif isinstance(value, bool):
+        yield f"--{name}"
+    else:
+        yield f"--{name}"
+        yield value
 
 
-@dataclass
-class Config:
-    project_urls: list[str]
-    token: str
-    format: Union[str, list[str]]
-    outfile: Optional[str]
-    pseudonymous: bool
-    verbose: bool
-    profile: bool
-    double_agents: Optional[str]
+def parse_array(array: list[dict[str, Any]]):
+    for object in array:
+        command, optlist = next(iter(object.items()))
+        yield command
+
+        if optlist is None:
+            continue
+
+        for name, value in optlist.items():
+            yield from parse_option(name, value)
 
 
-class ConfigError(Exception):
-    pass
+def read_file(filepath):
+    with open(filepath, "rt") as f:
+        yaml = YAML(typ="safe")
+        return yaml.load(f.read())
 
 
-def convert_string(s: str) -> str:
-    return s.strip("'").strip('"')
-
-
-def convert_csv(csv_string: str) -> list[str]:
-    lines = csv_string.splitlines()
-    reader = csv.reader(lines)
-    [items] = list(reader)
-    items = [item.strip().strip("'").strip('"') for item in items]
-    return items
-
-
-def check_mode_requirements(config: configparser.ConfigParser) -> Tuple[bool, str]:
-    if len(config.getstring("OUTPUT", "format")) > 1:
-        if "outfile" not in config["OUTPUT"]:
-            return False, "Missing option 'outfile' in section 'OUTPUT'"
-        if config.getstring("OUTPUT", "outfile") is None:
-            return False, "Missing value for option 'outfile' in section 'OUTPUT'"
-    return True, ""
-
-
-def read_config():
-    conf, file = read_cli()
-    if file:
-        conf = read_file(file)
-    if conf is None:
-        return None
-    return conf
-
-
-def read_file(config_file: str) -> Config:
-    config = configparser.ConfigParser(
-        converters={"string": convert_string, "csv": convert_csv}
-    )
-    config.read(config_file)
-
-    ok, msg = check_mode_requirements(config)
+def read_args_from_file(filepath) -> list[str]:
+    ok, err = validate(filepath)
     if not ok:
-        raise ConfigError(msg)
-
-    return Config(
-        config.getcsv("GITLAB", "project_urls"),
-        config.getstring("GITLAB", "token"),
-        config.getcsv("OUTPUT", "format", fallback=["json"]),
-        config.getstring("OUTPUT", "outfile", fallback=None),
-        config.getboolean("MISC", "pseudonymous", fallback=False),
-        config.getboolean("MISC", "verbose", fallback=False),
-        config.getboolean("MISC", "profile", fallback=False),
-        config.getstring("MISC", "double_agents", fallback=None),
-    )
+        raise err
+    return list(parse_array(read_file(filepath)))
 
 
-def token_required(argv):
-    if not argv[1:]:
-        return False
-    if "-c" in argv or "--config-file" in argv:
-        return False
-    return True
+def get_schema():
+    schema_path = os.path.join(get_package_root(), "schema.json")
+    with open(schema_path, "rt", encoding="utf-8") as fid:
+        return json.loads(fid.read())
 
 
-def read_cli() -> tuple[Optional[Config], Optional[str]]:
-    parser = argparse.ArgumentParser(
-        prog="gitlab2prov",
-        description="Extract provenance information from GitLab projects.",
-    )
+def validate(fp):
+    try:
+        jsonschema.validate(read_file(fp), get_schema())
+    except Exception as err:
+        return False, err
+    return True, "valid"
 
-    subparsers = parser.add_subparsers(help="")
-    multiformat = subparsers.add_parser(
-        "multi-format", help="serialize output in multiple formats"
-    )
-    multiformat.add_argument(
-        "-f",
-        "--format",
-        help="provenance serialization formats",
-        nargs="+",
-        choices=SUPPORTED_FORMATS,
-        default=["json"],
-    )
-    multiformat.add_argument(
-        "-o",
-        "--outfile",
-        help="serialize to {outfile}.{format} for each specified format",
-        required=True,
-    )
-
-    parser.add_argument(
-        "-p",
-        "--project-urls",
-        help="gitlab project urls",
-        nargs="+",
-        required=token_required(sys.argv),
-    )
-    parser.add_argument(
-        "-t",
-        "--token",
-        help="gitlab api access token",
-        required=token_required(sys.argv),
-    )
-    parser.add_argument("-c", "--config-file", help="config file path")
-    parser.add_argument(
-        "-f",
-        "--format",
-        help="provenance serialization format",
-        choices=SUPPORTED_FORMATS,
-        default="json",
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        help="write log to stderr, set log level to DEBUG",
-        action="store_true",
-        default=False,
-    )
-    parser.add_argument(
-        "--double-agents",
-        help="agent mapping file path",
-        default=None,
-    )
-    parser.add_argument(
-        "--pseudonymous",
-        help="pseudonymize user names by enumeration",
-        action="store_true",
-        default=False,
-    )
-    parser.add_argument(
-        "--profile",
-        help="enable deterministic profiling, write profile to 'gitlab2prov-run-$TIMESTAMP.profile' where $TIMESTAMP is the current timestamp in 'YYYY-MM-DD-hh-mm-ss' format",
-        action="store_true",
-        default=False,
-    )
-
-    if not sys.argv[1:]:
-        print(parser.format_help())
-        return None, None
-
-    args = parser.parse_args()
-    if args.config_file:
-        return None, args.config_file
-
-    return (
-        Config(
-            args.project_urls,
-            args.token,
-            args.format,
-            getattr(args, "outfile", None),
-            args.pseudonymous,
-            args.verbose,
-            args.profile,
-            args.double_agents,
-        ),
-        None,
-    )
