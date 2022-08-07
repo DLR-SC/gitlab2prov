@@ -1,44 +1,11 @@
 import logging
-from pathlib import Path
-from tempfile import TemporaryDirectory
-from urllib.parse import urlsplit
-
-from git import Repo
-from gitlab import Gitlab
-from prov.dot import prov_to_dot
-from prov.model import ProvDocument
 
 from gitlab2prov.domain import commands
 from gitlab2prov.prov import model, operations
+from prov.model import ProvDocument
+
 
 log = logging.getLogger(__name__)
-
-
-def project_slug(url: str) -> str:
-    path = urlsplit(url).path
-    if path is None:
-        return None
-    return path.strip("/")
-
-
-def gitlab_url(url: str) -> str:
-    split = urlsplit(url)
-    return f"{split.scheme}://{split.netloc}"
-
-
-def clone_with_https_url(url: str, token: str) -> str:
-    split = urlsplit(url)
-    return f"https://gitlab.com:{token}@{split.netloc}/{project_slug(url)}"
-
-
-def serialize_graph(graph: ProvDocument, fmt: str) -> str:
-    if fmt == "dot":
-        return prov_to_dot(graph)
-    return graph.serialize(format=fmt)
-
-
-def strip_file_extension(s: str) -> Path:
-    return Path(s).with_suffix("")
 
 
 def mine_git(cmd: commands.Fetch, uow, git_miner) -> None:
