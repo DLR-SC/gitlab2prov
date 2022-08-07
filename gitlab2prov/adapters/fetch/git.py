@@ -1,36 +1,49 @@
-from abc import ABC, abstractmethod
-from datetime import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from tempfile import TemporaryDirectory
 from itertools import zip_longest
+from typing import Iterator
 
 from git import Repo
 
+from gitlab2prov.adapters.fetch.utils import clone_over_https_url
+from gitlab2prov.domain import objects
 from gitlab2prov.domain.constants import ProvRole, ChangeType
-from gitlab2prov.domain.objects import User, GitCommit, File, FileRevision
 
 
 EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 
 @dataclass
-class AbstractMiner(ABC):
-    @abstractmethod
-    def mine(self):
-        raise NotImplementedError
+class GitFetcher:
+    project_url: str
+    private_token: str
 
+    tmpdir: TemporaryDirectory | None = field(init=False, default=None)
+    repo: Repo | None = field(init=False, default=None)
 
-@dataclass
-class GitRepositoryMiner(AbstractMiner):
-    repo: Repo
+    def __enter__(self):
+        self.tmpdir = TemporaryDirectory(ignore_cleanup_errors=True)
+        return self
 
-    def mine(self):
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.repo:
+            self.repo.close()
+        self.tmpdir.cleanup()
+
+    def do_clone(self) -> None:
+        self.repo = Repo.clone_from(
+            clone_over_https_url(self.project_url, self.private_token),
+            to_path=self.tmpdir.name,
+        )
+
+    def fetch_git(self) -> Iterator[objects.ProvInterface]:
         yield from extract_commits(self.repo)
         yield from extract_files(self.repo)
         yield from extract_revisions(self.repo)
 
 
 def get_author(commit):
-    return User(
+    return objects.User(
         name=commit.author.name,
         email=commit.author.email,
         gitlab_username=None,
@@ -40,7 +53,7 @@ def get_author(commit):
 
 
 def get_committer(commit):
-    return User(
+    return objects.User(
         name=commit.committer.name,
         email=commit.committer.email,
         gitlab_username=None,
@@ -75,15 +88,15 @@ def parse_log(log: str):
 
 def extract_commits(repo):
     for commit in repo.iter_commits("--all"):
-        yield GitCommit(
+        yield objects.GitCommit(
             hexsha=commit.hexsha,
             message=commit.message,
             title=commit.summary,
             author=get_author(commit),
             committer=get_committer(commit),
             parents=[parent.hexsha for parent in commit.parents],
-            prov_start=datetime.fromtimestamp(commit.authored_date),
-            prov_end=datetime.fromtimestamp(commit.committed_date),
+            prov_start=commit.authored_datetime,
+            prov_end=commit.committed_datetime,
         )
 
 
@@ -98,7 +111,7 @@ def extract_files(repo):
         # disregard modifications and deletions
         for diff_item in diff.iter_change_type(ChangeType.ADDED):
             # path for new files is stored in diff b_path
-            yield File(path=diff_item.b_path, committed_in=commit.hexsha)
+            yield objects.File(path=diff_item.b_path, committed_in=commit.hexsha)
 
 
 def extract_revisions(repo):
@@ -116,7 +129,7 @@ def extract_revisions(repo):
             )
         ):
             revs.append(
-                FileRevision(
+                objects.FileRevision(
                     path=path, committed_in=hexsha, change_type=status, original=file
                 )
             )
