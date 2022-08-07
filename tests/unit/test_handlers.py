@@ -2,9 +2,7 @@ from typing import TypeVar, Type, Optional
 
 from gitlab2prov import bootstrap
 from gitlab2prov.adapters import repository
-from gitlab2prov.adapters import miners
 from gitlab2prov.service_layer import unit_of_work
-from gitlab2prov.service_layer import handlers
 
 
 R = TypeVar("R")
@@ -46,26 +44,38 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
         pass
 
 
-def FakeGitRepositoryMiner(resources):
-    class FakeGitRepositoryMiner(miners.AbstractMiner):
-        def __init__(self, repo):
+def FakeGitFetcher(resources):
+    class FakeGitRepositoryMiner:
+        def __init__(self, url, token):
             self.resources = resources
 
-        def mine(self):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+        def do_clone(self):
+            pass
+
+        def fetch_git(self):
             return iter(self.resources)
 
     return FakeGitRepositoryMiner
 
 
-def FakeGitlabProjectMiner(resources):
-    class FakeGitlabProjectMiner(miners.AbstractMiner):
-        def __init__(self, project):
+def FakeGitlabFetcher(resources):
+    class FakeGitlabFetcher:
+        def __init__(self, url, token):
             self.resources = resources
 
-        def mine(self):
+        def do_login(self):
+            pass
+
+        def fetch_gitlab(self):
             return iter(self.resources)
 
-    return FakeGitlabProjectMiner
+    return FakeGitlabFetcher
 
 
 def bootstrap_test_app(git_resources=None, gitlab_resources=None):
@@ -75,24 +85,10 @@ def bootstrap_test_app(git_resources=None, gitlab_resources=None):
         gitlab_resources = []
     return bootstrap.bootstrap(
         uow=FakeUnitOfWork(),
-        git_miner=FakeGitRepositoryMiner(git_resources),
-        gitlab_miner=FakeGitlabProjectMiner(gitlab_resources),
+        git_fetcher=FakeGitFetcher(git_resources),
+        gitlab_fetcher=FakeGitlabFetcher(gitlab_resources),
     )
 
 
-class TestHelpers:
-    def test_project_slug(self):
-        expected_slug = "group/project"
-        assert expected_slug == handlers.project_slug(
-            "https://gitlab.com/group/project"
-        )
-
-    def test_gitlab_url(self):
-        expected_url = "https://gitlab.com"
-        assert expected_url == handlers.gitlab_url("https://gitlab.com/group/project")
-
-    def test_clone_with_https_url(self):
-        expected_url = "https://gitlab.com:TOKEN@gitlab.com/group/project"
-        assert expected_url == handlers.clone_with_https_url(
-            "https://gitlab.com/group/project", "TOKEN"
-        )
+class TestHandlers:
+    pass
