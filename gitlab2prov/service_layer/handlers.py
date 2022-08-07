@@ -8,16 +8,14 @@ from prov.model import ProvDocument
 log = logging.getLogger(__name__)
 
 
-def mine_git(cmd: commands.Fetch, uow, git_miner) -> None:
-    url = clone_with_https_url(cmd.project_url, cmd.token)
-    with TemporaryDirectory() as tmpdir:
-        repo = Repo.clone_from(url, to_path=tmpdir)
+def fetch_git(cmd: commands.Fetch, uow, git_fetcher) -> None:
+    with git_fetcher(cmd.url, cmd.token) as fetcher:
+        fetcher.do_clone()
         with uow:
-            for resource in git_miner(repo).mine():
-                log.debug(f"add {resource=}")
+            for resource in fetcher.fetch_git():
+                log.info(f"add {resource=}")
                 uow.resources.add(resource)
-            uow.commit()
-        repo.close()
+        uow.commit()
 
 
 def mine_gitlab(cmd: commands.Fetch, uow, gitlab_miner) -> None:
