@@ -1,6 +1,7 @@
 import json
 import logging
 import hashlib
+from typing import Iterable, NamedTuple, Type
 
 from collections import defaultdict, Counter
 from pathlib import Path
@@ -94,14 +95,17 @@ def graph_factory(records: Optional[Sequence[ProvRecord]] = None) -> ProvDocumen
     return graph
 
 
-def combine(graphs: list[ProvDocument]) -> ProvDocument:
+def combine(graphs: Iterable[ProvDocument]) -> ProvDocument:
     log.info(f"combine graphs {graphs}")
-    if not graphs:
+    try:
+        acc = next(graphs)
+    except StopIteration:
         return graph_factory()
-    acc = graphs[0]
-    for graph in graphs[1:]:
+    for graph in graphs:
         acc.update(graph)
-    return acc
+    return dedupe(acc)
+
+
 
 
 def dedupe(graph: ProvDocument) -> ProvDocument:
