@@ -20,6 +20,11 @@ class Update(Fetch):
 
 
 @dataclass
+class Reset(Command):
+    pass
+
+
+@dataclass
 class Serialize(Command):
     format: str
     pseudonymize: bool
