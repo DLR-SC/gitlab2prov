@@ -199,14 +199,13 @@ def uncover_double_agents(graph: ProvDocument, fp: str) -> ProvDocument:
     return graph_factory(records).unified()
 
 
-def get_username(agent: ProvAgent) -> str | None:
-    names = list(agent.get_attribute(USERNAME))
-    return names[0] if names else None
-
-
-def get_usermail(agent: ProvAgent) -> str | None:
-    emails = list(agent.get_attribute(USEREMAIL))
-    return emails[0] if emails else None
+def get_attribute(record: ProvRecord, attribute: str, first: bool = True) -> str | None:
+    choices = list(record.get_attribute(attribute))
+    if choices and first:
+        return choices[0]
+    if choices and not first:
+        return choices
+    return None
 
 
 def pseudonymize_agent(
@@ -232,8 +231,8 @@ def pseudonymize(graph: ProvDocument) -> ProvDocument:
 
     pseudonyms = dict()
     for agent in graph.get_records(ProvAgent):
-        name = get_username(agent)
-        mail = get_usermail(agent)
+        name = get_attribute(agent, USERNAME)
+        mail = get_attribute(agent, USEREMAIL)
 
         if name is None:
             raise ValueError("ProvAgent representing a user has to have a name!")
@@ -255,7 +254,6 @@ def pseudonymize(graph: ProvDocument) -> ProvDocument:
             keep=[PROV_ROLE, PROV_TYPE],
             replace={USERNAME: namehash, USEREMAIL: mailhash},
         )
-
         # add pseudonymized agent to the list of records
         records.append(pseudonymized)
 
