@@ -18,12 +18,12 @@ def fetch_git(cmd: commands.Fetch, uow, git_fetcher) -> None:
         uow.commit()
 
 
-def mine_gitlab(cmd: commands.Fetch, uow, gitlab_miner) -> None:
-    gl = Gitlab(gitlab_url(cmd.project_url), cmd.token)
-    project = gl.projects.get(project_slug(cmd.project_url))
+def fetch_gitlab(cmd: commands.Fetch, uow, gitlab_fetcher) -> None:
+    fetcher = gitlab_fetcher(cmd.url, cmd.token)
+    fetcher.do_login()
     with uow:
-        for resource in gitlab_miner(project).mine():
-            log.debug(f"add {resource=}")
+        for resource in fetcher.fetch_gitlab():
+            log.info(f"add {resource=}")
             uow.resources.add(resource)
         uow.commit()
 
