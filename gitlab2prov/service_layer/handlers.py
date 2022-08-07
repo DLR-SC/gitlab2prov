@@ -28,34 +28,16 @@ def fetch_gitlab(cmd: commands.Fetch, uow, gitlab_fetcher) -> None:
         uow.commit()
 
 
-def serialize(cmd: commands.Serialize, uow) -> None:
-    subgraphs = []
 def reset(cmd: commands.Reset, uow):
     log.info(f"reset repository {uow.resources=}")
     uow.reset()
 
-    for prov_model in model.MODELS:
-        with uow:
-            log.info(f"populate model {prov_model}")
-            subgraph = prov_model(uow.resources)
-        subgraphs.append(subgraph)
 
-    graph = operations.combine(subgraphs)
+def serialize(cmd: commands.Serialize, uow) -> ProvDocument:
+    log.info(f"serialize graph consisting of {model.MODELS=}")
+    graph = operations.combine(prov_model(uow.resources) for prov_model in model.MODELS)
     graph = operations.dedupe(graph)
-
-    # optional operations
-    if cmd.uncover_double_agents:
-        graph = operations.uncover_double_agents(graph, cmd.uncover_double_agents)
-        graph = operations.dedupe(graph)
-    if cmd.pseudonymize:
-        graph = operations.pseudonymize(graph)
-
-    if cmd.out is not None:
-        with open(f"{strip_file_extension(cmd.out)}.{cmd.format}", "w") as f:
-            print(serialize_graph(graph, cmd.format), file=f)
-        return
-
-    print(serialize_graph(graph, cmd.format))
+    return graph
 
 
 HANDLERS = {
