@@ -3,7 +3,7 @@
         url: ["https://gitlab.com/example/foo"]
         token: mytoken
 - extract:
-        url: ["https://gitlab.com/example/foo"]
+        url: ["https://gitlab.com/example/bar"]
         token: mytoken
 - open:
         input: [example.rdf]
