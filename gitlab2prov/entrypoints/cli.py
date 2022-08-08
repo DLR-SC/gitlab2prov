@@ -9,7 +9,7 @@ from gitlab2prov import bootstrap
 from gitlab2prov.domain import commands
 from gitlab2prov.prov import operations
 from gitlab2prov.log import create_logger
-from gitlab2prov.config import read_args_from_file
+from gitlab2prov.config import read_args_from_file, validate
 
 
 def enable_logging(ctx: click.Context, _, enable: bool):
@@ -25,6 +25,16 @@ def invoke_from_config(ctx: click.Context, _, filepath: str):
         context = cli.make_context(f"{cli}", args=args, parent=ctx)
         cli.invoke(context)
         ctx.exit()
+
+
+def validate_config(ctx: click.Context, _, filepath: str):
+    """Callback that validates config file using gitlab2prov/schema.json."""
+    if filepath:
+        ok, err = validate(filepath)
+        if not ok:
+            ctx.fail(f"validation failed: {err}")
+        click.echo(f"-- OK --")
+    ctx.exit()
 
 
 def processor(func, wrapped=None):
@@ -67,10 +77,18 @@ def generator(func):
 )
 @click.option(
     "--config",
-    type=click.Path(exists=True),
+    type=click.Path(exists=True, dir_okay=False),
     expose_value=False,
     callback=invoke_from_config,
     help="Read args from config file.",
+)
+@click.option(
+    "--validate",
+    is_eager=True,
+    type=click.Path(exists=True, dir_okay=False),
+    expose_value=False,
+    callback=validate_config,
+    help="Validate config file.",
 )
 @click.pass_context
 def cli(ctx):
@@ -113,6 +131,7 @@ def do_extract(bus, urls: list[str], token: str):
 
         graph.description = f"graph extracted from '{url}'"
         yield graph
+
 
 @cli.command("open", short_help="Load provenance files.")
 @click.option(
@@ -192,6 +211,7 @@ def do_pseudonymize(graphs):
 @cli.command("combine")
 @processor
 def do_combine(graphs):
+    """Combine multiple graphs into one."""
     graphs = list(graphs)
     try:
         combined = operations.combine(iter(graphs))
