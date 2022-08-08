@@ -34,7 +34,7 @@ def validate_config(ctx: click.Context, _, filepath: str):
         if not ok:
             ctx.fail(f"validation failed: {err}")
         click.echo(f"-- OK --")
-    ctx.exit()
+        ctx.exit()
 
 
 def processor(func, wrapped=None):
