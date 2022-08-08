@@ -71,13 +71,14 @@ Usage: gitlab2prov [OPTIONS] COMMAND1 [ARGS]... [COMMAND2 [ARGS]...]...
   Extract provenance information from GitLab projects.
 
 Options:
-  --version      Show the version and exit.
-  --verbose      Enable logging to <stdout>.
-  --config PATH  Read args from config file.
-  --help         Show this message and exit.
+  --version        Show the version and exit.
+  --verbose        Enable logging to <stdout>.
+  --config FILE    Read args from config file.
+  --validate FILE  Validate config file.
+  --help           Show this message and exit.
 
 Commands:
-  combine
+  combine       Combine multiple graphs into one.
   extract       Extract provenance data for one or multiple gitlab projects.
   open          Load provenance files.
   pseudonymize  Pseudonymize a provenance graph.
@@ -87,7 +88,11 @@ Commands:
 ### Config File
 Read config from file.
 ```ini
-gitlab2prov --config config.yaml
+gitlab2prov --config config/example.yaml
+```
+Only validate config file:
+```
+gitlab2prov --validate config/example.yaml
 ```
 Config example:
 ```yaml
