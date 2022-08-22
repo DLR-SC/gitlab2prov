@@ -1,6 +1,6 @@
 import logging
 import uuid
-from typing import Sequence
+from typing import Callable, Sequence
 from typing import TypeAlias
 
 from gitlab.v4.objects import ProjectCommitComment
@@ -164,7 +164,9 @@ def parse_label(label: Label):
     )
 
 
-def choose_parser(parseable):
+def choose_parser(
+    parseable: Note | Comment | AwardEmoji | Label,
+) -> Callable[[Note | Comment | AwardEmoji | Label], Annotation] | None:
     match parseable:
         case ProjectIssueNote(system=True) | ProjectMergeRequestNote(system=True):
             return parse_system_note
@@ -184,6 +186,6 @@ def choose_parser(parseable):
 def parse_annotations(parseables: Sequence[Note | Comment | AwardEmoji | Label]):
     annotations = []
     for parseable in parseables:
-        parser = choose_parser(parseable)
-        annotations.append(parser(parseable))
+        if parser := choose_parser(parseable):
+            annotations.append(parser(parseable))
     return sorted(annotations, key=lambda annotation: annotation.prov_start)
