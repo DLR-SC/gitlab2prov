@@ -1,6 +1,5 @@
 prov>=2.0.0
 git-python
 python-gitlab
-regex
 pydot
 ruamel.yaml
