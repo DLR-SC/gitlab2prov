@@ -1,15 +1,15 @@
-import sys
-import os
-from functools import update_wrapper, partial, wraps
+from functools import partial
+from functools import update_wrapper
+from functools import wraps
 
 import click
 
 from gitlab2prov import __version__
 from gitlab2prov import bootstrap
+from gitlab2prov.config import ConfigParser
 from gitlab2prov.domain import commands
-from gitlab2prov.prov import operations
 from gitlab2prov.log import create_logger
-from gitlab2prov.config import read_args_from_file, validate
+from gitlab2prov.prov import operations
 
 
 def enable_logging(ctx: click.Context, _, enable: bool):
@@ -21,17 +21,19 @@ def enable_logging(ctx: click.Context, _, enable: bool):
 def invoke_from_config(ctx: click.Context, _, filepath: str):
     """Callback that executes a gitlab2prov run from a config file."""
     if filepath:
-        args = read_args_from_file(filepath)
+        args = ConfigParser().parse(filepath)
         context = cli.make_context(f"{cli}", args=args, parent=ctx)
         cli.invoke(context)
         ctx.exit()
 
 
 def validate_config(ctx: click.Context, _, filepath: str):
-    """Callback that validates config file using gitlab2prov/schema.json."""
+    """Callback that validates config file using gitlab2prov/config/schema.json."""
     if filepath:
-        ok, err = validate(filepath)
-        if not ok:
+        try:
+            ConfigParser().validate(filepath)
+            print(ConfigParser().parse(filepath))
+        except Exception as err:
             ctx.fail(f"validation failed: {err}")
         click.echo(f"-- OK --")
         ctx.exit()
@@ -80,7 +82,7 @@ def generator(func):
     type=click.Path(exists=True, dir_okay=False),
     expose_value=False,
     callback=invoke_from_config,
-    help="Read args from config file.",
+    help="Execute gitlab2prov run from config file.",
 )
 @click.option(
     "--validate",
@@ -88,7 +90,7 @@ def generator(func):
     type=click.Path(exists=True, dir_okay=False),
     expose_value=False,
     callback=validate_config,
-    help="Validate config file.",
+    help="Validate config file and exit.",
 )
 @click.pass_context
 def cli(ctx):
@@ -126,11 +128,12 @@ def do_extract(bus, urls: list[str], token: str):
     """Extract provenance data for one or multiple gitlab projects."""
     for url in urls:
         bus.handle(commands.Fetch(url, token))
-        graph = bus.handle(commands.Serialize())
-        bus.handle(commands.Reset())
 
-        graph.description = f"graph extracted from '{url}'"
-        yield graph
+    graph = bus.handle(commands.Serialize())
+    graph.description = f"graph extracted from '{', '.join(urls)}'"
+    yield graph
+
+    bus.handle(commands.Reset())
 
 
 @cli.command("open", short_help="Load provenance files.")
@@ -138,7 +141,7 @@ def do_extract(bus, urls: list[str], token: str):
     "-i",
     "--input",
     multiple=True,
-    type=click.Path(exists=True, dir_okay=True),
+    type=click.Path(exists=True, dir_okay=False),
     help="The provenance file to load.",
 )
 @generator
@@ -150,11 +153,6 @@ def do_open(input):
                 graph = operations.deserialize_graph()
                 graph.description = f"'<stdin>'"
                 yield graph
-            if os.path.isdir(filepath):
-                for entry in os.listdir(filepath):
-                    graph = operations.deserialize_graph(entry)
-                    graph.description = f"'{entry}'"
-                    yield graph
             else:
                 graph = operations.deserialize_graph(filepath)
                 graph.description = f"'{filepath}'"
@@ -186,7 +184,7 @@ def do_save(graphs, format, output):
             try:
                 serialized = operations.serialize_graph(graph, fmt)
                 if output == "-":
-                    click.echo(serialized, file=sys.stdout)
+                    click.echo(serialized)
                 else:
                     with open(f"{output.format(idx)}.{fmt}", "w") as out:
                         click.echo(serialized, file=out)
