@@ -1,15 +1,20 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from dataclasses import Field
+from dataclasses import field
+from dataclasses import fields
 from datetime import datetime
-from dataclasses import dataclass, is_dataclass, Field, field, fields
-from typing import Optional, Any, Protocol, Union, Callable
+from itertools import cycle
+from typing import Any
 from urllib.parse import urlencode
 
 from prov.identifier import QualifiedName
 from prov.model import PROV_LABEL
 
-from gitlab2prov.domain.constants import ProvType, ProvRole, PROV_FIELD_MAP
+from gitlab2prov.domain.constants import PROV_FIELD_MAP
+from gitlab2prov.domain.constants import ProvRole
+from gitlab2prov.domain.constants import ProvType
 from gitlab2prov.prov.operations import qualified_name
 
 
@@ -18,98 +23,72 @@ from gitlab2prov.prov.operations import qualified_name
 IS_RELATION = {"IS_RELATION": True}
 
 
-Literal = Optional[Union[str, int, datetime]]
-Attribute = tuple[str, Literal]
-
-
-class IsDataclass(Protocol):
-    __dataclass_fields__: dict
-    __dataclass_params__: dict
-    __post_init__: Optional[Callable]
-
-
-class HasProvType(Protocol):
-    prov_type: Union[str, list[str]]
-
-
-class DataclassWithProvType(HasProvType, IsDataclass):
-    pass
-
-
 def is_relation(field: Field):
     return field.metadata == IS_RELATION
 
 
-def prov_type(obj: DataclassWithProvType):
-    if isinstance(obj.prov_type, list):
-        return obj.prov_type[0]
-    return obj.prov_type
-
-
-def prov_identifier(obj: DataclassWithProvType) -> QualifiedName:
-    attrs = {f.name: getattr(obj, f.name) for f in fields(obj) if f.repr}
-    return qualified_name(f"{prov_type(obj)}?{urlencode(attrs)}")
-
-
-def prov_label(obj: DataclassWithProvType) -> QualifiedName:
-    attrs = {f.name: getattr(obj, f.name) for f in fields(obj) if f.repr}
-    return qualified_name(f"{prov_type(obj)}?{urlencode(attrs)}")
-
-
-def prov_attributes(obj: DataclassWithProvType) -> list[Attribute]:
-    if not is_dataclass(obj):
-        raise ValueError()
-    attributes = []
-    for field in fields(obj):
-        key = PROV_FIELD_MAP.get(field.name, field.name)
-        if is_relation(field):
-            continue
-        if field.type.startswith("dict"):
-            continue
-        if field.type.startswith("list"):
-            for val in getattr(obj, field.name):
-                attributes.append((key, val))
-        else:
-            attributes.append((key, getattr(obj, field.name)))
-    attributes.append((PROV_LABEL, prov_label(obj)))
-    return attributes
-
-
-@dataclass
-class ProvInterface(ABC):
+class ProvMixin:
     @property
     def prov_identifier(self) -> QualifiedName:
-        return prov_identifier(self)
+        attrs = urlencode(dict(self._traverse_repr_fields()))
+        label = f"{self._prov_type()}?{attrs}"
+        return qualified_name(label)
 
     @property
     def prov_label(self) -> QualifiedName:
-        return prov_label(self)
+        attrs = urlencode(dict(self._traverse_repr_fields()))
+        label = f"{self._prov_type()}?{attrs}"
+        return qualified_name(label)
 
     @property
-    def prov_attributes(self) -> list[Attribute]:
-        return prov_attributes(self)
+    def prov_attributes(self) -> list[tuple[str, str | int | datetime | None]]:
+        return list(self._traverse_attributes())
 
-    @abstractmethod
-    def __iter__(self):
-        raise NotImplementedError
+    def _prov_type(self) -> str:
+        match self.prov_type:
+            case list():
+                return self.prov_type[0]
+            case _:
+                return self.prov_type
+
+    def _traverse_repr_fields(self):
+        for f in fields(self):
+            if f.repr:
+                yield f.name, getattr(self, f.name)
+
+    def _traverse_attributes(self):
+        for f in fields(self):
+            if not is_relation(f):
+                yield from self._expand_attribute(f.name, getattr(self, f.name))
+        yield (PROV_LABEL, self.prov_label)
+
+    def _expand_attribute(self, key, val):
+        key = PROV_FIELD_MAP.get(key, key)
+        match val:
+            case list():
+                yield from zip(cycle([key]), val)
+            case dict():
+                yield from val.items()
+            case _:
+                yield key, val
 
 
 @dataclass
-class Agent(ProvInterface):
+class AgentMixin:
     def __iter__(self):
         yield self.prov_identifier
         yield self.prov_attributes
 
 
 @dataclass
-class Entity(ProvInterface):
+class EntityMixin:
     def __iter__(self):
         yield self.prov_identifier
         yield self.prov_attributes
 
 
 @dataclass(kw_only=True)
-class Activity(ProvInterface):
+class ActivityMixin:
     def __iter__(self):
         yield self.prov_identifier
         yield self.prov_start
@@ -118,7 +97,7 @@ class Activity(ProvInterface):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class User(Agent):
+class User(ProvMixin, AgentMixin):
     name: str
     email: str | None = field(default=None)
     gitlab_username: str | None = field(repr=False, default=None)
@@ -131,14 +110,14 @@ class User(Agent):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class File(Entity):
+class File(ProvMixin, EntityMixin):
     path: str
     committed_in: str
     prov_type: str = field(init=False, repr=False, default=ProvType.FILE)
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class FileRevision(Entity):
+class FileRevision(ProvMixin, EntityMixin):
     path: str
     committed_in: str
     change_type: str
@@ -150,38 +129,32 @@ class FileRevision(Entity):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class Annotation(Activity):
+class Annotation(ProvMixin, ActivityMixin):
     id: str
     type: str
     body: str = field(repr=False)
-    kwargs: dict[str, Any] = field(
-        repr=False, default_factory=dict, metadata=IS_RELATION
-    )
+    kwargs: dict[str, Any] = field(repr=False, default_factory=dict)
     annotator: User = field(repr=False, metadata=IS_RELATION)
     prov_start: datetime = field(repr=False)
     prov_end: datetime = field(repr=False)
     prov_type: ProvType = field(init=False, repr=False, default=ProvType.ANNOTATION)
 
-    @property
-    def prov_attributes(self):
-        return [*prov_attributes(self), *self.kwargs.items()]
-
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class Version(Entity):
+class Version(ProvMixin, EntityMixin):
     version_id: str
     prov_type: ProvType = field(repr=False)
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class AnnotatedVersion(Entity):
+class AnnotatedVersion(ProvMixin, EntityMixin):
     version_id: str
     annotation_id: str
     prov_type: ProvType = field(repr=False)
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class Creation(Activity):
+class Creation(ProvMixin, ActivityMixin):
     creation_id: str
     prov_start: datetime = field(repr=False)
     prov_end: datetime = field(repr=False)
@@ -189,7 +162,7 @@ class Creation(Activity):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class GitCommit(Activity):
+class GitCommit(ProvMixin, ActivityMixin):
     hexsha: str
     message: str = field(repr=False)
     title: str = field(repr=False)
@@ -202,7 +175,7 @@ class GitCommit(Activity):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class Issue(Entity):
+class Issue(ProvMixin, EntityMixin):
     id: str
     iid: str
     title: str
@@ -211,7 +184,7 @@ class Issue(Entity):
     author: User = field(repr=False, metadata=IS_RELATION)
     annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)
     created_at: datetime = field(repr=False)
-    closed_at: Optional[datetime] = field(repr=False, default=None)
+    closed_at: datetime | None = field(repr=False, default=None)
     prov_type: ProvType = field(init=False, repr=False, default=ProvType.ISSUE)
 
     @property
@@ -240,7 +213,7 @@ class Issue(Entity):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class GitlabCommit(Entity):
+class GitlabCommit(ProvMixin, EntityMixin):
     hexsha: str
     url: str = field(repr=False)
     author: User = field(repr=False, metadata=IS_RELATION)
@@ -275,7 +248,7 @@ class GitlabCommit(Entity):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class MergeRequest(Entity):
+class MergeRequest(ProvMixin, EntityMixin):
     id: str
     iid: str
     title: str
@@ -286,11 +259,9 @@ class MergeRequest(Entity):
     author: User = field(repr=False, metadata=IS_RELATION)
     annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)
     created_at: datetime = field(repr=False)
-    closed_at: Optional[datetime] = field(repr=False, default=None)
-    merged_at: Optional[datetime] = field(repr=False, default=None)
-    first_deployed_to_production_at: Optional[datetime] = field(
-        repr=False, default=None
-    )
+    closed_at: datetime | None = field(repr=False, default=None)
+    merged_at: datetime | None = field(repr=False, default=None)
+    first_deployed_to_production_at: datetime | None = field(repr=False, default=None)
     prov_type: ProvType = field(init=False, repr=False, default=ProvType.MERGE_REQUEST)
 
     @property
@@ -319,10 +290,10 @@ class MergeRequest(Entity):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class Tag(Entity):
+class Tag(ProvMixin, EntityMixin):
     name: str
     hexsha: str
-    message: Optional[str] = field(repr=False)
+    message: str | None = field(repr=False)
     author: User = field(repr=False, metadata=IS_RELATION)
     created_at: datetime = field(repr=False)
     prov_type: list[ProvType] = field(
@@ -342,14 +313,14 @@ class Tag(Entity):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class Asset(Entity):
+class Asset(ProvMixin, EntityMixin):
     url: str
     format: str
     prov_type: ProvType = field(init=False, repr=False, default=ProvType.ASSET)
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class Evidence(Entity):
+class Evidence(ProvMixin, EntityMixin):
     hexsha: str
     url: str
     collected_at: datetime
@@ -357,11 +328,11 @@ class Evidence(Entity):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
-class Release(Entity):
+class Release(ProvMixin, EntityMixin):
     name: str
     description: str = field(repr=False)
     tag_name: str = field(repr=False)
-    author: Optional[User] = field(repr=False, metadata=IS_RELATION)
+    author: User | None = field(repr=False, metadata=IS_RELATION)
     assets: list[Asset] = field(repr=False, metadata=IS_RELATION)
     evidences: list[Evidence] = field(repr=False, metadata=IS_RELATION)
     created_at: datetime = field(repr=False)
