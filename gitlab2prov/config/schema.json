@@ -1,0 +1,114 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "type": "array",
+    "items": [
+        {
+            "type": "object",
+            "properties": {
+                "extract": {
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "array",
+                            "items": {
+                                "format": "uri",
+                                "type": "string"
+                            }
+                        },
+                        "token": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "url",
+                        "token"
+                    ]
+                }
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "open": {
+                    "type": "object",
+                    "properties": {
+                        "input": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": [
+                        "input"
+                    ]
+                }
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "combine": {
+                    "type": "null"
+                }
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "save": {
+                    "type": "object",
+                    "properties": {
+                        "output": {
+                            "type": "string"
+                        },
+                        "format": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "required": [
+                        "output",
+                        "format"
+                    ]
+                }
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "pseudonymize": {
+                    "type": "null"
+                }
+            }
+        },
+        {
+            "type": "object",
+            "properties": {
+                "stats": {
+                    "type": "object",
+                    "properties": {
+                        "explain": {
+                            "type": "boolean"
+                        },
+                        "fine": {
+                            "type": "boolean"
+                        },
+                        "coarse": {
+                            "type": "boolean"
+                        },
+                        "formatter": {
+                            "type": "string",
+                            "enum": [
+                                "table",
+                                "csv"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
