@@ -1,6 +1,8 @@
 import logging
+import operator
 import uuid
-from typing import Callable, Sequence
+from typing import Callable
+from typing import Sequence
 from typing import TypeAlias
 
 from gitlab.v4.objects import ProjectCommitComment
@@ -188,4 +190,4 @@ def parse_annotations(parseables: Sequence[Note | Comment | AwardEmoji | Label])
     for parseable in parseables:
         if parser := choose_parser(parseable):
             annotations.append(parser(parseable))
-    return sorted(annotations, key=lambda annotation: annotation.prov_start)
+    return sorted(annotations, key=operator.attrgetter("prov_start"))
