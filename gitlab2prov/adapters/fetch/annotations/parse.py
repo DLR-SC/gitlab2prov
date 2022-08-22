@@ -164,22 +164,6 @@ def parse_label(label: Label):
     )
 
 
-def choose_parser(parseable: Note | Comment | AwardEmoji | Label):
-    if isinstance(parseable, Note) and not getattr(parseable, "system", False):
-        return parse_note
-    elif isinstance(parseable, Note) and getattr(parseable, "system", False):
-        return parse_system_note
-    elif isinstance(parseable, Comment):
-        return parse_comment
-    elif isinstance(parseable, Label):
-        return parse_label
-    elif isinstance(parseable, AwardEmoji):
-        return parse_award
-    else:
-        log.warn(f"no parser found for {parseable=}")
-        return
-
-
 def choose_parser(parseable):
     match parseable:
         case ProjectIssueNote(system=True) | ProjectMergeRequestNote(system=True):
