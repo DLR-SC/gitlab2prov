@@ -1,15 +1,29 @@
-from dataclasses import dataclass, field
 import logging
-from typing import Iterator
-
-from gitlab2prov.adapters.fetch.utils import gitlab_url, project_slug
-from gitlab2prov.adapters.fetch.parse import parse_annotations
-from gitlab2prov.domain import objects
-from gitlab2prov.domain.constants import ProvRole
+from collections.abc import Iterator
+from dataclasses import dataclass
+from dataclasses import field
 
 from gitlab import Gitlab
-from gitlab.v4.objects import Project
 from gitlab.exceptions import GitlabListError
+from gitlab.v4.objects import Project
+from gitlab.v4.objects import ProjectCommit
+from gitlab.v4.objects import ProjectIssue
+from gitlab.v4.objects import ProjectMergeRequest
+from gitlab.v4.objects import ProjectRelease
+from gitlab.v4.objects import ProjectTag
+
+from gitlab2prov.adapters.fetch.annotations import parse_annotations
+from gitlab2prov.adapters.fetch.utils import gitlab_url
+from gitlab2prov.adapters.fetch.utils import project_slug
+from gitlab2prov.domain.constants import ProvRole
+from gitlab2prov.domain.objects import Asset
+from gitlab2prov.domain.objects import Evidence
+from gitlab2prov.domain.objects import GitlabCommit
+from gitlab2prov.domain.objects import Issue
+from gitlab2prov.domain.objects import MergeRequest
+from gitlab2prov.domain.objects import Release
+from gitlab2prov.domain.objects import Tag
+from gitlab2prov.domain.objects import User
 
 
 log = logging.getLogger(__name__)
@@ -17,20 +31,22 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class GitlabFetcher:
-    project_url: str
-    private_token: str
-    project: Project | None = field(init=False, default=None)
+    url: str
+    token: str
+    _project: Project | None = field(init=False, default=None)
 
     def do_login(self) -> None:
-        gl = Gitlab(url=gitlab_url(self.project_url), private_token=self.private_token)
-        self.project = gl.projects.get(project_slug(self.project_url))
+        gl = Gitlab(url=gitlab_url(self.url), private_token=self.token)
+        self._project = gl.projects.get(project_slug(self.url))
 
-    def fetch_gitlab(self) -> Iterator[objects.ProvInterface]:
-        yield from extract_commits(self.project)
-        yield from extract_issues(self.project)
-        yield from extract_mergerequests(self.project)
-        yield from extract_releases(self.project)
-        yield from extract_tags(self.project)
+    def fetch_gitlab(
+        self,
+    ) -> Iterator[GitlabCommit | Issue | MergeRequest | Release | Tag]:
+        yield from extract_commits(self._project)
+        yield from extract_issues(self._project)
+        yield from extract_mergerequests(self._project)
+        yield from extract_releases(self._project)
+        yield from extract_tags(self._project)
 
 
 def on_gitlab_list_error(func):
@@ -44,8 +60,8 @@ def on_gitlab_list_error(func):
     return wrapped
 
 
-def get_commit_author(commit):
-    return objects.User(
+def get_commit_author(commit: ProjectCommit) -> User:
+    return User(
         name=commit.committer_name,
         email=commit.committer_email,
         gitlab_username=None,
@@ -54,8 +70,8 @@ def get_commit_author(commit):
     )
 
 
-def get_tag_author(tag):
-    return objects.User(
+def get_tag_author(tag: ProjectTag) -> User:
+    return User(
         name=tag.commit.get("author_name"),
         email=tag.commit.get("author_email"),
         gitlab_username=None,
@@ -64,10 +80,12 @@ def get_tag_author(tag):
     )
 
 
-def get_resource_author(resource, role: ProvRole):
+def get_resource_author(
+    resource: ProjectIssue | ProjectMergeRequest | ProjectRelease, role: ProvRole
+) -> User | None:
     if not hasattr(resource, "author"):
         return None
-    return objects.User(
+    return User(
         name=resource.author.get("name"),
         email=resource.author.get("email"),
         gitlab_username=resource.author.get("username"),
@@ -76,16 +94,16 @@ def get_resource_author(resource, role: ProvRole):
     )
 
 
-def get_assets(release):
+def get_assets(release: ProjectRelease) -> list[Asset]:
     return [
-        objects.Asset(url=asset.get("url"), format=asset.get("format"))
+        Asset(url=asset.get("url"), format=asset.get("format"))
         for asset in release.assets.get("sources", [])
     ]
 
 
-def get_evidences(release):
+def get_evidences(release: ProjectRelease) -> list[Evidence]:
     return [
-        objects.Evidence(
+        Evidence(
             hexsha=evidence.get("sha"),
             url=evidence.get("filepath"),
             collected_at=evidence.get("collected_at"),
@@ -95,13 +113,13 @@ def get_evidences(release):
 
 
 @on_gitlab_list_error
-def extract_commits(project):
+def extract_commits(project: Project) -> Iterator[GitlabCommit]:
     for commit in project.commits.list(all=True):
         parseables = {
             *commit.comments.list(all=True, system=False),
             *commit.comments.list(all=True, system=True),
         }
-        yield objects.GitlabCommit(
+        yield GitlabCommit(
             hexsha=commit.id,
             url=commit.web_url,
             author=get_commit_author(commit),
@@ -112,7 +130,7 @@ def extract_commits(project):
 
 
 @on_gitlab_list_error
-def extract_issues(project):
+def extract_issues(project: Project) -> Iterator[Issue]:
     for issue in project.issues.list(all=True):
         parseables = {
             *issue.notes.list(all=True, system=False),
@@ -125,7 +143,7 @@ def extract_issues(project):
                 for award in note.awardemojis.list(all=True)
             ),
         }
-        yield objects.Issue(
+        yield Issue(
             id=issue.id,
             iid=issue.iid,
             title=issue.title,
@@ -139,7 +157,7 @@ def extract_issues(project):
 
 
 @on_gitlab_list_error
-def extract_mergerequests(project):
+def extract_mergerequests(project: Project) -> Iterator[MergeRequest]:
     for mergerequest in project.mergerequests.list(all=True):
         parseables = {
             *mergerequest.notes.list(all=True, system=False),
@@ -152,7 +170,7 @@ def extract_mergerequests(project):
                 for award in note.awardemojis.list(all=True)
             ),
         }
-        yield objects.MergeRequest(
+        yield MergeRequest(
             id=mergerequest.id,
             iid=mergerequest.iid,
             title=mergerequest.title,
@@ -172,9 +190,9 @@ def extract_mergerequests(project):
 
 
 @on_gitlab_list_error
-def extract_releases(project):
+def extract_releases(project: Project) -> Iterator[Release]:
     for release in project.releases.list(all=True):
-        yield objects.Release(
+        yield Release(
             name=release.name,
             description=release.description,
             tag_name=release.tag_name,
@@ -187,9 +205,9 @@ def extract_releases(project):
 
 
 @on_gitlab_list_error
-def extract_tags(project):
+def extract_tags(project: Project) -> Iterator[Tag]:
     for tag in project.tags.list(all=True):
-        yield objects.Tag(
+        yield Tag(
             name=tag.name,
             hexsha=tag.target,
             message=tag.message,

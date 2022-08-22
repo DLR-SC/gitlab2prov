@@ -1,13 +1,18 @@
-from dataclasses import dataclass, field
-from tempfile import TemporaryDirectory
+from collections.abc import Iterator
+from dataclasses import dataclass
 from itertools import zip_longest
-from typing import Iterator
+from tempfile import TemporaryDirectory
 
+from git import Commit
 from git import Repo
 
 from gitlab2prov.adapters.fetch.utils import clone_over_https_url
-from gitlab2prov.domain import objects
-from gitlab2prov.domain.constants import ProvRole, ChangeType
+from gitlab2prov.domain.constants import ChangeType
+from gitlab2prov.domain.constants import ProvRole
+from gitlab2prov.domain.objects import File
+from gitlab2prov.domain.objects import FileRevision
+from gitlab2prov.domain.objects import GitCommit
+from gitlab2prov.domain.objects import User
 
 
 EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
@@ -15,35 +20,37 @@ EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 @dataclass
 class GitFetcher:
-    project_url: str
-    private_token: str
+    url: str
+    token: str
 
-    tmpdir: TemporaryDirectory | None = field(init=False, default=None)
-    repo: Repo | None = field(init=False, default=None)
+    _repo: Repo | None = None
+    _tmpdir: TemporaryDirectory | None = None
 
     def __enter__(self):
-        self.tmpdir = TemporaryDirectory(ignore_cleanup_errors=True)
+        self._tmpdir = TemporaryDirectory(ignore_cleanup_errors=True)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.repo:
-            self.repo.close()
-        self.tmpdir.cleanup()
+        if self._repo:
+            self._repo.close()
+        if self._tmpdir:
+            self._tmpdir.cleanup()
 
     def do_clone(self) -> None:
-        self.repo = Repo.clone_from(
-            clone_over_https_url(self.project_url, self.private_token),
-            to_path=self.tmpdir.name,
+        url = clone_over_https_url(self.url, self.token)
+        self._repo = Repo.clone_from(
+            url=url,
+            to_path=self._tmpdir.name,
         )
 
-    def fetch_git(self) -> Iterator[objects.ProvInterface]:
-        yield from extract_commits(self.repo)
-        yield from extract_files(self.repo)
-        yield from extract_revisions(self.repo)
+    def fetch_git(self) -> Iterator[GitCommit | File | FileRevision]:
+        yield from extract_commits(self._repo)
+        yield from extract_files(self._repo)
+        yield from extract_revisions(self._repo)
 
 
-def get_author(commit):
-    return objects.User(
+def get_author(commit: Commit) -> User:
+    return User(
         name=commit.author.name,
         email=commit.author.email,
         gitlab_username=None,
@@ -52,8 +59,8 @@ def get_author(commit):
     )
 
 
-def get_committer(commit):
-    return objects.User(
+def get_committer(commit: Commit) -> User:
+    return User(
         name=commit.committer.name,
         email=commit.committer.email,
         gitlab_username=None,
@@ -86,9 +93,9 @@ def parse_log(log: str):
     return zip(paths, hexshas, types)
 
 
-def extract_commits(repo):
+def extract_commits(repo: Repo) -> Iterator[GitCommit]:
     for commit in repo.iter_commits("--all"):
-        yield objects.GitCommit(
+        yield GitCommit(
             hexsha=commit.hexsha,
             message=commit.message,
             title=commit.summary,
@@ -100,7 +107,7 @@ def extract_commits(repo):
         )
 
 
-def extract_files(repo):
+def extract_files(repo: Repo) -> Iterator[File]:
     for commit in repo.iter_commits("--all"):
         # choose the parent commit to diff against
         # use *magic* empty tree sha for commits without parents
@@ -111,10 +118,10 @@ def extract_files(repo):
         # disregard modifications and deletions
         for diff_item in diff.iter_change_type(ChangeType.ADDED):
             # path for new files is stored in diff b_path
-            yield objects.File(path=diff_item.b_path, committed_in=commit.hexsha)
+            yield File(path=diff_item.b_path, committed_in=commit.hexsha)
 
 
-def extract_revisions(repo):
+def extract_revisions(repo: Repo) -> Iterator[FileRevision]:
     for file in extract_files(repo):
         revs = []
 
@@ -129,7 +136,7 @@ def extract_revisions(repo):
             )
         ):
             revs.append(
-                objects.FileRevision(
+                FileRevision(
                     path=path, committed_in=hexsha, change_type=status, original=file
                 )
             )
