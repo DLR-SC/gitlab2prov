@@ -28,16 +28,16 @@ log = logging.getLogger(__name__)
 DEFAULT = "default_annotation"
 
 
-Note: TypeAlias = ProjectIssueNote | ProjectMergeRequestNote
 Comment: TypeAlias = ProjectCommitComment
+Note: TypeAlias = ProjectIssueNote | ProjectMergeRequestNote
+Label: TypeAlias = (
+    ProjectIssueResourceLabelEvent | ProjectMergeRequestResourceLabelEvent
+)
 AwardEmoji: TypeAlias = (
     ProjectIssueAwardEmoji
     | ProjectIssueNoteAwardEmoji
     | ProjectMergeRequestAwardEmoji
     | ProjectMergeRequestNoteAwardEmoji
-)
-Label: TypeAlias = (
-    ProjectIssueResourceLabelEvent | ProjectMergeRequestResourceLabelEvent
 )
 
 
@@ -46,31 +46,24 @@ def normalize(string: str):
 
 
 def max_munch(string: str):
-    matches = []
-    for classifier in CLASSIFIERS:
-        log.debug(f"trying {classifier=}")
-        if classifier.matches(string):
-            log.debug(f"match found with {classifier}")
-            matches.append(classifier)
-    m = max(matches, default=None)
-    return m
+    matches = [classifier for classifier in CLASSIFIERS if classifier.matches(string)]
+    return max(matches, default=None)
 
 
 def classify_system_note(string: str):
     string = normalize(string)
     kwargs = {}
-
     # remove import statement, if present
     if IMPORT_STATEMENT.matches(string):
         string = IMPORT_STATEMENT.replace(string)
         kwargs = IMPORT_STATEMENT.groupdict()
-
     # find matching classifier by max_munch
     if classifier := max_munch(string):
+        # check for None for groupdict call not necessary
+        # since max_munch only returns matching classifiers
+        # and a match returns an empty dict for expressions without capture groups
         kwargs.update(classifier.groupdict())
-        log.debug(f"KWARGS updated with {classifier.groupdict()}")
         return classifier.name, kwargs
-
     return DEFAULT, kwargs
 
 
