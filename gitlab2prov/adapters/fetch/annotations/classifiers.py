@@ -10,18 +10,24 @@ import logging
 log = logging.getLogger(__name__)
 
 
-@dataclass(kw_only=True, order=True)
+def match_len(match: re.Match | None) -> int | None:
+    if not match:
+        return None
+    return match.end() - match.start()
+
+
+@dataclass(kw_only=True)
 class Classifier:
-    regexes: InitVar[list[str]] = field(compare=False)
-    patterns: list[re.Pattern] = field(compare=False, init=False)
-    match: re.Match = field(compare=True, init=False)
+    regexes: InitVar[list[str]]
+    patterns: list[re.Pattern] = field(init=False, default_factory=list)
+    match: re.Match = field(init=False, default=None)
 
     def __post_init__(self, regexps: list[str]):
         self.patterns = [re.compile(regex, re.IGNORECASE) for regex in regexps]
 
     def matches(self, string: str) -> bool:
         matches = [match for pt in self.patterns if (match := re.search(pt, string))]
-        self.match = max(matches, default=None)
+        self.match = max(matches, key=match_len, default=None)
         return self.match is not None
 
     def groupdict(self) -> dict[str, Any] | None:
@@ -29,16 +35,21 @@ class Classifier:
             return
         return self.match.groupdict()
 
-
-@dataclass(kw_only=True, order=True)
-class ImportStatement(Classifier):
-    def replace(self, string: str) -> str | None:
+    def __len__(self) -> int:
         if not self.match:
-            return
-        return self.match.re.sub("", string)
+            return 0
+        return match_len(self.match)
 
 
-@dataclass(kw_only=True, order=True)
+@dataclass(kw_only=True)
+class ImportStatement(Classifier):
+    def replace(self, string: str) -> str:
+        if not self.match:
+            return string  # remove only the leftmost matching occurence
+        return self.match.re.sub(repl="", string=string, count=1)
+
+
+@dataclass(kw_only=True)
 class AnnotationClassifier(Classifier):
     name: str = field(compare=False)
 
