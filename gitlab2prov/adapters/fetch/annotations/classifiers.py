@@ -17,7 +17,7 @@ class Classifier:
     match: re.Match = field(compare=True, init=False)
 
     def __post_init__(self, regexps: list[str]):
-        self.patterns = [re.compile(regex) for regex in regexps]
+        self.patterns = [re.compile(regex, re.IGNORECASE) for regex in regexps]
 
     def matches(self, string: str) -> bool:
         matches = [match for pt in self.patterns if (match := re.search(pt, string))]
