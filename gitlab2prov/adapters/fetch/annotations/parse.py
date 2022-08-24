@@ -4,6 +4,7 @@ import uuid
 from typing import Callable
 from typing import Sequence
 from typing import TypeAlias
+from typing import Any
 
 from gitlab.v4.objects import ProjectCommitComment
 from gitlab.v4.objects import ProjectIssueAwardEmoji
@@ -17,6 +18,7 @@ from gitlab.v4.objects import ProjectMergeRequestResourceLabelEvent
 
 from gitlab2prov.adapters.fetch.annotations import CLASSIFIERS
 from gitlab2prov.adapters.fetch.annotations import IMPORT_STATEMENT
+from gitlab2prov.adapters.fetch.annotations import AnnotationClassifier
 from gitlab2prov.domain.constants import ProvRole
 from gitlab2prov.domain.objects import Annotation
 from gitlab2prov.domain.objects import User
@@ -41,33 +43,30 @@ AwardEmoji: TypeAlias = (
 )
 
 
-def normalize(string: str):
+def normalize(string: str) -> str:
     return string.strip().lower()
 
 
-def max_munch(string: str):
-    matches = [classifier for classifier in CLASSIFIERS if classifier.matches(string)]
-    return max(matches, default=None)
+def longest_matching_classifier(string: str) -> AnnotationClassifier | None:
+    matching = (cls for cls in CLASSIFIERS if cls.matches(string))
+    return max(matching, key=len, default=None)
 
 
-def classify_system_note(string: str):
+def classify_system_note(string: str) -> tuple[str, dict[str, Any]]:
     string = normalize(string)
     kwargs = {}
     # remove import statement, if present
     if IMPORT_STATEMENT.matches(string):
         string = IMPORT_STATEMENT.replace(string)
         kwargs = IMPORT_STATEMENT.groupdict()
-    # find matching classifier by max_munch
-    if classifier := max_munch(string):
-        # check for None for groupdict call not necessary
-        # since max_munch only returns matching classifiers
-        # and a match returns an empty dict for expressions without capture groups
+    # find classifier by choosing the one with the longest match
+    if classifier := longest_matching_classifier(string):
         kwargs.update(classifier.groupdict())
         return classifier.name, kwargs
     return DEFAULT, kwargs
 
 
-def parse_system_note(note: Note):
+def parse_system_note(note: Note) -> Annotation:
     annotator = User(
         name=note.author.get("name"),
         email=note.author.get("email"),
@@ -87,7 +86,7 @@ def parse_system_note(note: Note):
     )
 
 
-def parse_comment(comment: Comment):
+def parse_comment(comment: Comment) -> Annotation:
     annotator = User(
         name=comment.author.get("name"),
         email=comment.author.get("email"),
@@ -105,7 +104,7 @@ def parse_comment(comment: Comment):
     )
 
 
-def parse_note(note: Note):
+def parse_note(note: Note) -> Annotation:
     annotator = User(
         name=note.author.get("name"),
         email=note.author.get("email"),
@@ -123,7 +122,7 @@ def parse_note(note: Note):
     )
 
 
-def parse_award(award: AwardEmoji):
+def parse_award(award: AwardEmoji) -> Annotation:
     annotator = User(
         name=award.user.get("name"),
         email=award.user.get("email"),
@@ -141,7 +140,7 @@ def parse_award(award: AwardEmoji):
     )
 
 
-def parse_label(label: Label):
+def parse_label(label: Label) -> Annotation:
     annotator = User(
         name=label.user.get("name"),
         email=label.user.get("email"),
@@ -178,7 +177,7 @@ def choose_parser(
             return
 
 
-def parse_annotations(parseables: Sequence[Note | Comment | AwardEmoji | Label]):
+def parse_annotations(parseables: Sequence[Note | Comment | AwardEmoji | Label]) -> Sequence[Annotation]:
     annotations = []
     for parseable in parseables:
         if parser := choose_parser(parseable):
