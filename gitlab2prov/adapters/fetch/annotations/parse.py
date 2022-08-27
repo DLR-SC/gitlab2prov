@@ -1,10 +1,10 @@
 import logging
 import operator
 import uuid
+from typing import Any
 from typing import Callable
 from typing import Sequence
 from typing import TypeAlias
-from typing import Any
 
 from gitlab.v4.objects import ProjectCommitComment
 from gitlab.v4.objects import ProjectIssueAwardEmoji
@@ -16,9 +16,9 @@ from gitlab.v4.objects import ProjectMergeRequestNote
 from gitlab.v4.objects import ProjectMergeRequestNoteAwardEmoji
 from gitlab.v4.objects import ProjectMergeRequestResourceLabelEvent
 
+from gitlab2prov.adapters.fetch.annotations import AnnotationClassifier
 from gitlab2prov.adapters.fetch.annotations import CLASSIFIERS
 from gitlab2prov.adapters.fetch.annotations import IMPORT_STATEMENT
-from gitlab2prov.adapters.fetch.annotations import AnnotationClassifier
 from gitlab2prov.domain.constants import ProvRole
 from gitlab2prov.domain.objects import Annotation
 from gitlab2prov.domain.objects import User
@@ -60,9 +60,9 @@ def classify_system_note(string: str) -> tuple[str, dict[str, Any]]:
         string = IMPORT_STATEMENT.replace(string)
         kwargs = IMPORT_STATEMENT.groupdict()
     # find classifier by choosing the one with the longest match
-    if classifier := longest_matching_classifier(string):
-        kwargs.update(classifier.groupdict())
-        return classifier.name, kwargs
+    if matching_classifier := longest_matching_classifier(string):
+        kwargs.update(matching_classifier.groupdict())
+        return matching_classifier.name, kwargs
     return DEFAULT, kwargs
 
 
@@ -177,7 +177,9 @@ def choose_parser(
             return
 
 
-def parse_annotations(parseables: Sequence[Note | Comment | AwardEmoji | Label]) -> Sequence[Annotation]:
+def parse_annotations(
+    parseables: Sequence[Note | Comment | AwardEmoji | Label],
+) -> Sequence[Annotation]:
     annotations = []
     for parseable in parseables:
         if parser := choose_parser(parseable):
