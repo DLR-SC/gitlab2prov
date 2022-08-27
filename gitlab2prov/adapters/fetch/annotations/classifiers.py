@@ -1,18 +1,17 @@
+import logging
 import re
-from typing import Any
 from dataclasses import dataclass
 from dataclasses import field
 from dataclasses import InitVar
-
-import logging
+from typing import Any
 
 
 log = logging.getLogger(__name__)
 
 
-def match_len(match: re.Match | None) -> int | None:
-    if not match:
-        return None
+def match_length(match: re.Match) -> int:
+    if match is None:
+        raise TypeError(f"Expected argument of type re.Match, got {type(match)}.")
     return match.end() - match.start()
 
 
@@ -27,26 +26,29 @@ class Classifier:
 
     def matches(self, string: str) -> bool:
         matches = [match for pt in self.patterns if (match := re.search(pt, string))]
-        self.match = max(matches, key=match_len, default=None)
+        self.match = max(matches, key=match_length, default=None)
         return self.match is not None
 
-    def groupdict(self) -> dict[str, Any] | None:
+    def groupdict(self) -> dict[str, Any]:
         if not self.match:
-            return
+            return dict()
         return self.match.groupdict()
 
     def __len__(self) -> int:
         if not self.match:
             return 0
-        return match_len(self.match)
+        return match_length(self.match)
 
 
 @dataclass(kw_only=True)
 class ImportStatement(Classifier):
     def replace(self, string: str) -> str:
         if not self.match:
-            return string  # remove only the leftmost matching occurence
-        return self.match.re.sub(repl="", string=string, count=1)
+            return string
+        # replace leftmost occurence
+        replaced = self.match.re.sub("", string, count=1)
+        # remove trailing whitespace
+        return replaced.strip()
 
 
 @dataclass(kw_only=True)
