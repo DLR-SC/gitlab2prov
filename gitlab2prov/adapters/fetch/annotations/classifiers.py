@@ -17,15 +17,15 @@ def match_length(match: re.Match) -> int:
 
 @dataclass(kw_only=True)
 class Classifier:
-    regexes: InitVar[list[str]]
-    patterns: list[re.Pattern] = field(init=False, default_factory=list)
+    patterns: InitVar[list[str]]
+    compiled: list[re.Pattern] = field(init=False, default_factory=list)
     match: re.Match = field(init=False, default=None)
 
     def __post_init__(self, regexps: list[str]):
-        self.patterns = [re.compile(regex, re.IGNORECASE) for regex in regexps]
+        self.compiled = [re.compile(regex, re.IGNORECASE) for regex in regexps]
 
     def matches(self, string: str) -> bool:
-        matches = [match for pt in self.patterns if (match := re.search(pt, string))]
+        matches = [match for pt in self.compiled if (match := re.search(pt, string))]
         self.match = max(matches, key=match_length, default=None)
         return self.match is not None
 
@@ -59,13 +59,13 @@ class AnnotationClassifier(Classifier):
 CLASSIFIERS = [
     AnnotationClassifier(
         name="change_target_branch",
-        regexes=[
+        patterns=[
             r"^changed target branch from `(?P<old_target_branch>.+)` to `(?P<new_target_branch>.+)`$"
         ],
     ),
     AnnotationClassifier(
         name="change_epic",
-        regexes=[
+        patterns=[
             r"^changed epic to &(?P<epic_iid>\d+)$",
             r"^changed epic to &(?P<epic_name>.+)$",
             r"^changed epic to (?P<project_slug>.+)&(?P<epic_name>\d+)$",
@@ -74,89 +74,89 @@ CLASSIFIERS = [
     ),
     AnnotationClassifier(
         name="add_to_epic",
-        regexes=[
+        patterns=[
             r"^added to epic &(?P<epic_iid>\d+)$",
             r"^added to epic &(?P<epic_name>.+)$",
         ],
     ),
     AnnotationClassifier(
         name="remove_from_epic",
-        regexes=[
+        patterns=[
             r"^removed from epic &(?P<epic_iid>\d+)$",
             r"^removed from epic &(?P<epic_name>.+)$",
         ],
     ),
     AnnotationClassifier(
         name="add_to_external_epic",
-        regexes=[
+        patterns=[
             r"^added to epic (?P<project_slug>.+)&(?P<epic_iid>\d+)$",
             r"^added to epic (?P<project_slug>.+)&(?P<epic_name>.+)$",
         ],
     ),
     AnnotationClassifier(
         name="remove_from_external_epic",
-        regexes=[
+        patterns=[
             r"^removed from epic (?P<project_slug>.+)&(?P<epic_iid>\d+)$",
             r"^removed from epic (?P<project_slug>.+)&(?P<epic_name>.+)$",
         ],
     ),
     AnnotationClassifier(
         name="close_by_external_commit",
-        regexes=[r"^closed via commit (?P<project_slug>.+)@(?P<commit_sha>[0-9a-z]+)$"],
+        patterns=[r"^closed via commit (?P<project_slug>.+)@(?P<commit_sha>[0-9a-z]+)$"],
     ),
     AnnotationClassifier(
         name="close_by_external_merge_request",
-        regexes=[
+        patterns=[
             r"^close via merge request (?P<project_slug>.+?)!(?P<merge_request_iid>\d+)$"
         ],
     ),
     AnnotationClassifier(
         name="close_by_merge_request",
-        regexes=[
+        patterns=[
             r"^closed via merge request !(?P<merge_request_iid>.+)$",
             r"^status changed to closed by merge request !(?P<merge_request_iid>.+)$",
         ],
     ),
     AnnotationClassifier(
         name="close_by_commit",
-        regexes=[
+        patterns=[
             r"^closed via commit (?P<commit_sha>[a-z0-9]+)$",
             r"^status changed to closed by commit (?P<commit_sha>[a-z0-9]+)$",
         ],
     ),
     AnnotationClassifier(
         name="restore_source_branch",
-        regexes=[
+        patterns=[
             r"^restored source branch `(?P<branch_name>.+)`$",
         ],
     ),
     AnnotationClassifier(
-        name="remove_label", regexes=[r"^removed ~(?P<label_id>\d+) label$"]
+        name="remove_label", patterns=[r"^removed ~(?P<label_id>\d+) label$"]
     ),
     AnnotationClassifier(
-        name="add_label", regexes=[r"^added ~(?P<label_id>\d+) label$"]
+        name="add_label", patterns=[r"^added ~(?P<label_id>\d+) label$"]
     ),
     AnnotationClassifier(
         name="create_branch",
-        regexes=[
+        patterns=[
             r"^created branch \[`(?P<branch_name>.+)`\]\((?P<compare_link>.+)\).*$"
         ],
     ),
     AnnotationClassifier(
         name="mark_task_as_incomplete",
-        regexes=[
+        patterns=[
             r"^marked the task [*]{2}(?P<task_description>.+)[*]{2} as incomplete$"
         ],
     ),
     AnnotationClassifier(
         name="mark_task_as_done",
-        regexes=[
+        patterns=[
             r"^marked the task [*]{2}(?P<task_description>.+)[*]{2} as completed$",
         ],
     ),
     AnnotationClassifier(
         name="add_commits",
-        regexes=[
+        patterns=[
             r"added (?P<number_of_commits>\d+)\scommit[s]?\n\n.+(?P<short_sha>[a-z0-9]{8}) - (?P<title>.+?)<.*",
             r"^added (?P<number_of_commits>\d+) new commit[s]?:\n\n(\* (?P<short_sha>[a-z0-9]{8}) - (?P<title>.+?)\n)+$",
             r"^added (?P<number_of_commits>\d+) new commit[s]?:\n\n(\* (?P<short_sha>[a-z0-9]{11}) - (?P<title>.+?)\n)+$",
@@ -166,37 +166,37 @@ CLASSIFIERS = [
     ),
     AnnotationClassifier(
         name="address_in_merge_request",
-        regexes=[
+        patterns=[
             r"^created merge request !(?P<merge_request_iid>\d+) to address this issue$"
         ],
     ),
     AnnotationClassifier(
         name="unmark_as_work_in_progress",
-        regexes=[
+        patterns=[
             r"^unmarked as a [*]{2}work in progress[*]{2}$",
             r"^unmarked this merge request as a work in progress$",
         ],
     ),
     AnnotationClassifier(
         name="mark_as_work_in_progress",
-        regexes=[
+        patterns=[
             r"^marked as a [*]{2}work in progress[*]{2}$",
             r"^marked this merge request as a [*]{2}work in progress[*]{2}$",
         ],
     ),
     AnnotationClassifier(
         name="status_changed_to_merged",
-        regexes=[
+        patterns=[
             r"^merged$",
             r"^status changed to merged$",
         ],
     ),
     AnnotationClassifier(
-        name="change_description", regexes=[r"^changed the description$"]
+        name="change_description", patterns=[r"^changed the description$"]
     ),
     AnnotationClassifier(
         name="change_title",
-        regexes=[
+        patterns=[
             r"^changed title from [*]{2}(?P<old_title>.+)[*]{2} to [*]{2}(?P<new_title>.+)[*]{2}$",
             r"^changed title: [*]{2}(?P<old_title>.+)[*]{2} → [*]{2}(?P<new_title>.+)[*]{2}$",
             r"^title changed from [*]{2}(?P<old_title>.+)[*]{2} to [*]{2}(?P<new_title>.+)[*]{2}$",
@@ -204,78 +204,78 @@ CLASSIFIERS = [
     ),
     AnnotationClassifier(
         name="move_from",
-        regexes=[r"^moved from (?P<project_slug>.*?)#(?P<issue_iid>\d+)$"],
+        patterns=[r"^moved from (?P<project_slug>.*?)#(?P<issue_iid>\d+)$"],
     ),
     AnnotationClassifier(
         name="move_to",
-        regexes=[r"^moved to (?P<project_slug>.*?)#(?P<issue_iid>\d+)$"],
+        patterns=[r"^moved to (?P<project_slug>.*?)#(?P<issue_iid>\d+)$"],
     ),
     AnnotationClassifier(
-        name="reopen", regexes=[r"^reopened$", r"^status changed to reopened$"]
+        name="reopen", patterns=[r"^reopened$", r"^status changed to reopened$"]
     ),
     AnnotationClassifier(
         name="close",
-        regexes=[
+        patterns=[
             r"^closed$",
             r"^status changed to closed$",
         ],
     ),
     AnnotationClassifier(
         name="unrelate_from_external_issue",
-        regexes=[
+        patterns=[
             r"^removed the relation with (?P<project_slug>.+)#(?P<issue_iid>\d+)$"
         ],
     ),
     AnnotationClassifier(
         name="relate_to_external_issue",
-        regexes=[
+        patterns=[
             r"^marked this issue as related to (?P<project_slug>.+)#(?P<issue_iid>\d+)$"
         ],
     ),
     AnnotationClassifier(
         name="unrelate_from_issue",
-        regexes=[r"^removed the relation with #(?P<issue_iid>\d+)$"],
+        patterns=[r"^removed the relation with #(?P<issue_iid>\d+)$"],
     ),
     AnnotationClassifier(
         name="relate_to_issue",
-        regexes=[r"^marked this issue as related to #(?P<issue_iid>\d+)$"],
+        patterns=[r"^marked this issue as related to #(?P<issue_iid>\d+)$"],
     ),
     AnnotationClassifier(
         name="has_duplicate",
-        regexes=[r"^marked #(?P<issue_iid>\d+) as a duplicate of this issue$"],
+        patterns=[r"^marked #(?P<issue_iid>\d+) as a duplicate of this issue$"],
     ),
     AnnotationClassifier(
         name="mark_as_duplicate",
-        regexes=[r"^marked this issue as a duplicate of #(?P<issue_iid>\d+)$"],
+        patterns=[r"^marked this issue as a duplicate of #(?P<issue_iid>\d+)$"],
     ),
     AnnotationClassifier(
         name="make_visible",
-        regexes=[
+        patterns=[
             r"^made the issue visible to everyone$",
             r"^made the issue visible$",
         ],
     ),
     AnnotationClassifier(
-        name="make_confidential", regexes=[r"^made the issue confidential$"]
+        name="make_confidential", patterns=[r"^made the issue confidential$"]
     ),
-    AnnotationClassifier(name="remove_weight", regexes=[r"^removed the weight$"]),
+    AnnotationClassifier(name="remove_weight", patterns=[r"^removed the weight$"]),
     AnnotationClassifier(
         name="change_weight",
-        regexes=[r"^changed weight to [*]{2}(?P<weight>\d+)[*]{2}$"],
+        patterns=[r"^changed weight to [*]{2}(?P<weight>\d+)[*]{2}$"],
     ),
-    AnnotationClassifier(name="remove_due_date", regexes=[r"^removed due date$"]),
+    AnnotationClassifier(name="remove_due_date", patterns=[r"^removed due date$"]),
     AnnotationClassifier(
         name="change_due_date",
-        regexes=[
+        patterns=[
             r"^changed due date to (?P<month>(?:january|february|march|april|may|june|july|august|september|october|november|december)) (?P<day>\d\d), (?P<year>\d{4})$"
         ],
     ),
     AnnotationClassifier(
-        name="remove_time_estimate", regexes=[r"^removed time estimate$"]
+        name="remove_time_estimate", patterns=[r"^removed time estimate$"]
     ),
     AnnotationClassifier(
         name="change_time_estimate",
-        regexes=[
+        patterns=[
             r"^changed time estimate to"
             + r"(?:\s(?P<months>[-]?\d+)mo)?"
             + r"(?:\s(?P<weeks>[-]?\d+)w)?"
@@ -286,17 +286,17 @@ CLASSIFIERS = [
         ],
     ),
     AnnotationClassifier(
-        name="unlock_merge_request", regexes=[r"^unlocked this merge request$"]
+        name="unlock_merge_request", patterns=[r"^unlocked this merge request$"]
     ),
     AnnotationClassifier(
-        name="lock_merge_request", regexes=[r"^locked this merge request$"]
+        name="lock_merge_request", patterns=[r"^locked this merge request$"]
     ),
-    AnnotationClassifier(name="unlock_issue", regexes=[r"^unlocked this issue$"]),
-    AnnotationClassifier(name="lock_issue", regexes=[r"^locked this issue$"]),
-    AnnotationClassifier(name="remove_spent_time", regexes=[r"^removed time spent$"]),
+    AnnotationClassifier(name="unlock_issue", patterns=[r"^unlocked this issue$"]),
+    AnnotationClassifier(name="lock_issue", patterns=[r"^locked this issue$"]),
+    AnnotationClassifier(name="remove_spent_time", patterns=[r"^removed time spent$"]),
     AnnotationClassifier(
         name="subtract_spent_time",
-        regexes=[
+        patterns=[
             r"^subtracted"
             + r"(?:\s(?P<months>\d+)mo)?"
             + r"(?:\s(?P<weeks>\d+)w)?"
@@ -308,7 +308,7 @@ CLASSIFIERS = [
     ),
     AnnotationClassifier(
         name="add_spent_time",
-        regexes=[
+        patterns=[
             r"^added"
             + r"(?:\s(?P<months>\d+)mo)?"
             + r"(?:\s(?P<weeks>\d+)w)?"
@@ -320,11 +320,11 @@ CLASSIFIERS = [
     ),
     AnnotationClassifier(
         name="remove_milestone",
-        regexes=[r"^removed milestone$", r"^milestone removed$"],
+        patterns=[r"^removed milestone$", r"^milestone removed$"],
     ),
     AnnotationClassifier(
         name="change_milestone",
-        regexes=[
+        patterns=[
             r"^changed milestone to %(?P<milestone_iid>\d+)$",
             r"^changed milestone to %(?P<milestone_name>.+)$",
             r"^changed milestone to (?P<project_slug>.+)%(?P<milestone_iid>\d+)$",
@@ -336,139 +336,139 @@ CLASSIFIERS = [
     ),
     AnnotationClassifier(
         name="unassign_user",
-        regexes=[
+        patterns=[
             r"^unassigned @(?P<user_name>.*)$",
             r"^removed assignee$",
         ],
     ),
     AnnotationClassifier(
-        name="assign_user", regexes=[r"^assigned to @(?P<user_name>.*)$"]
+        name="assign_user", patterns=[r"^assigned to @(?P<user_name>.*)$"]
     ),
     AnnotationClassifier(
         name="mention_in_external_merge_request",
-        regexes=[
+        patterns=[
             r"^mentioned in merge request (?P<project_slug>.+)!(?P<merge_request_iid>\d+)$"
         ],
     ),
     AnnotationClassifier(
         name="mention_in_merge_request",
-        regexes=[
+        patterns=[
             r"^mentioned in merge request !(?P<merge_request_iid>\d+)$",
         ],
     ),
     AnnotationClassifier(
         name="mention_in_external_commit",
-        regexes=[
+        patterns=[
             r"^mentioned in commit (?P<project_slug>.+)@(?P<commit_sha>[0-9a-z]{40})$",
         ],
     ),
     AnnotationClassifier(
         name="mention_in_commit",
-        regexes=[
+        patterns=[
             r"^mentioned in commit (?P<commit_sha>[0-9a-z]{40})$",
         ],
     ),
     AnnotationClassifier(
         name="mention_in_external_issue",
-        regexes=[
+        patterns=[
             r"^mentioned in issue (?P<project_slug>.+)#(?P<issue_iid>\d+)$",
         ],
     ),
     AnnotationClassifier(
         name="mention_in_issue",
-        regexes=[
+        patterns=[
             r"^mentioned in issue #(?P<issue_iid>\d+)$",
         ],
     ),
-    AnnotationClassifier(name="resolve_threads", regexes=[r"^resolved all threads$"]),
+    AnnotationClassifier(name="resolve_threads", patterns=[r"^resolved all threads$"]),
     AnnotationClassifier(
-        name="approve_merge_request", regexes=[r"^approved this merge request$"]
+        name="approve_merge_request", patterns=[r"^approved this merge request$"]
     ),
     AnnotationClassifier(
         name="resolve_all_discussions",
-        regexes=[
+        patterns=[
             r"^resolved all discussions$",
         ],
     ),
     AnnotationClassifier(
-        name="unapprove_merge_request", regexes=[r"^unapproved this merge request$"]
+        name="unapprove_merge_request", patterns=[r"^unapproved this merge request$"]
     ),
     AnnotationClassifier(
         name="automatic_merge_on_pipeline_completion_enabled",
-        regexes=[
+        patterns=[
             r"^enabled an automatic merge when the pipeline for (?P<pipeline_commit_sha>[0-9a-z]+) succeeds$",
         ],
     ),
     AnnotationClassifier(
         name="automatic_merge_on_build_success_enabled",
-        regexes=[
+        patterns=[
             r"^enabled an automatic merge when the build for (?P<commit_sha>[0-9a-z]+) succeeds$",
         ],
     ),
     AnnotationClassifier(
         name="abort_automatic_merge",
-        regexes=[r"^aborted the automatic merge because (?P<abort_reason>[a-z\s]+)$"],
+        patterns=[r"^aborted the automatic merge because (?P<abort_reason>[a-z\s]+)$"],
     ),
     AnnotationClassifier(
         name="cancel_automatic_merge",
-        regexes=[
+        patterns=[
             r"^canceled the automatic merge$",
         ],
     ),
     AnnotationClassifier(
         name="create_issue_from_discussion",
-        regexes=[r"^created #(?P<issue_iid>\d+) to continue this discussion$"],
+        patterns=[r"^created #(?P<issue_iid>\d+) to continue this discussion$"],
     ),
     AnnotationClassifier(
         name="marked_merge_request_ready",
-        regexes=[r"^marked this merge request as \*\*ready\*\*$"],
+        patterns=[r"^marked this merge request as \*\*ready\*\*$"],
     ),
     AnnotationClassifier(
         name="marked_merge_request_note",
-        regexes=[r"^marked this merge request as \*\*draft\*\*$"],
+        patterns=[r"^marked this merge request as \*\*draft\*\*$"],
     ),
     AnnotationClassifier(
         name="requested_review",
-        regexes=[
+        patterns=[
             r"^requested review from @(?P<user_name>.*)$",
             r"^requested review from @(?P<user_name>.*) and @(?P<user_name2>.*)$",
         ],
     ),
     AnnotationClassifier(
         name="cancel_review_request",
-        regexes=[r"^removed review request for @(?P<user_name>.*)$"],
+        patterns=[r"^removed review request for @(?P<user_name>.*)$"],
     ),
     AnnotationClassifier(
-        name="mention_in_epic", regexes=[r"^mentioned in epic &(?P<noteable_iid>\d+)$"]
+        name="mention_in_epic", patterns=[r"^mentioned in epic &(?P<noteable_iid>\d+)$"]
     ),
     AnnotationClassifier(
         name="reassigned",
-        regexes=[
+        patterns=[
             r"^reassigned to @(?P<user_name>.*)$",
         ],
     ),
     AnnotationClassifier(
         name="merge_request_removed",
-        regexes=[
+        patterns=[
             r"^removed this merge request from the merge train because no stages / jobs for this pipeline.$"
         ],
     ),
     AnnotationClassifier(
         name="merge_train_started",
-        regexes=[
+        patterns=[
             r"^started a merge train$",
         ],
     ),
     AnnotationClassifier(
         name="automatic_add_to_merge_train_enabled",
-        regexes=[
+        patterns=[
             r"^enabled automatic add to merge train when the pipeline for (?P<pipeline_commit_sha>[0-9a-z]+) succeeds$",
         ],
     ),
 ]
 
 IMPORT_STATEMENT = ImportStatement(
-    regexes=[
+    patterns=[
         r"\*by (?P<pre_import_author>.+) on \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2} \(imported from gitlab project\)\*",
         r"\*by (?P<pre_import_author>.+) on \d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\sUTC \(imported from gitlab project\)\*",
     ],
