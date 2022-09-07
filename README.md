@@ -40,14 +40,20 @@ The model documentation can be found [here](https://github.com/DLR-SC/gitlab2pro
 
 ## ️🏗️ ️Installation
 
-Clone the project and use the provided `setup.py`:
+Clone the project and install using `pip`:
 ```bash
-python setup.py install --user
+pip install .
 ```
 
 Or install the latest release from [PyPi](https://pypi.org/project/gitlab2prov/):
 ```bash
 pip install gitlab2prov
+```
+
+To install `gitlab2prov` with all extra dependencies require the `[dev]` extras while proceeding as before:
+```bash
+pip install .[dev] # clone and invoke pip locally
+pip install gitlab2prov[dev] # install from PyPi
 ```
 
 ## 🚀‍ Usage
