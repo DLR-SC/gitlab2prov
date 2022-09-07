@@ -36,7 +36,7 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-mock", "black", "isort"]
+dev = ["pytest", "pytest-mock", "black", "isort", "bump2version"]
 
 [project.scripts]
 gitlab2prov = "gitlab2prov.entrypoints.cli:main"
