@@ -36,10 +36,10 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-mock", "black"]
+dev = ["pytest", "pytest-mock", "black", "isort"]
 
 [project.scripts]
-gitlab2prov = "gitlab2prov.entrypoints.cli:cli"
+gitlab2prov = "gitlab2prov.entrypoints.cli:main"
 
 [project.urls]
 Twitter = "https://twitter.com/dlr_software"
