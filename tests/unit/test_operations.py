@@ -31,7 +31,7 @@ class TestGraphFactory:
 
 class TestCombine:
     def test_returns_empty_graph_when_run_wo_subgraphs(self):
-        assert operations.combine([]) == operations.graph_factory()
+        assert operations.combine(iter([])) == operations.graph_factory()
 
     def test_carries_over_all_records(self):
         agent1 = ProvAgent(None, qualified_name(f"agent-id-{random_suffix()}"))
@@ -40,7 +40,7 @@ class TestCombine:
         graph2 = ProvDocument([agent2])
         subgraphs = [graph1, graph2]
         expected_graph = ProvDocument([agent1, agent2])
-        assert operations.combine(subgraphs) == expected_graph
+        assert operations.combine(iter(subgraphs)) == expected_graph
 
 
 class TestDedupe:
@@ -72,7 +72,6 @@ class TestDedupe:
         r1 = graph.wasAttributedTo(entity, agent)
         r2 = graph.wasAttributedTo(entity, agent)
         assert list(graph.get_records(ProvRelation)) == [r1, r2]
-        print(list(operations.dedupe(graph).get_records(ProvRelation)))
         assert list(operations.dedupe(graph).get_records(ProvRelation)) == [r1]
 
     def test_merges_attributes_of_duplicate_relations(self):

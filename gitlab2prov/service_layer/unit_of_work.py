@@ -14,9 +14,16 @@ class AbstractUnitOfWork(abc.ABC):
 
     def commit(self):
         self._commit()
+        
+    def reset(self):
+        self._reset()
 
     @abc.abstractmethod
     def _commit(self):
+        raise NotImplementedError
+    
+    @abc.abstractmethod
+    def _reset(self):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -36,6 +43,9 @@ class InMemoryUnitOfWork(AbstractUnitOfWork):
 
     def _commit(self):
         pass
+    
+    def _reset(self):
+        self.resources = repository.InMemoryRepository()
     
     def rollback(self):
         pass

@@ -1,27 +1,28 @@
 import logging
+from dataclasses import dataclass
 from typing import Callable
 
-from gitlab2prov.domain import commands
-from gitlab2prov.service_layer import unit_of_work
+from prov.model import ProvDocument
+
+from gitlab2prov.domain.commands import Command
+from gitlab2prov.service_layer.unit_of_work import AbstractUnitOfWork
 
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class MessageBus:
-    def __init__(
-        self,
-        uow: unit_of_work.AbstractUnitOfWork,
-        handlers: dict[type[commands.Command], list[Callable]],
-    ):
-        self.uow = uow
-        self.handlers = handlers
+    uow: AbstractUnitOfWork
+    handlers: dict[type[Command], list[Callable]]
 
-    def handle(self, command: commands.Command):
+    def handle(self, command: Command) -> ProvDocument | None:
+        # TODO: Return more than the last result...
         for handler in self.handlers[type(command)]:
             try:
                 logger.debug(f"Handling command {command}.")
-                handler(command)
+                result = handler(command)
             except Exception:
                 logger.exception(f"Exception handling command {command}.")
                 raise
+        return result

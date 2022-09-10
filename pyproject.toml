@@ -12,7 +12,7 @@ authors = [{ "name" = "Claas de Boer", email = "claas.deboer@dlr.de" }]
 maintainers = [
     { "name" = "Andreas Schreiber", email = "andreas.schreiber@dlr.de" },
 ]
-dependencies = ["prov>=2.0.0", "git-python", "python-gitlab", "regex", "pydot"]
+dependencies = ["prov>=2.0.0", "git-python", "python-gitlab", "jsonschema", "ruamel.yaml", "pydot>=1.2.0"]
 keywords = [
     "prov",
     "gitlab",

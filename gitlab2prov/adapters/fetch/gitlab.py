@@ -1,72 +1,66 @@
 import logging
-from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from dataclasses import dataclass
+from dataclasses import field
 
-from gitlab.v4.objects import Project
+from gitlab import Gitlab
 from gitlab.exceptions import GitlabListError
+from gitlab.v4.objects import Project
+from gitlab.v4.objects import ProjectCommit
+from gitlab.v4.objects import ProjectIssue
+from gitlab.v4.objects import ProjectMergeRequest
+from gitlab.v4.objects import ProjectRelease
+from gitlab.v4.objects import ProjectTag
 
+from gitlab2prov.adapters.fetch.annotations import parse_annotations
+from gitlab2prov.adapters.fetch.utils import gitlab_url
+from gitlab2prov.adapters.fetch.utils import project_slug
 from gitlab2prov.domain.constants import ProvRole
-from gitlab2prov.adapters.miners.annotation_parsing import parse_annotations
-from gitlab2prov.domain.objects import (
-    Asset,
-    Evidence,
-    GitlabCommit,
-    Issue,
-    MergeRequest,
-    Release,
-    User,
-    Tag,
-)
+from gitlab2prov.domain.objects import Asset
+from gitlab2prov.domain.objects import Evidence
+from gitlab2prov.domain.objects import GitlabCommit
+from gitlab2prov.domain.objects import Issue
+from gitlab2prov.domain.objects import MergeRequest
+from gitlab2prov.domain.objects import Release
+from gitlab2prov.domain.objects import Tag
+from gitlab2prov.domain.objects import User
 
 
 log = logging.getLogger(__name__)
 
 
 @dataclass
-class AbstractMiner(ABC):
-    @abstractmethod
-    def mine(self):
-        raise NotImplementedError
+class GitlabFetcher:
+    url: str
+    token: str
+    _project: Project | None = field(init=False, default=None)
+
+    def do_login(self) -> None:
+        gl = Gitlab(url=gitlab_url(self.url), private_token=self.token)
+        self._project = gl.projects.get(project_slug(self.url))
+
+    def fetch_gitlab(
+        self,
+    ) -> Iterator[GitlabCommit | Issue | MergeRequest | Release | Tag]:
+        yield from extract_commits(self._project)
+        yield from extract_issues(self._project)
+        yield from extract_mergerequests(self._project)
+        yield from extract_releases(self._project)
+        yield from extract_tags(self._project)
 
 
-@dataclass
-class GitlabProjectMiner(AbstractMiner):
-    project: Project
-
-    def mine(self):
+def on_gitlab_list_error(func):
+    def wrapped(*args, **kwargs):
         try:
-            yield from extract_commits(self.project)
+            return func(*args, **kwargs)
         except GitlabListError as e:
-            log.info(
-                f"Project {self.project} raised GitlabListError when requesting commits"
-            )
-        try:
-            yield from extract_issues(self.project)
-        except GitlabListError:
-            log.info(
-                f"Project {self.project} raised GitlabListError when requesting issues"
-            )
-        try:
-            yield from extract_mergerequests(self.project)
-        except GitlabListError:
-            log.info(
-                f"Project {self.project} raised GitlabListError when requesting merge requests"
-            )
-        try:
-            yield from extract_releases(self.project)
-        except GitlabListError:
-            log.info(
-                f"Project {self.project} raised GitlabListError when requesting releases"
-            )
-        try:
-            yield from extract_tags(self.project)
-        except GitlabListError:
-            log.info(
-                f"Project {self.project} raised GitlabListError when requesting tags"
-            )
+            msg = f"{func.__module__}.{func.__name__}: {type(e)} due to {e.response_code} HTTP Error."
+            log.info(msg)
+
+    return wrapped
 
 
-def get_commit_author(commit):
+def get_commit_author(commit: ProjectCommit) -> User:
     return User(
         name=commit.committer_name,
         email=commit.committer_email,
@@ -76,7 +70,7 @@ def get_commit_author(commit):
     )
 
 
-def get_tag_author(tag):
+def get_tag_author(tag: ProjectTag) -> User:
     return User(
         name=tag.commit.get("author_name"),
         email=tag.commit.get("author_email"),
@@ -86,7 +80,9 @@ def get_tag_author(tag):
     )
 
 
-def get_resource_author(resource, role: ProvRole):
+def get_resource_author(
+    resource: ProjectIssue | ProjectMergeRequest | ProjectRelease, role: ProvRole
+) -> User | None:
     if not hasattr(resource, "author"):
         return None
     return User(
@@ -98,14 +94,14 @@ def get_resource_author(resource, role: ProvRole):
     )
 
 
-def get_assets(release):
+def get_assets(release: ProjectRelease) -> list[Asset]:
     return [
         Asset(url=asset.get("url"), format=asset.get("format"))
         for asset in release.assets.get("sources", [])
     ]
 
 
-def get_evidences(release):
+def get_evidences(release: ProjectRelease) -> list[Evidence]:
     return [
         Evidence(
             hexsha=evidence.get("sha"),
@@ -116,7 +112,8 @@ def get_evidences(release):
     ]
 
 
-def extract_commits(project):
+@on_gitlab_list_error
+def extract_commits(project: Project) -> Iterator[GitlabCommit]:
     for commit in project.commits.list(all=True):
         parseables = {
             *commit.comments.list(all=True, system=False),
@@ -132,7 +129,8 @@ def extract_commits(project):
         )
 
 
-def extract_issues(project):
+@on_gitlab_list_error
+def extract_issues(project: Project) -> Iterator[Issue]:
     for issue in project.issues.list(all=True):
         parseables = {
             *issue.notes.list(all=True, system=False),
@@ -158,7 +156,8 @@ def extract_issues(project):
         )
 
 
-def extract_mergerequests(project):
+@on_gitlab_list_error
+def extract_mergerequests(project: Project) -> Iterator[MergeRequest]:
     for mergerequest in project.mergerequests.list(all=True):
         parseables = {
             *mergerequest.notes.list(all=True, system=False),
@@ -190,7 +189,8 @@ def extract_mergerequests(project):
         )
 
 
-def extract_releases(project):
+@on_gitlab_list_error
+def extract_releases(project: Project) -> Iterator[Release]:
     for release in project.releases.list(all=True):
         yield Release(
             name=release.name,
@@ -204,7 +204,8 @@ def extract_releases(project):
         )
 
 
-def extract_tags(project):
+@on_gitlab_list_error
+def extract_tags(project: Project) -> Iterator[Tag]:
     for tag in project.tags.list(all=True):
         yield Tag(
             name=tag.name,

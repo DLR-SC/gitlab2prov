@@ -1,9 +1,9 @@
 import inspect
 import logging
-import typing
+from typing import Type
 
 from gitlab2prov.service_layer import handlers, messagebus, unit_of_work
-from gitlab2prov.adapters import miners
+from gitlab2prov.adapters.fetch import GitFetcher, GitlabFetcher
 
 
 log = logging.getLogger(__name__)
@@ -11,13 +11,13 @@ log = logging.getLogger(__name__)
 
 def bootstrap(
     uow: unit_of_work.AbstractUnitOfWork = unit_of_work.InMemoryUnitOfWork(),
-    git_miner: typing.Type[miners.AbstractMiner] = miners.GitRepositoryMiner,
-    gitlab_miner: typing.Type[miners.AbstractMiner] = miners.GitlabProjectMiner,
+    git_fetcher: Type[GitFetcher] = GitFetcher,
+    gitlab_fetcher: Type[GitlabFetcher] = GitlabFetcher,
 ):
     dependencies = {
         "uow": uow,
-        "git_miner": git_miner,
-        "gitlab_miner": gitlab_miner,
+        "git_fetcher": git_fetcher,
+        "gitlab_fetcher": gitlab_fetcher,
     }
     injected_handlers = {
         command_type: [

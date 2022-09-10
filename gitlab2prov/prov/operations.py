@@ -1,13 +1,14 @@
 import json
 import logging
 import hashlib
+from typing import Iterable, NamedTuple, Type
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 from pathlib import Path
 from typing import Optional, Sequence, Any
 from urllib.parse import urlencode
 
-
+from prov.dot import prov_to_dot
 from prov.identifier import QualifiedName
 from prov.model import (
     ProvDocument,
@@ -28,6 +29,57 @@ log = logging.getLogger(__name__)
 
 USERNAME = "name"
 USEREMAIL = "email"
+SERIALIZATION_FORMATS = ["json", "xml", "rdf", "provn", "dot"]
+DESERIALIZATION_FORMATS = ["rdf", "xml", "json"]
+
+
+def serialize_graph(
+    graph: ProvDocument, format: str = "json", destination=None, encoding="utf-8"
+) -> str | None:
+    if format not in SERIALIZATION_FORMATS:
+        raise ValueError("Unsupported serialization format.")
+    if format == "dot":
+        return prov_to_dot(graph).to_string().encode(encoding)
+    return graph.serialize(format=format, destination=destination)
+
+
+def deserialize_graph(source: str = None, content: str = None):
+    for format in DESERIALIZATION_FORMATS:
+        try:
+            return ProvDocument.deserialize(
+                source=source, content=content, format=format
+            )
+        except:
+            continue
+    raise Exception
+
+
+def format_stats_as_ascii_table(stats: dict[str, int]) -> str:
+    table = f"|{'Record Type':20}|{'Count':20}|\n+{'-'*20}+{'-'*20}+\n"
+    for record_type, count in stats.items():
+        table += f"|{record_type:20}|{count:20}|\n"
+    return table
+
+
+def format_stats_as_csv(stats: dict[str, int]) -> str:
+    csv = f"Record Type, Count\n"
+    for record_type, count in stats.items():
+        csv += f"{record_type}, {count}\n"
+    return csv
+
+
+def stats(
+    graph: ProvDocument, resolution: str, formatter=format_stats_as_ascii_table
+) -> str:
+    elements = Counter(e.get_type().localpart for e in graph.get_records(ProvElement))
+    relations = Counter(r.get_type().localpart for r in graph.get_records(ProvRelation))
+
+    stats = dict(sorted(elements.items()))
+    if resolution == "coarse":
+        stats.update({"Relations": relations.total()})
+    if resolution == "fine":
+        stats.update(sorted(relations.items()))
+    return formatter(stats)
 
 
 def qualified_name(localpart: str) -> QualifiedName:
@@ -43,34 +95,48 @@ def graph_factory(records: Optional[Sequence[ProvRecord]] = None) -> ProvDocumen
     return graph
 
 
-def combine(graphs: list[ProvDocument]) -> ProvDocument:
+def combine(graphs: Iterable[ProvDocument]) -> ProvDocument:
     log.info(f"combine graphs {graphs}")
-    if not graphs:
+    try:
+        acc = next(graphs)
+    except StopIteration:
         return graph_factory()
-    acc = graphs[0]
-    for graph in graphs[1:]:
+    for graph in graphs:
         acc.update(graph)
-    return acc
+    return dedupe(acc)
+
+
+class StrippedRelation(NamedTuple):
+    s: QualifiedName
+    t: QualifiedName
+    type: Type[ProvRelation]
 
 
 def dedupe(graph: ProvDocument) -> ProvDocument:
     log.info(f"deduplicate ProvElement's and ProvRelation's in {graph=}")
     graph = graph.unified()
     records = list(graph.get_records((ProvElement)))
-    attrs = defaultdict(set)
+
     bundles = dict()
+    attributes = defaultdict(set)
 
     for relation in graph.get_records(ProvRelation):
-        rel = (type(relation), tuple(relation.formal_attributes))
-        bundles[rel] = relation.bundle
-        attrs[rel].update(relation.extra_attributes)
+        stripped = StrippedRelation(
+            relation.formal_attributes[0],
+            relation.formal_attributes[1],
+            PROV_REC_CLS[relation.get_type()],
+        )
+        bundles[stripped] = relation.bundle
+        attributes[stripped].update(relation.extra_attributes)
 
-    for rel in attrs:
-        bundle = bundles[rel]
-        rtype, formal_attributes = rel
-        attributes = list(formal_attributes)
-        attributes.extend(attrs[rel])
-        records.append(rtype(bundle, None, attributes))
+    records.extend(
+        relation.type(
+            bundles[relation],
+            None,
+            [relation.s, relation.t] + list(attributes[relation]),
+        )
+        for relation in attributes
+    )
     return graph_factory(records)
 
 
@@ -133,14 +199,13 @@ def uncover_double_agents(graph: ProvDocument, fp: str) -> ProvDocument:
     return graph_factory(records).unified()
 
 
-def get_username(agent: ProvAgent) -> str | None:
-    names = list(agent.get_attribute(USERNAME))
-    return names[0] if names else None
-
-
-def get_usermail(agent: ProvAgent) -> str | None:
-    emails = list(agent.get_attribute(USEREMAIL))
-    return emails[0] if emails else None
+def get_attribute(record: ProvRecord, attribute: str, first: bool = True) -> str | None:
+    choices = list(record.get_attribute(attribute))
+    if choices and first:
+        return choices[0]
+    if choices and not first:
+        return choices
+    return None
 
 
 def pseudonymize_agent(
@@ -166,8 +231,8 @@ def pseudonymize(graph: ProvDocument) -> ProvDocument:
 
     pseudonyms = dict()
     for agent in graph.get_records(ProvAgent):
-        name = get_username(agent)
-        mail = get_usermail(agent)
+        name = get_attribute(agent, USERNAME)
+        mail = get_attribute(agent, USEREMAIL)
 
         if name is None:
             raise ValueError("ProvAgent representing a user has to have a name!")
@@ -189,7 +254,6 @@ def pseudonymize(graph: ProvDocument) -> ProvDocument:
             keep=[PROV_ROLE, PROV_TYPE],
             replace={USERNAME: namehash, USEREMAIL: mailhash},
         )
-
         # add pseudonymized agent to the list of records
         records.append(pseudonymized)
 

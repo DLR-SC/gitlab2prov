@@ -10,7 +10,7 @@ class Command:
 
 @dataclass
 class Fetch(Command):
-    project_url: str
+    url: str
     token: str
 
 
@@ -20,8 +20,10 @@ class Update(Fetch):
 
 
 @dataclass
+class Reset(Command):
+    pass
+
+
+@dataclass
 class Serialize(Command):
-    format: str
-    pseudonymize: bool
-    uncover_double_agents: str
-    out: Optional[str] = None
+    pass

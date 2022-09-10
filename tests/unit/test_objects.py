@@ -348,12 +348,12 @@ class TestAnnotation:
             ("id", id),
             ("type", type),
             ("body", body),
+            ("kwarg1", "value1"),
+            ("kwarg2", "value2"),
             (PROV_ATTR_STARTTIME, today),
             (PROV_ATTR_ENDTIME, tomorrow),
             (PROV_TYPE, ProvType.ANNOTATION),
             (PROV_LABEL, annotation.prov_label),
-            ("kwarg1", "value1"),
-            ("kwarg2", "value2"),
         ]
         assert annotation.prov_attributes == expected_attributes
 

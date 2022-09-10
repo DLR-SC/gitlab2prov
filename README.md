@@ -58,105 +58,69 @@ pip install gitlab2prov[dev] # install from PyPi
 
 ## 🚀‍ Usage
 
-To extract provenance from a gitlab project, follow these steps:
-| Instructions                                                                                                                                                      | Config Option    |
-|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------|
-| 1. Obtain an API Token for the GitLab API ([Token Guide](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#creating-a-personal-access-token)) | `--token`        |
-| 2. Set the URL[s] for the GitLab Project[s]                                                                                                                             | `--project_urls` |
-| 3. Choose a PROV serialization format                                                                                                                             | `--format`       |
+`gitlab2prov` can be configured using the command line interface or by providing a config file.
 
+###  Command Line Usage
+The command line interface consists of multiple commands that can be chained together akin to a unix pipeline.
+The available commands are the following:
 
-`gitlab2prov` can be configured either by command line flags or by using a config file.
+* `extract`: Extract provenance information from one or more Gitlab projects.
+* `open`: Open a provenance file.
+* `save`: Save to file.
+* `stats`: Print stats.
+* `pseudonymize`: Pseudonymize provenance graph.
+* `combine`: Combine multiple graphs into one.
 
-### 📋 Config File Example
+```
+Usage: gitlab2prov [OPTIONS] COMMAND1 [ARGS]... [COMMAND2 [ARGS]...]...
 
-An example of a configuration file can be found in `/config/example.ini`.
+  Extract provenance information from GitLab projects.
 
+Options:
+  --version        Show the version and exit.
+  --verbose        Enable logging to <stdout>.
+  --config FILE    Read args from config file.
+  --validate FILE  Validate config file.
+  --help           Show this message and exit.
+
+Commands:
+  combine       Combine multiple graphs into one.
+  extract       Extract provenance data for one or multiple gitlab projects.
+  open          Load provenance files.
+  pseudonymize  Pseudonymize a provenance graph.
+  save          Save provenance files.
+  stats         Count number of elements and relations contained in a...
+```
+### Config File
+Read config from file.
 ```ini
-# This is an example of a configuration file as used by gitlab2prov.
-# The configuration options match the command line flags in function.
-
-[GITLAB]
-# Gitlab project urls as a comma seperated list.
-project_urls = project_a_url, project_b_url
-
-# Gitlab personal access token.
-# More about tokens and how to create them:
-# https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#create-a-personal-access-token
-token = token
-
-[OUTPUT]
-# Provenance serialization format.
-# Supported formats: json, rdf, xml, provn, dot
-format = json, rdf, xml
-
-# File location to write provenance output to.
-# Each specified format will result in a seperate file.
-# For example:
-#     format = json, xml
-#     outfile = out/example
-# Creates the files:
-#     out/example.json
-#     out/example.xml
-outfile = provout/example
-
-[MISC]
-# Enables/Disables profiling using the cprofile lib.
-# The runtime profile is written to a file called gitlab2prov-run-$TIMESTAMP.profile
-# where $TIMESTAMP is the current time in 'YYYY-MM-DD-hh-mm-ss' format.
-# The profile can be visualized using tools such as snakeviz.
-profile = False
-
-# Enables/Disables verbose output (DEBUG mode logging to stdout)
-verbose = False
-
-# Path to double agent mapping to unify duplicated agents.
-double_agents = path/to/alias/mapping
-
-# Enables/Disables agent pseudonymization by enumeration.
-pseudonymous = False
+gitlab2prov --config config/example.yaml
 ```
-
-### 🖥️ Command Line Usage ☝ Single Format Serialization
-
+Only validate config file:
 ```
-  usage: gitlab2prov [-h] -p PROJECT_URLS [PROJECT_URLS ...] -t TOKEN [-c CONFIG_FILE] [-f {json,rdf,xml,provn,dot}] [-v] [--double-agents DOUBLE_AGENTS] [--pseudonymous] [--profile] {multi-format} ...
-
-Extract provenance information from GitLab projects.
-
-positional arguments:
-  {multi-format}
-    multi-format        serialize output in multiple formats
-
-options:
-  -h, --help            show this help message and exit
-  -p PROJECT_URLS [PROJECT_URLS ...], --project-urls PROJECT_URLS [PROJECT_URLS ...]
-                        gitlab project urls
-  -t TOKEN, --token TOKEN
-                        gitlab api access token
-  -c CONFIG_FILE, --config-file CONFIG_FILE
-                        config file path
-  -f {json,rdf,xml,provn,dot}, --format {json,rdf,xml,provn,dot}
-                        provenance serialization format
-  -v, --verbose         write log to stderr, set log level to DEBUG
-  --double-agents DOUBLE_AGENTS
-                        agent mapping file path
-  --pseudonymous        pseudonymize user names by enumeration
-  --profile             enable deterministic profiling, write profile to 'gitlab2prov-run-$TIMESTAMP.profile' where $TIMESTAMP is the current timestamp in 'YYYY-MM-DD-hh-mm-ss' format
+gitlab2prov --validate config/example.yaml
 ```
-### 🖥️ Command Line Usage 🖐 Multi Format Serialization
-To serialize the extracted provenance information into multiple formats in one go, use the provided `multi-format` mode.
-
+Config example:
+```yaml
+- extract:
+        url: ["https://gitlab.com/example/foo"]
+        token: mytoken
+- extract:
+        url: ["https://gitlab.com/example/foo"]
+        token: mytoken
+- open:
+        input: [example.rdf]
+- pseudonymize:
+- combine:
+- save:
+        output: combined
+        format: [json, rdf, xml, dot]
+- stats:
+        fine: true
+        explain: true
+        formatter: table
 ```
-usage: gitlab2prov multi-format [-h] [-f {json,rdf,xml,provn,dot} [{json,rdf,xml,provn,dot} ...]] -o OUTFILE
-
-options:
-  -h, --help            show this help message and exit
-  -f {json,rdf,xml,provn,dot} [{json,rdf,xml,provn,dot} ...], --format {json,rdf,xml,provn,dot} [{json,rdf,xml,provn,dot} ...]
-                        provenance serialization formats
-  -o OUTFILE, --outfile OUTFILE
-                        serialize to {outfile}.{format} for each specified format
-```
+You can validate your config file using provided JSON-Schema `gitlab2prov/schema.json`.
 
 ### 🎨 Provenance Output Formats
 
@@ -169,9 +133,10 @@ options:
 
 ## 🤝 Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+Contributions and pull requests are welcome!  
+For major changes, please open an issue first to discuss what you would like to change.
 
-## How to cite
+## ✨ How to cite
 
 If you use GitLab2PROV in a scientific publication, we would appreciate citations to the following paper:
 
@@ -193,7 +158,7 @@ Bibtex entry:
 
 You can also cite specific releases published on Zenodo: [![DOI](https://zenodo.org/badge/215042878.svg)](https://zenodo.org/badge/latestdoi/215042878)
 
-## References
+## ✏️ References
 
 **Influencial Software for `gitlab2prov`**
 * Martin Stoffers: "Gitlab2Graph", v1.0.0, October 13. 2019, [GitHub Link](https://github.com/DLR-SC/Gitlab2Graph), DOI 10.5281/zenodo.3469385
@@ -213,3 +178,7 @@ You can also cite specific releases published on Zenodo: [![DOI](https://zenodo.
 * Tim Sonnekalb, Thomas S. Heinze, Lynn von Kurnatowski, Andreas Schreiber, Jesus M. Gonzalez-Barahona, and Heather Packer (2020). [Towards automated, provenance-driven security audit for git-based repositories: applied to germany's corona-warn-app: vision paper](https://doi.org/10.1145/3416507.3423190). In *Proceedings of the 3rd ACM SIGSOFT International Workshop on Software Security from Design to Deployment* (pp. 15–18).
 
 * Andreas Schreiber (2020). [Visualization of contributions to open-source projects](https://doi.org/10.1145/3430036.3430057). In *Proceedings of the 13th International Symposium on Visual Information Communication and Interaction*. ACM, USA.
+
+## 📝 License
+This project is [MIT](https://github.com/dlr-sc/gitlab2prov/blob/master/LICENSE) licensed.  
+Copyright © 2019 German Aerospace Center (DLR) and individual contributors.
