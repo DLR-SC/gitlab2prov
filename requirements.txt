@@ -1,5 +1,0 @@
-prov>=2.0.0
-git-python
-python-gitlab
-pydot
-ruamel.yaml
