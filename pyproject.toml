@@ -39,7 +39,7 @@ dynamic = ["version"]
 dev = ["pytest", "pytest-mock", "black", "isort", "bump2version"]
 
 [project.scripts]
-gitlab2prov = "gitlab2prov.entrypoints.cli:main"
+gitlab2prov = "gitlab2prov.entrypoints.cli:cli"
 
 [project.urls]
 Twitter = "https://twitter.com/dlr_software"
