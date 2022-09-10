@@ -1,7 +1,7 @@
 ---
 name: Question ❓
 about: Ask a question about the project.
-title: "[QUESTION]"
+title:
 labels: question
 assignees: cdboer
 
