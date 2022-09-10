@@ -16,7 +16,7 @@ class TestMatchLength:
 
     def test_match_length_with_n_length_matches(self):
         for idx in range(1, 1000):
-            pattern = "\d{%d}" % idx
+            pattern = r"\d{%d}" % idx
             s = "".join(random.choices(string.digits, k=idx))
             match = re.search(pattern, s)
             assert match_length(match) == idx
@@ -25,9 +25,9 @@ class TestMatchLength:
 class TestClassifier:
     def test_longest_matching_classifier_wins_selection(self):
         classifiers = [
-            Classifier(patterns=["\d{1}"]),
-            Classifier(patterns=["\d{2}"]),
-            Classifier(patterns=["\d{3}"]),
+            Classifier(patterns=[r"\d{1}"]),
+            Classifier(patterns=[r"\d{2}"]),
+            Classifier(patterns=[r"\d{3}"]),
         ]
         for classifier in classifiers:
             classifier.matches(string.digits)
