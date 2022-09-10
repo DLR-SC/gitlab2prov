@@ -181,4 +181,4 @@ You can also cite specific releases published on Zenodo: [![DOI](https://zenodo.
 
 ## 📝 License
 This project is [MIT](https://github.com/dlr-sc/gitlab2prov/blob/master/LICENSE) licensed.  
- Copyright © 2019 German Aerospace Center (DLR) and individual contributors.
+Copyright © 2019 German Aerospace Center (DLR) and individual contributors.
