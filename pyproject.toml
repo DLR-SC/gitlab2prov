@@ -1,3 +1,61 @@
 [build-system]
-requires = ["setuptools>=42.0", "wheel"]
+requires = ["setuptools>=65.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "gitlab2prov"
+description = "Extract provenance information (W3C PROV) from GitLab projects."
+requires-python = ">=3.10"
+readme = { "file" = "README.md", "content-type" = "text/markdown" }
+license = { "file" = "LICENSE" }
+authors = [{ "name" = "Claas de Boer", email = "claas.deboer@dlr.de" }]
+maintainers = [
+    { "name" = "Andreas Schreiber", email = "andreas.schreiber@dlr.de" },
+]
+dependencies = ["prov>=2.0.0", "git-python", "python-gitlab", "regex", "pydot"]
+keywords = [
+    "prov",
+    "gitlab",
+    "git",
+    "provenance",
+    "prov generation",
+    "software analytics",
+    "w3c prov",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-mock", "black", "isort", "bump2version"]
+
+[project.scripts]
+gitlab2prov = "gitlab2prov.entrypoints.cli:main"
+
+[project.urls]
+Twitter = "https://twitter.com/dlr_software"
+"Source Code" = "https://github.com/dlr-sc/gitlab2prov"
+"Issue Tracker" = "https://github.com/dlr-sc/gitlab2prov/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "gitlab2prov.__version__" }
+
+[tool.setuptools.packages.find]
+exclude = ["tests*", "docs*"]
+
+[tool.isort]
+profile = "black"
+py_version = 310
+
+[tool.black]
+line-length = 99
+target-version = ['py310']
