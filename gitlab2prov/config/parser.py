@@ -25,7 +25,6 @@ class ConfigParser:
         jsonschema.validate(read_file(filepath), get_schema())
 
     def parse(self, filepath: str) -> list[str]:
-        self.validate(filepath)
         content = read_file(filepath)
         return list(self.parse_array(content))
 
