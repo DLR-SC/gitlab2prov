@@ -46,9 +46,7 @@ def serialize_graph(
 def deserialize_graph(source: str = None, content: str = None):
     for format in DESERIALIZATION_FORMATS:
         try:
-            return ProvDocument.deserialize(
-                source=source, content=content, format=format
-            )
+            return ProvDocument.deserialize(source=source, content=content, format=format)
         except:
             continue
     raise Exception
@@ -68,9 +66,7 @@ def format_stats_as_csv(stats: dict[str, int]) -> str:
     return csv
 
 
-def stats(
-    graph: ProvDocument, resolution: str, formatter=format_stats_as_ascii_table
-) -> str:
+def stats(graph: ProvDocument, resolution: str, formatter=format_stats_as_ascii_table) -> str:
     elements = Counter(e.get_type().localpart for e in graph.get_records(ProvElement))
     relations = Counter(r.get_type().localpart for r in graph.get_records(ProvRelation))
 
@@ -155,9 +151,7 @@ def xform(d: dict[str, list[str]]) -> dict[str, str]:
 
 
 def uncover_name(agent: str, names: dict[str, str]) -> tuple[QualifiedName, str]:
-    [(qn, name)] = [
-        (key, val) for key, val in agent.attributes if key.localpart == "name"
-    ]
+    [(qn, name)] = [(key, val) for key, val in agent.attributes if key.localpart == "name"]
     return qn, names.get(name, name)
 
 
@@ -189,9 +183,7 @@ def uncover_double_agents(graph: ProvDocument, fp: str) -> ProvDocument:
         reroute[agent.identifier] = identifier
 
     for relation in graph.get_records(ProvRelation):
-        formal = [
-            (key, reroute.get(val, val)) for key, val in relation.formal_attributes
-        ]
+        formal = [(key, reroute.get(val, val)) for key, val in relation.formal_attributes]
         extra = [(key, reroute.get(val, val)) for key, val in relation.extra_attributes]
         r_type = PROV_REC_CLS.get(relation.get_type())
         records.append(r_type(relation.bundle, relation.identifier, formal + extra))
@@ -201,11 +193,9 @@ def uncover_double_agents(graph: ProvDocument, fp: str) -> ProvDocument:
 
 def get_attribute(record: ProvRecord, attribute: str, first: bool = True) -> str | None:
     choices = list(record.get_attribute(attribute))
-    if choices and first:
-        return choices[0]
-    if choices and not first:
-        return choices
-    return None
+    if not choices:
+        return
+    return choices[0] if first else choices
 
 
 def pseudonymize_agent(
@@ -259,12 +249,8 @@ def pseudonymize(graph: ProvDocument) -> ProvDocument:
 
     # replace old id occurences with the pseudonymized id
     for relation in graph.get_records(ProvRelation):
-        formal = [
-            (key, pseudonyms.get(val, val)) for key, val in relation.formal_attributes
-        ]
-        extra = [
-            (key, pseudonyms.get(val, val)) for key, val in relation.extra_attributes
-        ]
+        formal = [(key, pseudonyms.get(val, val)) for key, val in relation.formal_attributes]
+        extra = [(key, pseudonyms.get(val, val)) for key, val in relation.extra_attributes]
         r_type = PROV_REC_CLS.get(relation.get_type())
         records.append(r_type(relation.bundle, relation.identifier, formal + extra))
 
