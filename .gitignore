@@ -6,7 +6,7 @@ __pycache__/
 .mypy_cache/
 *.egg-info
 *.code-workspace
-./config/
+config/
 prov.*
 *.provn
 build
