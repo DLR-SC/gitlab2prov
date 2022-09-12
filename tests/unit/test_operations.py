@@ -8,6 +8,37 @@ from gitlab2prov.prov.operations import qualified_name
 from tests.random_refs import random_suffix
 
 
+class TestStats:
+    def test_format_as_ascii_table(self):
+        d = {"A": 1, "B": 2, "C": 3}
+        expected_header = [
+            f"|{'Record Type':20}|{'Count':20}|",
+            f"+{'-'*20}+{'-'*20}+",
+        ]
+        expected_body = [
+            f"|{'A':20}|{1:20}|",
+            f"|{'B':20}|{2:20}|",
+            f"|{'C':20}|{3:20}|",
+        ]
+        table = operations.format_stats_as_ascii_table(d)
+        lines = [l.strip() for l in table.split("\n") if l]
+        assert lines[:2] == expected_header
+        assert lines[2:] == expected_body
+
+    def test_format_stats_as_csv(self):
+        d = {"A": 1, "B": 2, "C": 3}
+        expected_header = ["Record Type, Count"]
+        expected_body = [
+            "A, 1",
+            "B, 2",
+            "C, 3",
+        ]
+        csv = operations.format_stats_as_csv(d)
+        lines = [l.strip() for l in csv.split("\n") if l]
+        assert lines[:1] == expected_header
+        assert lines[1:] == expected_body
+
+
 class TestGraphFactory:
     def test_namespace_uri_is_gitlab2prov(self):
         graph = operations.graph_factory()
@@ -105,9 +136,7 @@ class TestUncoverDoubleAgents:
     def test_uncover_name(self):
         names = {"alias": "name"}
         graph = operations.graph_factory()
-        agent = graph.agent(
-            "agent-id", other_attributes={qualified_name("name"): "alias"}
-        )
+        agent = graph.agent("agent-id", other_attributes={qualified_name("name"): "alias"})
         expected_name = (qualified_name("name"), "name")
         assert operations.uncover_name(agent, names) == expected_name
 
@@ -193,6 +222,4 @@ class TestPseudonymize:
             qualified_name("name"),
             qualified_name("email"),
         ]
-        assert all(
-            [(attr in expected_attributes) for (attr, _) in agent.extra_attributes]
-        )
+        assert all([(attr in expected_attributes) for (attr, _) in agent.extra_attributes])
