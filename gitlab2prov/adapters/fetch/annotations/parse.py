@@ -32,9 +32,7 @@ DEFAULT = "default_annotation"
 
 Comment: TypeAlias = ProjectCommitComment
 Note: TypeAlias = ProjectIssueNote | ProjectMergeRequestNote
-Label: TypeAlias = (
-    ProjectIssueResourceLabelEvent | ProjectMergeRequestResourceLabelEvent
-)
+Label: TypeAlias = ProjectIssueResourceLabelEvent | ProjectMergeRequestResourceLabelEvent
 AwardEmoji: TypeAlias = (
     ProjectIssueAwardEmoji
     | ProjectIssueNoteAwardEmoji

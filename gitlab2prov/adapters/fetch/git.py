@@ -136,9 +136,7 @@ def extract_revisions(repo: Repo) -> Iterator[FileRevision]:
             )
         ):
             revs.append(
-                FileRevision(
-                    path=path, committed_in=hexsha, change_type=status, original=file
-                )
+                FileRevision(path=path, committed_in=hexsha, change_type=status, original=file)
             )
         # revisions remeber their predecessor (previous revision)
         for rev, prev in zip_longest(revs, revs[1:]):

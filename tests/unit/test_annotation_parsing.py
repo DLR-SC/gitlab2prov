@@ -22,16 +22,10 @@ class TestLongestMatchingClassifier:
         assert longest_matching_classifier(string).name == "change_epic"
         string = "close via merge request slug!123"
         assert longest_matching_classifier(string) is CLASSIFIERS[7]
-        assert (
-            longest_matching_classifier(string).name
-            == "close_by_external_merge_request"
-        )
+        assert longest_matching_classifier(string).name == "close_by_external_merge_request"
         string = "enabled automatic add to merge train when the pipeline for 12345abcde succeeds"
         assert longest_matching_classifier(string) is CLASSIFIERS[-1]
-        assert (
-            longest_matching_classifier(string).name
-            == "automatic_add_to_merge_train_enabled"
-        )
+        assert longest_matching_classifier(string).name == "automatic_add_to_merge_train_enabled"
 
     def test_returns_none_if_no_match_was_found(self):
         string = "NOT_MATCHABLE"
@@ -41,9 +35,7 @@ class TestLongestMatchingClassifier:
 class TestClassifySystemNote:
     def test_returns_import_statement_capture_groups(self):
         expected_captures = {"pre_import_author": "original-author"}
-        string = (
-            "*by original-author on 1970-01-01T00:00:00 (imported from gitlab project)*"
-        )
+        string = "*by original-author on 1970-01-01T00:00:00 (imported from gitlab project)*"
         assert classify_system_note(string)[1] == expected_captures
         string = "*by original-author on 1970-01-01 00:00:00 UTC (imported from gitlab project)*"
         assert classify_system_note(string)[1] == expected_captures

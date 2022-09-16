@@ -122,9 +122,7 @@ class FileRevision(ProvMixin, EntityMixin):
     committed_in: str
     change_type: str
     original: File = field(repr=False, metadata=IS_RELATION)
-    previous: FileRevision | None = field(
-        repr=False, default=None, metadata=IS_RELATION
-    )
+    previous: FileRevision | None = field(repr=False, default=None, metadata=IS_RELATION)
     prov_type: ProvType = field(init=False, repr=False, default=ProvType.FILE_REVISION)
 
 

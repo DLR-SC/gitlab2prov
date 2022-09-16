@@ -106,9 +106,7 @@ CLASSIFIERS = [
     ),
     AnnotationClassifier(
         name="close_by_external_merge_request",
-        patterns=[
-            r"^close via merge request (?P<project_slug>.+?)!(?P<merge_request_iid>\d+)$"
-        ],
+        patterns=[r"^close via merge request (?P<project_slug>.+?)!(?P<merge_request_iid>\d+)$"],
     ),
     AnnotationClassifier(
         name="close_by_merge_request",
@@ -130,23 +128,15 @@ CLASSIFIERS = [
             r"^restored source branch `(?P<branch_name>.+)`$",
         ],
     ),
-    AnnotationClassifier(
-        name="remove_label", patterns=[r"^removed ~(?P<label_id>\d+) label$"]
-    ),
-    AnnotationClassifier(
-        name="add_label", patterns=[r"^added ~(?P<label_id>\d+) label$"]
-    ),
+    AnnotationClassifier(name="remove_label", patterns=[r"^removed ~(?P<label_id>\d+) label$"]),
+    AnnotationClassifier(name="add_label", patterns=[r"^added ~(?P<label_id>\d+) label$"]),
     AnnotationClassifier(
         name="create_branch",
-        patterns=[
-            r"^created branch \[`(?P<branch_name>.+)`\]\((?P<compare_link>.+)\).*$"
-        ],
+        patterns=[r"^created branch \[`(?P<branch_name>.+)`\]\((?P<compare_link>.+)\).*$"],
     ),
     AnnotationClassifier(
         name="mark_task_as_incomplete",
-        patterns=[
-            r"^marked the task [*]{2}(?P<task_description>.+)[*]{2} as incomplete$"
-        ],
+        patterns=[r"^marked the task [*]{2}(?P<task_description>.+)[*]{2} as incomplete$"],
     ),
     AnnotationClassifier(
         name="mark_task_as_done",
@@ -166,9 +156,7 @@ CLASSIFIERS = [
     ),
     AnnotationClassifier(
         name="address_in_merge_request",
-        patterns=[
-            r"^created merge request !(?P<merge_request_iid>\d+) to address this issue$"
-        ],
+        patterns=[r"^created merge request !(?P<merge_request_iid>\d+) to address this issue$"],
     ),
     AnnotationClassifier(
         name="unmark_as_work_in_progress",
@@ -191,9 +179,7 @@ CLASSIFIERS = [
             r"^status changed to merged$",
         ],
     ),
-    AnnotationClassifier(
-        name="change_description", patterns=[r"^changed the description$"]
-    ),
+    AnnotationClassifier(name="change_description", patterns=[r"^changed the description$"]),
     AnnotationClassifier(
         name="change_title",
         patterns=[
@@ -210,9 +196,7 @@ CLASSIFIERS = [
         name="move_to",
         patterns=[r"^moved to (?P<project_slug>.*?)#(?P<issue_iid>\d+)$"],
     ),
-    AnnotationClassifier(
-        name="reopen", patterns=[r"^reopened$", r"^status changed to reopened$"]
-    ),
+    AnnotationClassifier(name="reopen", patterns=[r"^reopened$", r"^status changed to reopened$"]),
     AnnotationClassifier(
         name="close",
         patterns=[
@@ -222,15 +206,11 @@ CLASSIFIERS = [
     ),
     AnnotationClassifier(
         name="unrelate_from_external_issue",
-        patterns=[
-            r"^removed the relation with (?P<project_slug>.+)#(?P<issue_iid>\d+)$"
-        ],
+        patterns=[r"^removed the relation with (?P<project_slug>.+)#(?P<issue_iid>\d+)$"],
     ),
     AnnotationClassifier(
         name="relate_to_external_issue",
-        patterns=[
-            r"^marked this issue as related to (?P<project_slug>.+)#(?P<issue_iid>\d+)$"
-        ],
+        patterns=[r"^marked this issue as related to (?P<project_slug>.+)#(?P<issue_iid>\d+)$"],
     ),
     AnnotationClassifier(
         name="unrelate_from_issue",
@@ -255,9 +235,7 @@ CLASSIFIERS = [
             r"^made the issue visible$",
         ],
     ),
-    AnnotationClassifier(
-        name="make_confidential", patterns=[r"^made the issue confidential$"]
-    ),
+    AnnotationClassifier(name="make_confidential", patterns=[r"^made the issue confidential$"]),
     AnnotationClassifier(name="remove_weight", patterns=[r"^removed the weight$"]),
     AnnotationClassifier(
         name="change_weight",
@@ -270,9 +248,7 @@ CLASSIFIERS = [
             r"^changed due date to (?P<month>(?:january|february|march|april|may|june|july|august|september|october|november|december)) (?P<day>\d\d), (?P<year>\d{4})$"
         ],
     ),
-    AnnotationClassifier(
-        name="remove_time_estimate", patterns=[r"^removed time estimate$"]
-    ),
+    AnnotationClassifier(name="remove_time_estimate", patterns=[r"^removed time estimate$"]),
     AnnotationClassifier(
         name="change_time_estimate",
         patterns=[
@@ -285,12 +261,8 @@ CLASSIFIERS = [
             + r"(?:\s(?P<seconds>[-]?\d+)s)?$"
         ],
     ),
-    AnnotationClassifier(
-        name="unlock_merge_request", patterns=[r"^unlocked this merge request$"]
-    ),
-    AnnotationClassifier(
-        name="lock_merge_request", patterns=[r"^locked this merge request$"]
-    ),
+    AnnotationClassifier(name="unlock_merge_request", patterns=[r"^unlocked this merge request$"]),
+    AnnotationClassifier(name="lock_merge_request", patterns=[r"^locked this merge request$"]),
     AnnotationClassifier(name="unlock_issue", patterns=[r"^unlocked this issue$"]),
     AnnotationClassifier(name="lock_issue", patterns=[r"^locked this issue$"]),
     AnnotationClassifier(name="remove_spent_time", patterns=[r"^removed time spent$"]),
@@ -341,14 +313,10 @@ CLASSIFIERS = [
             r"^removed assignee$",
         ],
     ),
-    AnnotationClassifier(
-        name="assign_user", patterns=[r"^assigned to @(?P<user_name>.*)$"]
-    ),
+    AnnotationClassifier(name="assign_user", patterns=[r"^assigned to @(?P<user_name>.*)$"]),
     AnnotationClassifier(
         name="mention_in_external_merge_request",
-        patterns=[
-            r"^mentioned in merge request (?P<project_slug>.+)!(?P<merge_request_iid>\d+)$"
-        ],
+        patterns=[r"^mentioned in merge request (?P<project_slug>.+)!(?P<merge_request_iid>\d+)$"],
     ),
     AnnotationClassifier(
         name="mention_in_merge_request",

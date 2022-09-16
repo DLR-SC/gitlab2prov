@@ -150,9 +150,7 @@ class TestGitCommit:
             prov_start=today,
             prov_end=tomorrow,
         )
-        expected_identifier = qualified_name(
-            f"GitCommit?{urlencode([('hexsha', hexsha)])}"
-        )
+        expected_identifier = qualified_name(f"GitCommit?{urlencode([('hexsha', hexsha)])}")
         assert commit.prov_identifier == expected_identifier
 
     def test_attributes(self):
@@ -186,9 +184,7 @@ class TestAsset:
         url = f"asset-url-{random_suffix()}"
         fmt = f"asset-format-{random_suffix()}"
         asset = objects.Asset(url=url, format=fmt)
-        expected_identifier = qualified_name(
-            f"Asset?{urlencode([('url', url), ('format', fmt)])}"
-        )
+        expected_identifier = qualified_name(f"Asset?{urlencode([('url', url), ('format', fmt)])}")
         assert asset.prov_identifier == expected_identifier
 
     def test_attributes(self):
@@ -445,9 +441,7 @@ class TestIssue:
             created_at=today,
             closed_at=tomorrow,
         )
-        expected_first_version = objects.Version(
-            version_id=id, prov_type=ProvType.ISSUE_VERSION
-        )
+        expected_first_version = objects.Version(version_id=id, prov_type=ProvType.ISSUE_VERSION)
         assert issue.first_version == expected_first_version
 
     def test_annotated_versions(self):
@@ -505,9 +499,7 @@ class TestGitlabCommit:
             authored_at=today,
             committed_at=tomorrow,
         )
-        expected_identifier = qualified_name(
-            f"GitlabCommit?{urlencode([('hexsha', hexsha)])}"
-        )
+        expected_identifier = qualified_name(f"GitlabCommit?{urlencode([('hexsha', hexsha)])}")
         assert commit.prov_identifier == expected_identifier
 
     def test_attributes(self):
@@ -718,9 +710,7 @@ class TestMergeRequest:
             merged_at=yesterday,
             first_deployed_to_production_at=next_week,
         )
-        expected_version = objects.Version(
-            version_id=id, prov_type=ProvType.MERGE_REQUEST_VERSION
-        )
+        expected_version = objects.Version(version_id=id, prov_type=ProvType.MERGE_REQUEST_VERSION)
         assert merge_request.first_version == expected_version
 
     def test_annotated_versions(self):
@@ -780,9 +770,7 @@ class TestTag:
         name = f"tag-name-{random_suffix()}"
         hexsha = f"commit-sha-{random_suffix()}"
         msg = f"tag-message-{random_suffix()}"
-        tag = objects.Tag(
-            name=name, hexsha=hexsha, message=msg, author=None, created_at=today
-        )
+        tag = objects.Tag(name=name, hexsha=hexsha, message=msg, author=None, created_at=today)
         expected_identifier = qualified_name(
             f"Tag?{urlencode([('name', name), ('hexsha', hexsha)])}"
         )
@@ -792,9 +780,7 @@ class TestTag:
         name = f"tag-name-{random_suffix()}"
         hexsha = f"commit-sha-{random_suffix()}"
         msg = f"tag-message-{random_suffix()}"
-        tag = objects.Tag(
-            name=name, hexsha=hexsha, message=msg, author=None, created_at=today
-        )
+        tag = objects.Tag(name=name, hexsha=hexsha, message=msg, author=None, created_at=today)
         expected_attributes = [
             ("name", name),
             ("hexsha", hexsha),
@@ -808,9 +794,7 @@ class TestTag:
 
     def test_creation(self):
         name = f"tag-name-{random_suffix()}"
-        tag = objects.Tag(
-            name=name, hexsha="", message="", author=None, created_at=today
-        )
+        tag = objects.Tag(name=name, hexsha="", message="", author=None, created_at=today)
         expected_creation = objects.Creation(
             creation_id=name,
             prov_start=today,

@@ -127,9 +127,7 @@ def modification(
 
     prev = graph.entity(*fv.previous)
     prev.specializationOf(f)
-    graph.wasRevisionOf(
-        rev, prev
-    )  # NOTE: rev.wasRevisionOf(prev) is not impl in prov pkg
+    graph.wasRevisionOf(rev, prev)  # NOTE: rev.wasRevisionOf(prev) is not impl in prov pkg
     c.used(
         prev,
         c.get_startTime(),
@@ -234,9 +232,7 @@ def commit_creation(
 
     commit = graph.activity(*git_commit)
     committer = graph.agent(*git_commit.committer)
-    commit.wasAssociatedWith(
-        committer, plan=None, attributes=[(PROV_ROLE, ProvRole.COMMITTER)]
-    )
+    commit.wasAssociatedWith(committer, plan=None, attributes=[(PROV_ROLE, ProvRole.COMMITTER)])
     creation.wasInformedBy(commit)
 
     return graph
@@ -282,9 +278,7 @@ def annotation_chain(resource, graph=None):
     prev_annot = c
     prev_annot_ver = fv
 
-    for annotation, annotated_version in zip(
-        resource.annotations, resource.annotated_versions
-    ):
+    for annotation, annotated_version in zip(resource.annotations, resource.annotated_versions):
         annot = graph.activity(*annotation)
         annot_ver = graph.entity(*annotated_version)
         annotator = graph.agent(*annotation.annotator)
@@ -337,9 +331,7 @@ def release_and_tag(release: Optional[Release], tag: Tag, graph: ProvDocument = 
     r = graph.collection(*release)
     c = graph.activity(*release.creation)
     t.hadMember(r)
-    r.wasGeneratedBy(
-        c, time=c.get_startTime(), attributes=[(PROV_ROLE, ProvRole.RELEASE)]
-    )
+    r.wasGeneratedBy(c, time=c.get_startTime(), attributes=[(PROV_ROLE, ProvRole.RELEASE)])
     for asset in release.assets:
         graph.entity(*asset).hadMember(graph.entity(*release))
     for evidence in release.evidences:
@@ -357,18 +349,14 @@ def release_and_tag(release: Optional[Release], tag: Tag, graph: ProvDocument = 
     return graph
 
 
-def tag_and_commit(
-    tag: Tag, commit: Optional[GitlabCommit], graph: ProvDocument = None
-):
+def tag_and_commit(tag: Tag, commit: Optional[GitlabCommit], graph: ProvDocument = None):
     if graph is None:
         graph = graph_factory()
     t = graph.collection(*tag)
     tc = graph.activity(*tag.creation)
     at = graph.agent(*tag.author)
     t.wasAttributedTo(at)
-    t.wasGeneratedBy(
-        tc, time=tc.get_startTime(), attributes=[(PROV_ROLE, ProvRole.TAG)]
-    )
+    t.wasGeneratedBy(tc, time=tc.get_startTime(), attributes=[(PROV_ROLE, ProvRole.TAG)])
     tc.wasAssociatedWith(
         at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
     )
@@ -381,9 +369,7 @@ def tag_and_commit(
     at = graph.agent(*commit.author)
     cmt.hadMember(t)
     cmt.wasAttributedTo(at)
-    cmt.wasGeneratedBy(
-        cc, time=cc.get_startTime(), attributes=[(PROV_ROLE, ProvRole.GIT_COMMIT)]
-    )
+    cmt.wasGeneratedBy(cc, time=cc.get_startTime(), attributes=[(PROV_ROLE, ProvRole.GIT_COMMIT)])
     cc.wasAssociatedWith(
         at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
     )

@@ -14,14 +14,14 @@ class AbstractUnitOfWork(abc.ABC):
 
     def commit(self):
         self._commit()
-        
+
     def reset(self):
         self._reset()
 
     @abc.abstractmethod
     def _commit(self):
         raise NotImplementedError
-    
+
     @abc.abstractmethod
     def _reset(self):
         raise NotImplementedError
@@ -29,12 +29,12 @@ class AbstractUnitOfWork(abc.ABC):
     @abc.abstractmethod
     def rollback(self):
         raise NotImplementedError
-       
-        
+
+
 class InMemoryUnitOfWork(AbstractUnitOfWork):
     def __init__(self):
         self.resources = repository.InMemoryRepository()
-        
+
     def __enter__(self):
         return super().__enter__()
 
@@ -43,9 +43,9 @@ class InMemoryUnitOfWork(AbstractUnitOfWork):
 
     def _commit(self):
         pass
-    
+
     def _reset(self):
         self.resources = repository.InMemoryRepository()
-    
+
     def rollback(self):
         pass

@@ -244,6 +244,4 @@ def do_stats(graphs, resolution, show_description, formatter):
             )
             yield graph
         except Exception as e:
-            click.echo(
-                f"Could not display stats for {graph.description}: {e}", err=True
-            )
+            click.echo(f"Could not display stats for {graph.description}: {e}", err=True)

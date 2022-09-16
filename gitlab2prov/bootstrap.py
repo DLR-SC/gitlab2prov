@@ -20,9 +20,7 @@ def bootstrap(
         "gitlab_fetcher": gitlab_fetcher,
     }
     injected_handlers = {
-        command_type: [
-            inject_dependencies(handler, dependencies) for handler in handlers
-        ]
+        command_type: [inject_dependencies(handler, dependencies) for handler in handlers]
         for command_type, handlers in handlers.HANDLERS.items()
     }
 

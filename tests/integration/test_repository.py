@@ -4,8 +4,6 @@ from gitlab2prov.adapters import repository
 from gitlab2prov.domain import objects
 
 
-
-
 today = datetime.now()
 tomorrow = today + timedelta(days=1)
 yesterday = today - timedelta(days=1)
