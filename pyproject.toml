@@ -6,11 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "gitlab2prov"
 description = "Extract provenance information (W3C PROV) from GitLab projects."
 requires-python = ">=3.10"
-readme = { "file" = "README.md", "content-type" = "text/markdown" }
-license = { "file" = "LICENSE" }
-authors = [{ "name" = "Claas de Boer", email = "claas.deboer@dlr.de" }]
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { file = "LICENSE" }
+authors = [{ name = "Claas de Boer", email = "claas.deboer@dlr.de" }]
 maintainers = [
-    { "name" = "Andreas Schreiber", email = "andreas.schreiber@dlr.de" },
+    { name = "Andreas Schreiber", email = "andreas.schreiber@dlr.de" },
 ]
 dependencies = ["prov>=2.0.0", "git-python", "python-gitlab", "jsonschema", "ruamel.yaml", "pydot>=1.2.0"]
 keywords = [
