@@ -255,6 +255,7 @@ def stats(graphs, resolution, show_description, formatter):
 )
 @processor
 def merge_double_agents(graphs, mapping):
+    """Merge double agents based on a name to aliases mapping."""
     for graph in graphs:
         graph = operations.merge_double_agents(graph, mapping)
         graph.description += f""
