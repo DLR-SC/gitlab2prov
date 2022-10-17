@@ -70,6 +70,7 @@ The available commands are the following:
 * `stats`: Print stats.
 * `pseudonymize`: Pseudonymize provenance graph.
 * `combine`: Combine multiple graphs into one.
+* `merge-double-agents`: Merge double agents based on a name to alias mapping.
 
 ```
 Usage: gitlab2prov [OPTIONS] COMMAND1 [ARGS]... [COMMAND2 [ARGS]...]...
@@ -79,17 +80,18 @@ Usage: gitlab2prov [OPTIONS] COMMAND1 [ARGS]... [COMMAND2 [ARGS]...]...
 Options:
   --version        Show the version and exit.
   --verbose        Enable logging to <stdout>.
-  --config FILE    Read args from config file.
-  --validate FILE  Validate config file.
+  --config FILE    Execute gitlab2prov run from config file.
+  --validate FILE  Validate config file and exit.
   --help           Show this message and exit.
 
 Commands:
-  combine       Combine multiple graphs into one.
-  extract       Extract provenance data for one or multiple gitlab projects.
-  open          Load provenance files.
-  pseudonymize  Pseudonymize a provenance graph.
-  save          Save provenance files.
-  stats         Count number of elements and relations contained in a...
+  combine              Combine multiple graphs into one.
+  extract              Extract provenance data for one or multiple gitlab...
+  load                 Load provenance files.
+  merge-double-agents  Merge double agents based on a name to aliases...
+  pseudonymize         Pseudonymize a provenance graph.
+  save                 Save provenance files.
+  stats                Count number of elements and relations contained...
 ```
 ### Config File
 Read config from file.

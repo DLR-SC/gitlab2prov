@@ -249,7 +249,7 @@ def stats(graphs, resolution, show_description, formatter):
 
 @cli.command()
 @click.option(
-    "-m/--mapping",
+    "--mapping",
     type=click.Path(exists=True, dir_okay=False),
     help="Path to double agent mapping.",
 )
