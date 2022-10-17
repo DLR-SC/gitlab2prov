@@ -25,7 +25,7 @@ class TestLongestMatchingClassifier:
         assert longest_matching_classifier(string).name == "close_by_external_merge_request"
         string = "enabled automatic add to merge train when the pipeline for 12345abcde succeeds"
         assert longest_matching_classifier(string) is CLASSIFIERS[-1]
-        assert longest_matching_classifier(string).name == "automatic_add_to_merge_train_enabled"
+        assert longest_matching_classifier(string).name == "enable_automatic_add_to_merge_train"
 
     def test_returns_none_if_no_match_was_found(self):
         string = "NOT_MATCHABLE"
