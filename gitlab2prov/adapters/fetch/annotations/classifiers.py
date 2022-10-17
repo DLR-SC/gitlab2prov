@@ -348,7 +348,7 @@ CLASSIFIERS = [
             r"^mentioned in issue #(?P<issue_iid>\d+)$",
         ],
     ),
-    AnnotationClassifier(name="resolve_threads", patterns=[r"^resolved all threads$"]),
+    AnnotationClassifier(name="resolve_all_threads", patterns=[r"^resolved all threads$"]),
     AnnotationClassifier(
         name="approve_merge_request", patterns=[r"^approved this merge request$"]
     ),
@@ -362,13 +362,13 @@ CLASSIFIERS = [
         name="unapprove_merge_request", patterns=[r"^unapproved this merge request$"]
     ),
     AnnotationClassifier(
-        name="automatic_merge_on_pipeline_completion_enabled",
+        name="enable_automatic_merge_on_pipeline_completion",
         patterns=[
             r"^enabled an automatic merge when the pipeline for (?P<pipeline_commit_sha>[0-9a-z]+) succeeds$",
         ],
     ),
     AnnotationClassifier(
-        name="automatic_merge_on_build_success_enabled",
+        name="enable_automatic_merge_on_build_success",
         patterns=[
             r"^enabled an automatic merge when the build for (?P<commit_sha>[0-9a-z]+) succeeds$",
         ],
@@ -388,20 +388,22 @@ CLASSIFIERS = [
         patterns=[r"^created #(?P<issue_iid>\d+) to continue this discussion$"],
     ),
     AnnotationClassifier(
-        name="marked_merge_request_ready",
+        name="mark_merge_request_as_ready",
         patterns=[r"^marked this merge request as \*\*ready\*\*$"],
     ),
     AnnotationClassifier(
-        name="marked_merge_request_note",
+        name="mark_merge_request_note_as_draft",
         patterns=[r"^marked this merge request as \*\*draft\*\*$"],
     ),
+    # TODO: allow n reviewers
     AnnotationClassifier(
-        name="requested_review",
+        name="request_review",
         patterns=[
             r"^requested review from @(?P<user_name>.*)$",
             r"^requested review from @(?P<user_name>.*) and @(?P<user_name2>.*)$",
         ],
     ),
+    # TODO: allow n reviewers
     AnnotationClassifier(
         name="cancel_review_request",
         patterns=[r"^removed review request for @(?P<user_name>.*)$"],
@@ -410,25 +412,25 @@ CLASSIFIERS = [
         name="mention_in_epic", patterns=[r"^mentioned in epic &(?P<noteable_iid>\d+)$"]
     ),
     AnnotationClassifier(
-        name="reassigned",
+        name="reassign_user",
         patterns=[
             r"^reassigned to @(?P<user_name>.*)$",
         ],
     ),
     AnnotationClassifier(
-        name="merge_request_removed",
+        name="remove_merge_request_from_merge_train",
         patterns=[
             r"^removed this merge request from the merge train because no stages / jobs for this pipeline.$"
         ],
     ),
     AnnotationClassifier(
-        name="merge_train_started",
+        name="start_merge_train",
         patterns=[
             r"^started a merge train$",
         ],
     ),
     AnnotationClassifier(
-        name="automatic_add_to_merge_train_enabled",
+        name="enable_automatic_add_to_merge_train",
         patterns=[
             r"^enabled automatic add to merge train when the pipeline for (?P<pipeline_commit_sha>[0-9a-z]+) succeeds$",
         ],

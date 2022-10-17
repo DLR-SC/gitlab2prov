@@ -58,7 +58,7 @@ Both entities are attributed to the author of the commit, the actor responsible 
 
 **`Author`**
 | Attribute  | Fixed Value | Description                                              |
-|------------|-------------|----------------------------------------------------------|
+| ---------- | ----------- | -------------------------------------------------------- |
 | name       | -           | `git config user.name` Set in the author's git config.   |
 | email      | -           | `git config user.email` Set in the author's git config.  |
 | prov:role  | Author      | Function of the agent in context of the commit activity. |
@@ -68,7 +68,7 @@ Both entities are attributed to the author of the commit, the actor responsible 
 
 **`Committer`**
 | Attribute  | Fixed Value | Description                                              |
-|------------|-------------|----------------------------------------------------------|
+| ---------- | ----------- | -------------------------------------------------------- |
 | name       | -           | `git config user.name` Set in the author's git config.   |
 | email      | -           | `git config user.email` Set in the author's git config.  |
 | prov:role  | Committer   | Function of the agent in context of the commit activity. |
@@ -78,7 +78,7 @@ Both entities are attributed to the author of the commit, the actor responsible 
 
 **`Commit`**
 | Attribute      | Fixed Value             | Description                                 |
-|----------------|-------------------------|---------------------------------------------|
+| -------------- | ----------------------- | ------------------------------------------- |
 | hexsha         | -                       | Commit SHA1                                 |
 | message        | -                       | Commit message.                             |
 | title          | -                       | First 50 characters of the commit message.  |
@@ -89,22 +89,22 @@ Both entities are attributed to the author of the commit, the actor responsible 
 
 
 **`File`**
-| Attribute     | Fixed Value | Description                                                        |
-|---------------|-------------|--------------------------------------------------------------------|
-| path          | -           | Original file path. The path at which this file was first created. |
-| committed_in  | -           | SHA1 of the commit that added this file to the repository.         |
-| prov:type     | File        | Entity type.                                                       |
-| prov:label    | -           | Human readable representation of the entity.                       |
+| Attribute    | Fixed Value | Description                                                        |
+| ------------ | ----------- | ------------------------------------------------------------------ |
+| path         | -           | Original file path. The path at which this file was first created. |
+| committed_in | -           | SHA1 of the commit that added this file to the repository.         |
+| prov:type    | File        | Entity type.                                                       |
+| prov:label   | -           | Human readable representation of the entity.                       |
 
 
 **`File Revision`**
-| Attribute     | Fixed Value  | Description                                                                  |
-|---------------|--------------|------------------------------------------------------------------------------|
-| path          | -            | Current file path of this revision.                                          |
-| committed_in  | -            | SHA1 of the commit that added this revision to the repository.               |
-| change_type   | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
-| prov:type     | FileRevision | Entity type.                                                                 |
-| prov:label    | -            | Human readable representation of the entity.                                 |
+| Attribute    | Fixed Value  | Description                                                                  |
+| ------------ | ------------ | ---------------------------------------------------------------------------- |
+| path         | -            | Current file path of this revision.                                          |
+| committed_in | -            | SHA1 of the commit that added this revision to the repository.               |
+| change_type  | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
+| prov:type    | FileRevision | Entity type.                                                                 |
+| prov:label   | -            | Human readable representation of the entity.                                 |
 
 
 Some PROV relations in this model are "qualified" relations.
@@ -114,27 +114,27 @@ The following tables define the attributes attached to these relations.
 
 **`File - [wasGeneratedBy] -> Commit`**
 | Attribute | Fixed Value          | Description                                                    |
-|-----------|----------------------|----------------------------------------------------------------|
+| --------- | -------------------- | -------------------------------------------------------------- |
 | prov:role | File                 | Function of the File entity in context of the Commit activity. |
 | prov:time | `COMMIT_AUTHOR_DATE` | Time at which the File entity was generated.                   |
 
 
 **`File Revision - [wasGeneratedBy] -> Commit`**
 | Attribute | Fixed Value                   | Description                                                            |
-|-----------|-------------------------------|------------------------------------------------------------------------|
+| --------- | ----------------------------- | ---------------------------------------------------------------------- |
 | prov:role | FileRevisionAtPointOfAddition | Function of the FileRevision entity in context of the Commit activity. |
 | prov:time | `COMMIT_AUTHOR_DATE`          | Time at which the FileRevision entity was generated.                   |
 
 
 **`Commit - [wasAssociatedWith] -> Author`**
 | Attribute | Fixed Value | Description                                                     |
-|-----------|-------------|-----------------------------------------------------------------|
+| --------- | ----------- | --------------------------------------------------------------- |
 | prov:role | Author      | Function of the Author agent in context of the Commit activity. |
 
 
 **`Commit - [wasAssociatedWith] -> Committer`**
 | Attribute | Fixed Value | Description                                                        |
-|-----------|-------------|--------------------------------------------------------------------|
+| --------- | ----------- | ------------------------------------------------------------------ |
 | prov:role | Committer   | Function of the Committer agent in context of the Commit activity. |
 
 
@@ -167,7 +167,7 @@ All revisions are marked as specializations of the File entity.
 
 **`Author`**
 | Attribute  | Fixed Value | Description                                              |
-|------------|-------------|----------------------------------------------------------|
+| ---------- | ----------- | -------------------------------------------------------- |
 | name       | -           | `git config user.name` Set in the author's git config.   |
 | email      | -           | `git config user.email` Set in the author's git config.  |
 | prov:role  | Author      | Function of the agent in context of the commit activity. |
@@ -177,7 +177,7 @@ All revisions are marked as specializations of the File entity.
 
 **`Committer`**
 | Attribute  | Fixed Value | Description                                              |
-|------------|-------------|----------------------------------------------------------|
+| ---------- | ----------- | -------------------------------------------------------- |
 | name       | -           | `git config user.name` Set in the author's git config.   |
 | email      | -           | `git config user.email` Set in the author's git config.  |
 | prov:role  | Committer   | Function of the agent in context of the commit activity. |
@@ -186,44 +186,44 @@ All revisions are marked as specializations of the File entity.
 
 
 **`Commit`**
-| Attribute      | Fixed Value             | Description                                 |
-|----------------|-------------------------|---------------------------------------------|
-| hexsha         | -                       | Commit SHA1                                 |
-| message        | -                       | Commit message.                             |
-| title          | -                       | First 50 characters of the commit message.  |
-| prov:startTime | `COMMIT_AUTHOR_DATE`    | Time at which the commit activity started.  |
-| prov:endTime   | `COMMIT_COMMITTER_DATE` | Time at which the commit activity ended.    |
-| prov:type      | GitCommit               | Activity type.                              |
+| Attribute      | Fixed Value             | Description                                    |
+| -------------- | ----------------------- | ---------------------------------------------- |
+| hexsha         | -                       | Commit SHA1                                    |
+| message        | -                       | Commit message.                                |
+| title          | -                       | First 50 characters of the commit message.     |
+| prov:startTime | `COMMIT_AUTHOR_DATE`    | Time at which the commit activity started.     |
+| prov:endTime   | `COMMIT_COMMITTER_DATE` | Time at which the commit activity ended.       |
+| prov:type      | GitCommit               | Activity type.                                 |
 | prov:label     | -                       | Human readable representation of the activity. |
 
 
 **`File`**
-| Attribute     | Fixed Value | Description                                                        |
-|---------------|-------------|--------------------------------------------------------------------|
-| path          | -           | Original file path. The path at which this file was first created. |
-| committed_in  | -           | SHA1 of the commit that added this file to the repository.         |
-| prov:type     | File        | Entity type.                                                       |
-| prov:label    | -           | Human readable representation of the entity.                       |
+| Attribute    | Fixed Value | Description                                                        |
+| ------------ | ----------- | ------------------------------------------------------------------ |
+| path         | -           | Original file path. The path at which this file was first created. |
+| committed_in | -           | SHA1 of the commit that added this file to the repository.         |
+| prov:type    | File        | Entity type.                                                       |
+| prov:label   | -           | Human readable representation of the entity.                       |
 
 
 **`File Revision`**
-| Attribute     | Fixed Value  | Description                                                                  |
-|---------------|--------------|------------------------------------------------------------------------------|
-| path          | -            | Current file path of this revision.                                          |
-| committed_in  | -            | SHA1 of the commit that added this revision to the repository.               |
-| change_type   | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
-| prov:type     | FileRevision | Entity type.                                                                 |
-| prov:label    | -            | Human readable representation of the entity.                                 |
+| Attribute    | Fixed Value  | Description                                                                  |
+| ------------ | ------------ | ---------------------------------------------------------------------------- |
+| path         | -            | Current file path of this revision.                                          |
+| committed_in | -            | SHA1 of the commit that added this revision to the repository.               |
+| change_type  | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
+| prov:type    | FileRevision | Entity type.                                                                 |
+| prov:label   | -            | Human readable representation of the entity.                                 |
 
 
 **`Previous File Revision`**
-| Attribute     | Fixed Value  | Description                                                                  |
-|---------------|--------------|------------------------------------------------------------------------------|
-| path          | -            | Current file path of this revision.                                          |
-| committed_in  | -            | SHA1 of the commit that added this revision to the repository.               |
-| change_type   | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
-| prov:type     | FileRevision | Entity type.                                                                 |
-| prov:label    | -            | Human readable representation of the entity.                                 |
+| Attribute    | Fixed Value  | Description                                                                  |
+| ------------ | ------------ | ---------------------------------------------------------------------------- |
+| path         | -            | Current file path of this revision.                                          |
+| committed_in | -            | SHA1 of the commit that added this revision to the repository.               |
+| change_type  | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
+| prov:type    | FileRevision | Entity type.                                                                 |
+| prov:label   | -            | Human readable representation of the entity.                                 |
 
 Some PROV relations in this model are "qualified" relations.
 In simple terms: Some PROV relations have attributes attached to them.
@@ -232,27 +232,27 @@ The following tables define the attributes attached to these relations.
 
 **`Commit - [used] -> Previous File Revision`**
 | Attribute | Fixed Value                    | Description                                                    |
-|-----------|--------------------------------|----------------------------------------------------------------|
+| --------- | ------------------------------ | -------------------------------------------------------------- |
 | prov:role | FileRevisionBeforeModification | Function of the File entity in context of the Commit activity. |
 | prov:time | `COMMIT_AUTHOR_DATE`           | Time at which the File entity was used.                        |
 
 
 **`File Revision - [wasGeneratedBy] -> Commit`**
 | Attribute | Fixed Value                   | Description                                                    |
-|-----------|-------------------------------|----------------------------------------------------------------|
+| --------- | ----------------------------- | -------------------------------------------------------------- |
 | prov:role | FileRevisionAfterModification | Function of the File entity in context of the Commit activity. |
 | prov:time | `COMMIT_AUTHOR_DATE`          | Time at which the File entity was generated.                   |
 
 
 **`Commit - [wasAssociatedWith] -> Author`**
 | Attribute | Fixed Value | Description                                                     |
-|-----------|-------------|-----------------------------------------------------------------|
+| --------- | ----------- | --------------------------------------------------------------- |
 | prov:role | Author      | Function of the Author agent in context of the Commit activity. |
 
 
 **`Commit - [wasAssociatedWith] -> Committer`**
 | Attribute | Fixed Value | Description                                                        |
-|-----------|-------------|--------------------------------------------------------------------|
+| --------- | ----------- | ------------------------------------------------------------------ |
 | prov:role | Committer   | Function of the Committer agent in context of the Commit activity. |
 
 
@@ -281,7 +281,7 @@ The deleted revision is marked as a specialization of the original File entity.
 
 **`Author`**
 | Attribute  | Fixed Value | Description                                              |
-|------------|-------------|----------------------------------------------------------|
+| ---------- | ----------- | -------------------------------------------------------- |
 | name       | -           | `git config user.name` Set in the author's git config.   |
 | email      | -           | `git config user.email` Set in the author's git config.  |
 | prov:role  | Author      | Function of the agent in context of the commit activity. |
@@ -291,7 +291,7 @@ The deleted revision is marked as a specialization of the original File entity.
 
 **`Committer`**
 | Attribute  | Fixed Value | Description                                              |
-|------------|-------------|----------------------------------------------------------|
+| ---------- | ----------- | -------------------------------------------------------- |
 | name       | -           | `git config user.name` Set in the author's git config.   |
 | email      | -           | `git config user.email` Set in the author's git config.  |
 | prov:role  | Committer   | Function of the agent in context of the commit activity. |
@@ -301,7 +301,7 @@ The deleted revision is marked as a specialization of the original File entity.
 
 **`Commit`**
 | Attribute      | Fixed Value             | Description                                 |
-|----------------|-------------------------|---------------------------------------------|
+| -------------- | ----------------------- | ------------------------------------------- |
 | hexsha         | -                       | Commit SHA1                                 |
 | message        | -                       | Commit message.                             |
 | title          | -                       | First 50 characters of the commit message.  |
@@ -312,22 +312,22 @@ The deleted revision is marked as a specialization of the original File entity.
 
 
 **`File`**
-| Attribute     | Fixed Value | Description                                                        |
-|---------------|-------------|--------------------------------------------------------------------|
-| path          | -           | Original file path. The path at which this file was first created. |
-| committed_in  | -           | SHA1 of the commit that added this file to the repository.         |
-| prov:type     | File        | Entity type.                                                       |
-| prov:label    | -           | Human readable representation of the entity.                       |
+| Attribute    | Fixed Value | Description                                                        |
+| ------------ | ----------- | ------------------------------------------------------------------ |
+| path         | -           | Original file path. The path at which this file was first created. |
+| committed_in | -           | SHA1 of the commit that added this file to the repository.         |
+| prov:type    | File        | Entity type.                                                       |
+| prov:label   | -           | Human readable representation of the entity.                       |
 
 
 **`File Revision`**
-| Attribute     | Fixed Value  | Description                                                                  |
-|---------------|--------------|------------------------------------------------------------------------------|
-| path          | -            | Current file path of this revision.                                          |
-| committed_in  | -            | SHA1 of the commit that added this revision to the repository.               |
-| change_type   | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
-| prov:type     | FileRevision | Entity type.                                                                 |
-| prov:label    | -            | Human readable representation of the entity.                                 |
+| Attribute    | Fixed Value  | Description                                                                  |
+| ------------ | ------------ | ---------------------------------------------------------------------------- |
+| path         | -            | Current file path of this revision.                                          |
+| committed_in | -            | SHA1 of the commit that added this revision to the repository.               |
+| change_type  | -            | [`git diff`](https://git-scm.com/docs/git-diff) change type / change status. |
+| prov:type    | FileRevision | Entity type.                                                                 |
+| prov:label   | -            | Human readable representation of the entity.                                 |
 
 
 Some PROV relations in this model are "qualified" relations.
@@ -337,19 +337,19 @@ The following tables define the attributes attached to these relations.
 
 **`Commit - [wasAssociatedWith] -> Author`**
 | Attribute | Fixed Value | Description                                                     |
-|-----------|-------------|-----------------------------------------------------------------|
+| --------- | ----------- | --------------------------------------------------------------- |
 | prov:role | Author      | Function of the Author agent in context of the Commit activity. |
 
 
 **`Commit - [wasAssociatedWith] -> Committer`**
 | Attribute | Fixed Value | Description                                                        |
-|-----------|-------------|--------------------------------------------------------------------|
+| --------- | ----------- | ------------------------------------------------------------------ |
 | prov:role | Committer   | Function of the Committer agent in context of the Commit activity. |
 
 
 **`File Revision - [wasInvalidatedBy] -> Commit`**
 | Attribute | Fixed Value                   | Description                                                            |
-|-----------|-------------------------------|------------------------------------------------------------------------|
+| --------- | ----------------------------- | ---------------------------------------------------------------------- |
 | prov:time | `COMMIT_AUTHOR_DATE`          | Time at which the FileRevision entity was invalidated.                 |
 | prov:role | FileRevisionAtPointOfDeletion | Function of the FileRevision entity in context of the Commit activity. |
 
@@ -393,7 +393,7 @@ Each annotated commit version is attributed to its annotator.
 
 **`Gitlab Commit Author`**
 | Attribute  | Fixed Value        | Description                                              |
-|------------|--------------------|----------------------------------------------------------|
+| ---------- | ------------------ | -------------------------------------------------------- |
 | name       | -                  | `git config user.name` Set in the author's git config.   |
 | email      | -                  | `git config user.email` Set in the author's git config.  |
 | prov:role  | GitlabCommitAuthor | Function of the agent in context of the commit activity. |
@@ -403,7 +403,7 @@ Each annotated commit version is attributed to its annotator.
 
 **`Annotator`**
 | Attribute       | Fixed Value | Description                                                    |
-|-----------------|-------------|----------------------------------------------------------------|
+| --------------- | ----------- | -------------------------------------------------------------- |
 | name            | -           | Annotator given name. As set in the annotators GitLab profile. |
 | gitlab_username | -           | GitLab username. As set in the annotators GitLab profile.      |
 | gitlab_id       | -           | Gitlab internal user id.                                       |
@@ -414,7 +414,7 @@ Each annotated commit version is attributed to its annotator.
 
 **`Git Commit`**
 | Attribute      | Fixed Value             | Description                                    |
-|----------------|-------------------------|------------------------------------------------|
+| -------------- | ----------------------- | ---------------------------------------------- |
 | hexsha         | -                       | Commit SHA1                                    |
 | message        | -                       | Commit message.                                |
 | title          | -                       | First 50 characters of the commit message.     |
@@ -426,7 +426,7 @@ Each annotated commit version is attributed to its annotator.
 
 **`Creation`**
 | Attribute      | Fixed Value             | Description                                     |
-|----------------|-------------------------|-------------------------------------------------|
+| -------------- | ----------------------- | ----------------------------------------------- |
 | creation_id    | -                       | SHA1 of the commit that triggered the creation. |
 | prov:startTime | `COMMIT_COMMITTER_DATE` | Time at which the web resource was created.     |
 | prov:endTime   | `COMMIT_COMMITTER_DATE` | Time at which the web resource was created.     |
@@ -436,7 +436,7 @@ Each annotated commit version is attributed to its annotator.
 
 **`Annotation`**
 | Attribute      | Fixed Value | Description                                                                   |
-|----------------|-------------|-------------------------------------------------------------------------------|
+| -------------- | ----------- | ----------------------------------------------------------------------------- |
 | id             | -           | Internal GitLab ID of the datastructure from which the annotation was parsed. |
 | type           | -           | Annotation type. Parsed from the annotation body.                             |
 | body           | -           | Annotation string. The string from which the type is parsed.                  |
@@ -454,7 +454,7 @@ All recognized annotation types are listed in the "Annotations" section of this 
 
 **`Commit`**
 | Attribute  | Fixed Value | Description                                           |
-|------------|-------------|-------------------------------------------------------|
+| ---------- | ----------- | ----------------------------------------------------- |
 | hexsha     | -           | Commit SHA1.                                          |
 | url        | -           | URL to the webpage of the gitlab commit web resource. |
 | prov:type  | Resource    | Entity type.                                          |
@@ -463,7 +463,7 @@ All recognized annotation types are listed in the "Annotations" section of this 
 
 **`Commit Version`**
 | Attribute  | Fixed Value               | Description                                  |
-|------------|---------------------------|----------------------------------------------|
+| ---------- | ------------------------- | -------------------------------------------- |
 | version_id | -                         | Commit SHA1.                                 |
 | prov:type  | ResourceAtPointOfAddition | Entity type.                                 |
 | prov:label | -                         | Human readable representation of the entity. |
@@ -471,7 +471,7 @@ All recognized annotation types are listed in the "Annotations" section of this 
 
 **`Annotated Commit Version`**
 | Attribute     | Fixed Value              | Description                                  |
-|---------------|--------------------------|----------------------------------------------|
+| ------------- | ------------------------ | -------------------------------------------- |
 | version_id    | -                        | Commit SHA1.                                 |
 | annotation_id | -                        | Gitlab annotation id.                        |
 | prov:type     | AnnotatedResourceVersion | Entity type.                                 |
@@ -485,40 +485,40 @@ The following tables define the attributes attached to these relations.
 
 **`Creation - [wasAssociatedWith] -> Gitlab Commit Author`**
 | Attribute | Fixed Value        | Description                                                                   |
-|-----------|--------------------|-------------------------------------------------------------------------------|
+| --------- | ------------------ | ----------------------------------------------------------------------------- |
 | prov:role | GitlabCommitAuthor | Function of the Gitlab Commit Author agent in context of the Commit activity. |
 
 
 **` Annotation - [wasAssociatedWith] -> Annotator`**
 | Attribute | Fixed Value | Description                                                        |
-|-----------|-------------|--------------------------------------------------------------------|
+| --------- | ----------- | ------------------------------------------------------------------ |
 | prov:role | Annotator   | Function of the Annotator agent in context of the Commit activity. |
 
 
 **`Commit - [wasGeneratedBy] -> Creation`**
 | Attribute | Fixed Value            | Description                                                      |
-|-----------|------------------------|------------------------------------------------------------------|
+| --------- | ---------------------- | ---------------------------------------------------------------- |
 | prov:role | GitlabCommitCreation   | Function of the Commit entity in context of the Commit activity. |
 | prov:time | `COMMIT_COMMITER_DATE` | Time at which the Commit entity was generated.                   |
 
 
 **`Commit Version - [wasGeneratedBy] -> Creation`**
 | Attribute | Fixed Value            | Description                                                              |
-|-----------|------------------------|--------------------------------------------------------------------------|
+| --------- | ---------------------- | ------------------------------------------------------------------------ |
 | prov:role | GitlabCommitVersion    | Function of the Commit Version entity in context of the Commit activity. |
 | prov:time | `COMMIT_COMMITER_DATE` | Time at which the Commit Version entity was generated.                   |
 
 
 **`Annotated Commit Version - [wasGeneratedBy] -> Creation`**
 | Attribute | Fixed Value                  | Description                                                      |
-|-----------|------------------------------|------------------------------------------------------------------|
+| --------- | ---------------------------- | ---------------------------------------------------------------- |
 | prov:role | AnnotatedGitlabCommitVersion | Function of the commit entity in context of the commit activity. |
 | prov:time | -                            | Time at which the annotated commit version entity was generated. |
 
 
 **`Annotated Commit Version - [used] -> Creation`**
 | Attribute | Fixed Value                                       | Description                                                      |
-|-----------|---------------------------------------------------|------------------------------------------------------------------|
+| --------- | ------------------------------------------------- | ---------------------------------------------------------------- |
 | prov:role | AnnotatedGitlabCommitVersion, GitlabCommitVersion | Function of the commit entity in context of the commit activity. |
 | prov:time | -                                                 | Time at which the annotated commit version entity was generated. |
 
@@ -559,8 +559,8 @@ Each annotated issue version is attributed to its annotator.
 
 **`Issue Author`**
 | Attribute       | Fixed Value | Description                                              |
-|-----------------|-------------|----------------------------------------------------------|
-| name            | -           | Author name. As set in the authors gitlab profile. |
+| --------------- | ----------- | -------------------------------------------------------- |
+| name            | -           | Author name. As set in the authors gitlab profile.       |
 | gitlab_username | -           | GitLab username. As set in the authors gitlab profile.   |
 | gitlab_id       | -           | Gitlab internal user id.                                 |
 | prov:role       | IssueAuthor | Function of the agent in context of the commit activity. |
@@ -570,7 +570,7 @@ Each annotated issue version is attributed to its annotator.
 
 **`Annotator`**
 | Attribute       | Fixed Value | Description                                                    |
-|-----------------|-------------|----------------------------------------------------------------|
+| --------------- | ----------- | -------------------------------------------------------------- |
 | name            | -           | Annotator given name. As set in the annotators gitlab profile. |
 | gitlab_username | -           | GitLab username. As set in the annotators gitlab profile.      |
 | gitlab_id       | -           | Gitlab internal user id.                                       |
@@ -580,18 +580,18 @@ Each annotated issue version is attributed to its annotator.
 
 
 **`Creation`**
-| Attribute      | Fixed Value   | Description                                     |
-|----------------|---------------|-------------------------------------------------|
-| creation_id    | -             | Gitlab issue id. |
-| prov:startTime | -             | Time at which the web resource was created.     |
-| prov:endTime   | -             | Time at which the web resource was created.     |
-| prov:type      | IssueCreation | Activity type.                                  |
-| prov:label     | -             | Human readable representation of the activity.  |
+| Attribute      | Fixed Value   | Description                                    |
+| -------------- | ------------- | ---------------------------------------------- |
+| creation_id    | -             | Gitlab issue id.                               |
+| prov:startTime | -             | Time at which the web resource was created.    |
+| prov:endTime   | -             | Time at which the web resource was created.    |
+| prov:type      | IssueCreation | Activity type.                                 |
+| prov:label     | -             | Human readable representation of the activity. |
 
 
 **`Annotation`**
 | Attribute      | Fixed Value | Description                                                                   |
-|----------------|-------------|-------------------------------------------------------------------------------|
+| -------------- | ----------- | ----------------------------------------------------------------------------- |
 | id             | -           | Internal gitlab id of the datastructure from which the annotation was parsed. |
 | type           | -           | Annotation type. Parsed from the annotation body.                             |
 | body           | -           | Annotation string. The string from which the type is parsed.                  |
@@ -609,7 +609,7 @@ All recognized annotation types are listed in the "Annotations" section of this 
 
 **`Issue`**
 | Attribute   | Fixed Value | Description                                  |
-|-------------|-------------|----------------------------------------------|
+| ----------- | ----------- | -------------------------------------------- |
 | id          | -           | Gitlab issue ID.                             |
 | iid         | -           | Internal Gitlab issue ID.                    |
 | title       | -           | Issue title.                                 |
@@ -623,7 +623,7 @@ All recognized annotation types are listed in the "Annotations" section of this 
 
 **`Issue Version`**
 | Attribute  | Fixed Value  | Description                                  |
-|------------|--------------|----------------------------------------------|
+| ---------- | ------------ | -------------------------------------------- |
 | version_id | -            | Gitlab id of the issue.                      |
 | prov:type  | IssueVersion | Entity type.                                 |
 | prov:label | -            | Human readable representation of the entity. |
@@ -631,7 +631,7 @@ All recognized annotation types are listed in the "Annotations" section of this 
 
 **`Annotated Issue Version`**
 | Attribute     | Fixed Value           | Description                                                       |
-|---------------|-----------------------|-------------------------------------------------------------------|
+| ------------- | --------------------- | ----------------------------------------------------------------- |
 | version_id    | -                     | Gitlab id of the issue.                                           |
 | annotation_id | -                     | Gitlab id of the annotation that generated the annotated version. |
 | prov:type     | AnnotatedIssueVersion | Entity type.                                                      |
@@ -645,40 +645,40 @@ The following tables define the attributes attached to these relations.
 
 **`Creation - [wasAssociatedWith] -> Issue Author`**
 | Attribute | Fixed Value | Description                                                             |
-|-----------|-------------|-------------------------------------------------------------------------|
+| --------- | ----------- | ----------------------------------------------------------------------- |
 | prov:role | IssueAuthor | Function of the issue author agent in context of the creation activity. |
 
 
 **`Annotation - [wasAssociatedWith] -> Annotator`**
 | Attribute | Fixed Value | Description                                                            |
-|-----------|-------------|------------------------------------------------------------------------|
+| --------- | ----------- | ---------------------------------------------------------------------- |
 | prov:role | Annotator   | Function of the annotator agent in context of the annotation activity. |
 
 
 **`Issue - [wasGeneratedBy] -> Creation`**
 | Attribute | Fixed Value | Description                                                       |
-|-----------|-------------|-------------------------------------------------------------------|
+| --------- | ----------- | ----------------------------------------------------------------- |
 | prov:role | Resource    | Function of the issue entity in context of the creation activity. |
 | prov:time | -           | Time at which the issue entity was generated.                     |
 
 
 **`Issue Version - [wasGeneratedBy] -> Creation`**
 | Attribute | Fixed Value                      | Description                                                       |
-|-----------|----------------------------------|-------------------------------------------------------------------|
+| --------- | -------------------------------- | ----------------------------------------------------------------- |
 | prov:role | ResourceVersionAtPointOfCreation | Function of the issue entity in context of the creation activity. |
 | prov:time | -                                | Time at which the issue version entity was generated.             |
 
 
 **`Annotated Issue Version - [wasGeneratedBy] -> Annotation`**
 | Attribute | Fixed Value                    | Description                                                       |
-|-----------|--------------------------------|-------------------------------------------------------------------|
+| --------- | ------------------------------ | ----------------------------------------------------------------- |
 | prov:role | ResourceVersionAfterAnnotation | Function of the issue entity in context of the creation activity. |
 | prov:time | -                              | Time at which the annotated issue version entity was generated.   |
 
 
 **`Annotation - [used] -> Issue Version`**
 | Attribute | Fixed Value                  | Description                                                       |
-|-----------|------------------------------|-------------------------------------------------------------------|
+| --------- | ---------------------------- | ----------------------------------------------------------------- |
 | prov:role | ResourceVersionToBeAnnotated | Function of the issue entity in context of the creation activity. |
 | prov:time | -                            | Time at which the issue version entity was generated.             |
 
@@ -718,7 +718,7 @@ Each annotated merge request version is attributed to its annotator.
 
 **`Merge Request Author`**
 | Attribute       | Fixed Value        | Description                                                     |
-|-----------------|--------------------|-----------------------------------------------------------------|
+| --------------- | ------------------ | --------------------------------------------------------------- |
 | name            | -                  | Author name. As set in the authors GitLab profile.              |
 | gitlab_username | -                  | GitLab username. As set in the authors GitLab profile.          |
 | gitlab_id       | -                  | Gitlab user id.                                                 |
@@ -729,7 +729,7 @@ Each annotated merge request version is attributed to its annotator.
 
 **`Annotator`**
 | Attribute       | Fixed Value | Description                                                     |
-|-----------------|-------------|-----------------------------------------------------------------|
+| --------------- | ----------- | --------------------------------------------------------------- |
 | name            | -           | Annotator given name. As set in the annotators GitLab profile.  |
 | gitlab_username | -           | GitLab username. As set in the annotators GitLab profile.       |
 | gitlab_id       | -           | Gitlab user id.                                                 |
@@ -740,7 +740,7 @@ Each annotated merge request version is attributed to its annotator.
 
 **`Creation`**
 | Attribute      | Fixed Value          | Description                                    |
-|----------------|----------------------|------------------------------------------------|
+| -------------- | -------------------- | ---------------------------------------------- |
 | creation_id    | -                    | Gitlab merge request id.                       |
 | prov:startTime | -                    | Time at which the web resource was created.    |
 | prov:endTime   | -                    | Time at which the web resource was created.    |
@@ -750,7 +750,7 @@ Each annotated merge request version is attributed to its annotator.
 
 **`Annotation`**
 | Attribute      | Fixed Value | Description                                                                   |
-|----------------|-------------|-------------------------------------------------------------------------------|
+| -------------- | ----------- | ----------------------------------------------------------------------------- |
 | id             | -           | Internal gitLab id of the datastructure from which the annotation was parsed. |
 | type           | -           | Annotation type. Parsed from the annotation body.                             |
 | body           | -           | Annotation string. The string from which the type is parsed.                  |
@@ -768,7 +768,7 @@ All recognized annotation types are listed in the "Annotations" section of this 
 
 **`Merge Request`**
 | Attribute                       | Fixed Value  | Description                                                       |
-|---------------------------------|--------------|-------------------------------------------------------------------|
+| ------------------------------- | ------------ | ----------------------------------------------------------------- |
 | id                              | -            | Gitlab merge request id.                                          |
 | iid                             | -            | Internal gitlab merge request id.                                 |
 | title                           | -            | Issue title.                                                      |
@@ -786,7 +786,7 @@ All recognized annotation types are listed in the "Annotations" section of this 
 
 **`Merge Request Version`**
 | Attribute  | Fixed Value               | Description                                  |
-|------------|---------------------------|----------------------------------------------|
+| ---------- | ------------------------- | -------------------------------------------- |
 | version_id | -                         | Gitlab id of the merge request.              |
 | prov:type  | GitlabMergeRequestVersion | Entity type.                                 |
 | prov:label | -                         | Human readable representation of the entity. |
@@ -794,7 +794,7 @@ All recognized annotation types are listed in the "Annotations" section of this 
 
 **`Annotated Merge Request Version`**
 | Attribute     | Fixed Value                  | Description                                                       |
-|---------------|------------------------------|-------------------------------------------------------------------|
+| ------------- | ---------------------------- | ----------------------------------------------------------------- |
 | version_id    | -                            | Gitlab id of the merge request.                                   |
 | annotation_id | -                            | Gitlab id of the annotation that generated the annotated version. |
 | prov:type     | AnnotatedMergeRequestVersion | Entity type.                                                      |
@@ -807,41 +807,41 @@ The following tables define the attributes attached to these relations.
 
 
 **`Creation - [wasAssociatedWith] -> Merge Request Author`**
-| Attribute | Fixed Value | Description                                                             |
-|-----------|-------------|-------------------------------------------------------------------------|
+| Attribute | Fixed Value | Description                                                                     |
+| --------- | ----------- | ------------------------------------------------------------------------------- |
 | prov:role | IssueAuthor | Function of the merge request author agent in context of the creation activity. |
 
 
 **`Annotation - [wasAssociatedWith] -> Annotator`**
 | Attribute | Fixed Value | Description                                                            |
-|-----------|-------------|------------------------------------------------------------------------|
+| --------- | ----------- | ---------------------------------------------------------------------- |
 | prov:role | Annotator   | Function of the annotator agent in context of the annotation activity. |
 
 
 **`Merge Request - [wasGeneratedBy] -> Creation`**
 | Attribute | Fixed Value | Description                                                               |
-|-----------|-------------|---------------------------------------------------------------------------|
+| --------- | ----------- | ------------------------------------------------------------------------- |
 | prov:role | Resource    | Function of the merge request entity in context of the creation activity. |
 | prov:time | -           | Time at which the merge request entity was generated.                     |
 
 
 **`Merge Request Version - [wasGeneratedBy] -> Creation`**
 | Attribute | Fixed Value                      | Description                                                               |
-|-----------|----------------------------------|---------------------------------------------------------------------------|
+| --------- | -------------------------------- | ------------------------------------------------------------------------- |
 | prov:role | ResourceVersionAtPointOfCreation | Function of the merge request entity in context of the creation activity. |
 | prov:time | -                                | Time at which the merge request version entity was generated.             |
 
 
 **`Annotated Merge Request Version - [wasGeneratedBy] -> Annotation`**
 | Attribute | Fixed Value                    | Description                                                               |
-|-----------|--------------------------------|---------------------------------------------------------------------------|
+| --------- | ------------------------------ | ------------------------------------------------------------------------- |
 | prov:role | ResourceVersionAfterAnnotation | Function of the merge request entity in context of the creation activity. |
 | prov:time | -                              | Time at which the annotated merge request version entity was generated.   |
 
 
 **`Annotation - [used] -> Merge Request Version`**
 | Attribute | Fixed Value                  | Description                                                               |
-|-----------|------------------------------|---------------------------------------------------------------------------|
+| --------- | ---------------------------- | ------------------------------------------------------------------------- |
 | prov:role | ResourceVersionToBeAnnotated | Function of the merge request entity in context of the creation activity. |
 | prov:time | -                            | Time at which the merge request version entity was generated.             |
 
@@ -873,7 +873,7 @@ The commit is generated by the commit creation activity.
 
 **`Asset`**
 | Attribute  | Fixed Value | Description                                  |
-|------------|-------------|----------------------------------------------|
+| ---------- | ----------- | -------------------------------------------- |
 | url        | -           | Asset URL.                                   |
 | format     | -           | Asset format.                                |
 | prov:type  | Asset       | Entity type.                                 |
@@ -882,7 +882,7 @@ The commit is generated by the commit creation activity.
 
 **`Evidence`**
 | Attribute    | Fixed Value | Description                                  |
-|--------------|-------------|----------------------------------------------|
+| ------------ | ----------- | -------------------------------------------- |
 | hexsha       | -           | Evidence SHA.                                |
 | url          | -           | Evidence URL.                                |
 | collected_at | -           | Time at which the evidence was generated.    |
@@ -892,7 +892,7 @@ The commit is generated by the commit creation activity.
 
 **`Commit`**
 | Attribute  | Fixed Value | Description                                  |
-|------------|-------------|----------------------------------------------|
+| ---------- | ----------- | -------------------------------------------- |
 | hexsha     | -           | Commit SHA1                                  |
 | message    | -           | Commit message.                              |
 | title      | -           | First 50 characters of the commit message.   |
@@ -902,32 +902,32 @@ The commit is generated by the commit creation activity.
 
 **`Tag`**
 | Attribute  | Fixed Value     | Description                                       |
-|------------|-----------------|---------------------------------------------------|
+| ---------- | --------------- | ------------------------------------------------- |
 | name       | -               | Tag name.                                         |
 | hexsha     | -               | Commit SHA1 of the commit that pushed the tag.    |
 | message    | -               | Commit message of the commit that pushed the tag. |
 | created_at | -               | Time at which the tag was created.                |
 | prov:type  | Tag             | Entity type.                                      |
 | prov:type  | prov:Collection | Entity type.                                      |
-| prov:label | -               | Human readable representation of the entity.    |
+| prov:label | -               | Human readable representation of the entity.      |
 
 
 **`Release`**
-| Attribute   | Fixed Value     | Description                                    |
-|-------------|-----------------|------------------------------------------------|
-| name        | -               | Release name.                                  |
-| description | -               | Release description.                           |
-| tag_name    | -               | Release tag name.                              |
-| created_at  | -               | Time at which the release was created.         |
-| released_at | -               | Time at which the release was released.        |
-| prov:type   | Tag             | Entity type.                                   |
-| prov:type   | prov:Collection | Entity type.                                   |
+| Attribute   | Fixed Value     | Description                                  |
+| ----------- | --------------- | -------------------------------------------- |
+| name        | -               | Release name.                                |
+| description | -               | Release description.                         |
+| tag_name    | -               | Release tag name.                            |
+| created_at  | -               | Time at which the release was created.       |
+| released_at | -               | Time at which the release was released.      |
+| prov:type   | Tag             | Entity type.                                 |
+| prov:type   | prov:Collection | Entity type.                                 |
 | prov:label  | -               | Human readable representation of the entity. |
 
 
 **`Commit Author`**
 | Attribute  | Fixed Value | Description                                              |
-|------------|-------------|----------------------------------------------------------|
+| ---------- | ----------- | -------------------------------------------------------- |
 | name       | -           | `git config user.name` Set in the author's git config.   |
 | email      | -           | `git config user.email` Set in the author's git config.  |
 | prov:role  | Author      | Function of the agent in context of the commit activity. |
@@ -937,7 +937,7 @@ The commit is generated by the commit creation activity.
 
 **`Tag Author`**
 | Attribute  | Fixed Value | Description                                                    |
-|------------|-------------|----------------------------------------------------------------|
+| ---------- | ----------- | -------------------------------------------------------------- |
 | name       | -           | `git config user.name` Set in the author's git config.         |
 | email      | -           | `git config user.email` Set in the author's git config.        |
 | prov:role  | Author      | Function of the agent in context of the tag creation activity. |
@@ -947,7 +947,7 @@ The commit is generated by the commit creation activity.
 
 **`Release Author`**
 | Attribute       | Fixed Value   | Description                                                                                      |
-|-----------------|---------------|--------------------------------------------------------------------------------------------------|
+| --------------- | ------------- | ------------------------------------------------------------------------------------------------ |
 | name            | -             | Author name. As set in the authors GitLab profile. Only available if the token has admin rights. |
 | email           | -             | Author email. Set in the author's git config. Only available if the token has admin rights.      |
 | gitlab_username | -             | GitLab username. As set in the authors GitLab profile.                                           |
@@ -959,7 +959,7 @@ The commit is generated by the commit creation activity.
 
 **`Commit Creation`**
 | Attribute      | Fixed Value    | Description                                    |
-|----------------|----------------|------------------------------------------------|
+| -------------- | -------------- | ---------------------------------------------- |
 | creation_id    | -              | Commit SHA1.                                   |
 | prov:startTime | -              | Time at which the commit was created.          |
 | prov:endTime   | -              | Time at which the commit was created.          |
@@ -969,7 +969,7 @@ The commit is generated by the commit creation activity.
 
 **`Tag Creation`**
 | Attribute      | Fixed Value | Description                                    |
-|----------------|-------------|------------------------------------------------|
+| -------------- | ----------- | ---------------------------------------------- |
 | creation_id    | -           | Tag name.                                      |
 | prov:startTime | -           | Time at which the tag was created.             |
 | prov:endTime   | -           | Time at which the tag was created.             |
@@ -979,7 +979,7 @@ The commit is generated by the commit creation activity.
 
 **`Release Creation`**
 | Attribute      | Fixed Value     | Description                                    |
-|----------------|-----------------|------------------------------------------------|
+| -------------- | --------------- | ---------------------------------------------- |
 | creation_id    | -               | Tag name.                                      |
 | prov:startTime | -               | Time at which the release was created.         |
 | prov:endTime   | -               | Time at which the release was realeased.       |
@@ -993,40 +993,40 @@ The following tables define the attributes attached to these relations.
 
 
 **`Release Creation - [wasAssociatedWith] -> Release Author`**
-| Attribute | Fixed Value | Description                                                             |
-|-----------|-------------|-------------------------------------------------------------------------|
+| Attribute | Fixed Value   | Description                                                                     |
+| --------- | ------------- | ------------------------------------------------------------------------------- |
 | prov:role | ReleaseAuthor | Function of the merge request author agent in context of the creation activity. |
 
 
 **`Tag Creation - [wasAssociatedWith] -> Tag Author`**
-| Attribute | Fixed Value | Description                                                             |
-|-----------|-------------|-------------------------------------------------------------------------|
-| prov:role | TagAuthor | Function of the merge request author agent in context of the creation activity. |
+| Attribute | Fixed Value | Description                                                                     |
+| --------- | ----------- | ------------------------------------------------------------------------------- |
+| prov:role | TagAuthor   | Function of the merge request author agent in context of the creation activity. |
 
 
 **`Commit Creation - [wasAssociatedWith] -> Commit Author`**
-| Attribute | Fixed Value | Description                                                             |
-|-----------|-------------|-------------------------------------------------------------------------|
-| prov:role | Author | Function of the merge request author agent in context of the creation activity. |
+| Attribute | Fixed Value | Description                                                                     |
+| --------- | ----------- | ------------------------------------------------------------------------------- |
+| prov:role | Author      | Function of the merge request author agent in context of the creation activity. |
 
 
 **`Release - [wasGeneratedBy] -> Release Creation`**
 | Attribute | Fixed Value | Description                                                                 |
-|-----------|-------------|-----------------------------------------------------------------------------|
+| --------- | ----------- | --------------------------------------------------------------------------- |
 | prov:role | Release     | Function of the release entity in context of the release creation activity. |
 | prov:time | -           | Time at which the release entity was generated.                             |
 
 
 **`Tag - [wasGeneratedBy] -> Tag Creation`**
 | Attribute | Fixed Value | Description                                                         |
-|-----------|-------------|---------------------------------------------------------------------|
+| --------- | ----------- | ------------------------------------------------------------------- |
 | prov:role | Tag         | Function of the tag entity in context of the tag creation activity. |
 | prov:time | -           | Time at which the tag entity was generated.                         |
 
 
 **`Commit - [wasGeneratedBy] -> Commit Creation`**
 | Attribute | Fixed Value | Description                                                               |
-|-----------|-------------|---------------------------------------------------------------------------|
+| --------- | ----------- | ------------------------------------------------------------------------- |
 | prov:role | Tag         | Function of the commit entity in context of the commit creation activity. |
 | prov:time | -           | Time at which the commit entity was generated.                            |
 
@@ -1062,66 +1062,86 @@ Here a list of annotations that we are currently able to parse with a short desc
 
 ### List of Annotations
 
-| Annotation Type                     | Description                                                                | Parsed API Resource |
-|-------------------------------------|----------------------------------------------------------------------------|---------------------|
-| `remove_label`                      | Removed label from a resource.                                             | Label Event         |
-| `add_label`                         | Added label to a resource.                                                 | Label Event         |
-| `award_emoji`                       | Awarded emoji to a resource or note.                                       | Award Emoji         |
-| `comment`                           | Note added to the discussion thread of the resource.                       | Note                |
-| `change_epic`                       | Exchanged epic that was attached to resource for another one.              | System Note         |
-| `remove_from_external_epic`         | Remove resource from an epic that stems from another project.              | System Note         |
-| `add_to_external_epic`              | Resource was added to an epic that belongs to another project.             | System Note         |
-| `remove_from_epic`                  | Resource was removed from an epic of the same project.                     | System Note         |
-| `add_to_epic`                       | Resource was added to an epic of the same project.                         | System Note         |
-| `close_by_external_commit`          | Closeable Resource was closed by a commit from another project.            | System Note         |
-| `close_by_external_merge_request`   | Closeable resource was closed by a merge request from another project.     | System Note         |
-| `close_by_merge_request`            | Closeable resource was closed by a merge request from the same project.    | System Note         |
-| `close_by_commit`                   | Closeable resource was closed by a commit from the same project.           | System Note         |
-| `restore_source_branch`             | TODO: what is this event?                                                  | System Note         |
-| `remove_label`                      | Removed label from a resource.                                             | System Note         |
-| `add_label`                         | Added label to a resource.                                                 | System Note         |
-| `create_branch`                     | Created branch for a merge request.                                        | System Note         |
-| `mark_task_as_incomplete`           | Unchecked a checked (completed) task.                                      | System Note         |
-| `mark_task_as_done`                 | Checked an uncompleted taks. This marks the task as done.                  | System Note         |
-| `add_commits`                       | Added commits to a merge request.                                          | System Note         |
-| `address_in_merge_request`          | Created a merge request from the commen thread of an issue.                | System Note         |
-| `unmark_as_work_in_progress`        | Reset the WIP status of a resource. (issues, merge requests)               | System Note         |
-| `mark_as_work_in_progress`          | Set the status of a resource to WIP. (issues, merge requests)              | System Note         |
-| `merge`                             | Merged a merge request.                                                    | System Note         |
-| `change_description`                | Changed the description of a resource. (issues, merge requests)            | System Note         |
-| `change_title`                      | Changed the title of a resource. (issues, merge requests)                  | System Note         |
-| `move_from`                         | Moved issue from another project to this project.                          | System Note         |
-| `move_to`                           | Moved issue from this project to another project.                          | System Note         |
-| `reopen`                            | Reopened a closeable resource.                                             | System Note         |
-| `close`                             | Closed a closeable resource.                                               | System Note         |
-| `unrelate_from_external_issue`      | Removed relation to an issue from another project.                         | System Note         |
-| `relate_to_external_issue`          | Added relation to an issue from another project.                           | System Note         |
-| `unrelate_from_issue`               | Removed relation to issue of the same project.                             | System Note         |
-| `relate_to_issue`                   | Added relation to issue of the same project.                               | System Note         |
-| `has_duplicate`                     | Mark another issue as a duplicate of this issue.                           | System Note         |
-| `mark_as_duplicate`                 | Mark this issue as a duplicate of another issue.                           | System Note         |
-| `make_visible`                      | Set the visibility status of the resource to unconfidential.               | System Note         |
-| `make_confidential`                 | Set the visibility status of the resource to confidential.                 | System Note         |
-| `remove_weight`                     | Removed the set weight of the resource.                                    | System Note         |
-| `change_weight`                     | Changed the weight of a resource.                                          | System Note         |
-| `remove_due_date`                   | Removed the due date of the resource.                                      | System Note         |
-| `change_due_date`                   | Changed the due date of the resource.                                      | System Note         |
-| `remove_time_estimate`              | Removed the time estimate value of the resource.                           | System Note         |
-| `change_time_estimate`              | Changed the time estimate value of the resource.                           | System Note         |
-| `unlock_merge_request`              | Unlocked the discussion thread of the merge request. (Enable comments)     | System Note         |
-| `lock_merge_request`                | Locked the discussion thread of the merge request. (Disable comments)      | System Note         |
-| `unlock_issue`                      | Unlocked the discussion thread of the issue. (Enable comments)             | System Note         |
-| `lock_issue`                        | Locked the discussion thread of the issue. (Disable comments)              | System Note         |
-| `remove_spend_time`                 | Removed time tracking stats from the resource.                             | System Note         |
-| `subtract_spend_time`               | Subtracted an amount of time from the time tracking stats of the resource. | System Note         |
-| `add_spend_time`                    | Added an amount of time to the time tracking stats of the resource.        | System Note         |
-| `remove_milestone`                  | Removed milestone from the resource.                                       | System Note         |
-| `change_milestone`                  | Changed milestone that was given to the resource to another milestone.     | System Note         |
-| `unassign_user`                     | Unassigned a user from the assignable resource.                            | System Note         |
-| `assign_user`                       | Assigned a user to the assignable resource.                                | System Note         |
-| `mention_in_external_merge_request` | Mentioned the resource in a merge request from another project.            | System Note         |
-| `mention_in_merge_request`          | Mentioned the resource in a merge request from the same project.           | System Note         |
-| `mention_in_external_commit`        | Mentioned the resource in a commit from another project.                   | System Note         |
-| `mention_in_commit`                 | Mentioned the resource in a commit from the same project.                  | System Note         |
-| `mention_in_external_issue`         | Mentioned the resource in an issue from another project.                   | System Note         |
-| `mention_in_issue`                  | Mentioned the resource in an issue from the same project.                  | System Note         |
+| Annotation Type                                 | Description                                                                          | Parsed API Resource |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------- |
+| `remove_label`                                  | Removed label from a resource.                                                       | Label Event         |
+| `change_target_branch`                          | Change merge request target. branch.                                                 | System Note         |
+| `status_changed_to_merged`                      | Change status of merge request to merged.                                            | System Note         |
+| `resolve_all_threads`                           | All threads have been resolved.                                                      | System Note         |
+| `resolve_all_discussions`                       | All discussions have been resolved.                                                  | System Note         |
+| `approve_merge_request`                         | Merge request has been granted approval.                                             | System Note         |
+| `unapprove_merge_request`                       | Merge request approval has been withdrawn.                                           | System Note         |
+| `enable_automatic_merge_on_pipeline_completion` | Enabled automatic merge on successfull pipeline completion for merge request.        | System Note         |
+| `enable_automatic_merge_on_build_success`       | Enabled automatic merge on successfull build pipeline completion for merge request.  | System Note         |
+| `abort_automatic_merge`                         | Automatic merge has been aborted.                                                    | System Note         |
+| `cancel_automatic_merge`                        | Automatic merge has been canceled.                                                   | System Note         |
+| `create_issue_from_discussion`                  | Created issue from a discussion.                                                     | System Note         |
+| `mark_merge_request_as_draft`                   | Marked merge request as a draft (enable draft flag and disable merge button).        | System Note         |
+| `mark_merge_request_as_ready`                   | Marked merge request as ready to merge (disable draft flag and enable merge button). | System Note         |
+| `request_review`                                | Requested review from one or more reviewers.                                         | System Note         |
+| `cancel_review_request`                         | Canceled review request for one or more reviewers.                                   | System Note         |
+| `add_label`                                     | Added label to a resource.                                                           | Label Event         |
+| `award_emoji`                                   | Awarded emoji to a resource or note.                                                 | Award Emoji         |
+| `comment`                                       | Note added to the discussion thread of the resource.                                 | Note                |
+| `change_epic`                                   | Exchanged epic that was attached to resource for another one.                        | System Note         |
+| `remove_from_external_epic`                     | Remove resource from an epic that stems from another project.                        | System Note         |
+| `add_to_external_epic`                          | Resource was added to an epic that belongs to another project.                       | System Note         |
+| `remove_from_epic`                              | Resource was removed from an epic of the same project.                               | System Note         |
+| `add_to_epic`                                   | Resource was added to an epic of the same project.                                   | System Note         |
+| `close_by_external_commit`                      | Closeable Resource was closed by a commit from another project.                      | System Note         |
+| `close_by_external_merge_request`               | Closeable resource was closed by a merge request from another project.               | System Note         |
+| `close_by_merge_request`                        | Closeable resource was closed by a merge request from the same project.              | System Note         |
+| `close_by_commit`                               | Closeable resource was closed by a commit from the same project.                     | System Note         |
+| `restore_source_branch`                         | Merge request source branch has been restored.                                       | System Note         |
+| `remove_label`                                  | Removed label from a resource.                                                       | System Note         |
+| `add_label`                                     | Added label to a resource.                                                           | System Note         |
+| `create_branch`                                 | Created branch for a merge request.                                                  | System Note         |
+| `mark_task_as_incomplete`                       | Unchecked a checked (completed) task.                                                | System Note         |
+| `mark_task_as_done`                             | Checked an uncompleted taks. This marks the task as done.                            | System Note         |
+| `add_commits`                                   | Added commits to a merge request.                                                    | System Note         |
+| `address_in_merge_request`                      | Created a merge request from the commen thread of an issue.                          | System Note         |
+| `unmark_as_work_in_progress`                    | Reset the WIP status of a resource. (issues, merge requests)                         | System Note         |
+| `mark_as_work_in_progress`                      | Set the status of a resource to WIP. (issues, merge requests)                        | System Note         |
+| `merge`                                         | Merged a merge request.                                                              | System Note         |
+| `change_description`                            | Changed the description of a resource. (issues, merge requests)                      | System Note         |
+| `change_title`                                  | Changed the title of a resource. (issues, merge requests)                            | System Note         |
+| `move_from`                                     | Moved issue from another project to this project.                                    | System Note         |
+| `move_to`                                       | Moved issue from this project to another project.                                    | System Note         |
+| `reopen`                                        | Reopened a closeable resource.                                                       | System Note         |
+| `close`                                         | Closed a closeable resource.                                                         | System Note         |
+| `unrelate_from_external_issue`                  | Removed relation to an issue from another project.                                   | System Note         |
+| `relate_to_external_issue`                      | Added relation to an issue from another project.                                     | System Note         |
+| `unrelate_from_issue`                           | Removed relation to issue of the same project.                                       | System Note         |
+| `relate_to_issue`                               | Added relation to issue of the same project.                                         | System Note         |
+| `has_duplicate`                                 | Mark another issue as a duplicate of this issue.                                     | System Note         |
+| `mark_as_duplicate`                             | Mark this issue as a duplicate of another issue.                                     | System Note         |
+| `make_visible`                                  | Set the visibility status of the resource to unconfidential.                         | System Note         |
+| `make_confidential`                             | Set the visibility status of the resource to confidential.                           | System Note         |
+| `remove_weight`                                 | Removed the set weight of the resource.                                              | System Note         |
+| `change_weight`                                 | Changed the weight of a resource.                                                    | System Note         |
+| `remove_due_date`                               | Removed the due date of the resource.                                                | System Note         |
+| `change_due_date`                               | Changed the due date of the resource.                                                | System Note         |
+| `remove_time_estimate`                          | Removed the time estimate value of the resource.                                     | System Note         |
+| `change_time_estimate`                          | Changed the time estimate value of the resource.                                     | System Note         |
+| `unlock_merge_request`                          | Unlocked the discussion thread of the merge request. (Enable comments)               | System Note         |
+| `lock_merge_request`                            | Locked the discussion thread of the merge request. (Disable comments)                | System Note         |
+| `unlock_issue`                                  | Unlocked the discussion thread of the issue. (Enable comments)                       | System Note         |
+| `lock_issue`                                    | Locked the discussion thread of the issue. (Disable comments)                        | System Note         |
+| `remove_spent_time`                             | Removed time tracking stats from the resource.                                       | System Note         |
+| `subtract_spent_time`                           | Subtracted an amount of time from the time tracking stats of the resource.           | System Note         |
+| `add_spent_time`                                | Added an amount of time to the time tracking stats of the resource.                  | System Note         |
+| `remove_milestone`                              | Removed milestone from the resource.                                                 | System Note         |
+| `change_milestone`                              | Changed milestone that was given to the resource to another milestone.               | System Note         |
+| `unassign_user`                                 | Unassigned a user from the assignable resource.                                      | System Note         |
+| `assign_user`                                   | Assigned a user to the assignable resource.                                          | System Note         |
+| `reassign_user`                                 | Reassigned a user to the assignable resource.                                        | System Note         |
+| `mention_in_external_merge_request`             | Mentioned the resource in a merge request from another project.                      | System Note         |
+| `mention_in_merge_request`                      | Mentioned the resource in a merge request from the same project.                     | System Note         |
+| `mention_in_external_commit`                    | Mentioned the resource in a commit from another project.                             | System Note         |
+| `mention_in_commit`                             | Mentioned the resource in a commit from the same project.                            | System Note         |
+| `mention_in_external_issue`                     | Mentioned the resource in an issue from another project.                             | System Note         |
+| `mention_in_issue`                              | Mentioned the resource in an issue from the same project.                            | System Note         |
+| `mention_in_epic`                               | Mentioned the resource in an epic from the same project.                             | System Note         |
+| `remove_merge_request_from_merge_train`         | Removed the merge request from a merge train.                                        | System Note         |
+| `start_merge_train`                             | Started a merge train.                                                               | System Note         |
+| `enable_automatic_add_to_merge_train`           | Enabled automatic add to merge train on successfull pipeline completion.             | System Note         |
