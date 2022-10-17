@@ -128,10 +128,10 @@ class TestDedupe:
 
 
 class TestUncoverDoubleAgents:
-    def test_xform(self):
-        json = {"name": ["alias1", "alias2"]}
+    def test_build_inverse_index(self):
+        mapping = {"name": ["alias1", "alias2"]}
         expected_dict = {"alias1": "name", "alias2": "name"}
-        assert operations.xform(json) == expected_dict
+        assert operations.build_inverse_index(mapping) == expected_dict
 
     def test_uncover_name(self):
         names = {"alias": "name"}
@@ -142,14 +142,14 @@ class TestUncoverDoubleAgents:
 
     def test_uncover_double_agents_resolves_agent_alias(self, mocker):
         d = {"alias1": "name", "alias2": "name"}
-        mocker.patch("gitlab2prov.prov.operations.read")
-        mocker.patch("gitlab2prov.prov.operations.xform", return_value=d)
+        mocker.patch("gitlab2prov.prov.operations.read_double_agent_mapping")
+        mocker.patch("gitlab2prov.prov.operations.build_inverse_index", return_value=d)
 
         graph = operations.graph_factory()
         graph.agent("agent1", {"name": "alias2"})
         graph.agent("agent2", {"name": "alias1"})
 
-        graph = operations.uncover_double_agents(graph, "")
+        graph = operations.merge_double_agents(graph, "")
 
         agents = list(graph.get_records(ProvAgent))
         assert len(agents) == 1
@@ -159,8 +159,8 @@ class TestUncoverDoubleAgents:
 
     def test_uncover_double_agents_reroutes_relations(self, mocker):
         d = {"alias1": "name", "alias2": "name"}
-        mocker.patch("gitlab2prov.prov.operations.read")
-        mocker.patch("gitlab2prov.prov.operations.xform", return_value=d)
+        mocker.patch("gitlab2prov.prov.operations.read_double_agent_mapping")
+        mocker.patch("gitlab2prov.prov.operations.build_inverse_index", return_value=d)
 
         graph = operations.graph_factory()
         a1 = graph.agent("agent1", {"name": "alias2"})
@@ -170,7 +170,7 @@ class TestUncoverDoubleAgents:
         e1.wasAttributedTo(a1)
         e2.wasAttributedTo(a2)
 
-        graph = operations.uncover_double_agents(graph, "")
+        graph = operations.merge_double_agents(graph, "")
 
         relations = list(graph.get_records(ProvRelation))
         assert len(relations) == 2

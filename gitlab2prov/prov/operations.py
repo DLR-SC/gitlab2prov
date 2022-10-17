@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional, Sequence, Any
 from urllib.parse import urlencode
 
+from ruamel.yaml import YAML
 from prov.dot import prov_to_dot
 from prov.identifier import QualifiedName
 from prov.model import (
@@ -146,8 +147,17 @@ def read(fp: Path) -> dict[str, list[str]]:
     return d
 
 
-def xform(d: dict[str, list[str]]) -> dict[str, str]:
-    return {alias: name for name, aliases in d.items() for alias in aliases}
+def read_double_agent_mapping(fp: str):
+    """Mapping that maps user names to a list of their aliases."""
+    with open(fp, "rt") as f:
+        yaml = YAML(type="safe")
+        agents = yaml.load(f.read())
+    return {agent["name"]: agent["aliases"] for agent in agents}
+
+
+def build_inverse_index(mapping):
+    """Build the inverse index for a double agent mapping."""
+    return {alias: name for name, aliases in mapping.items() for alias in aliases}
 
 
 def uncover_name(agent: str, names: dict[str, str]) -> tuple[QualifiedName, str]:
@@ -155,10 +165,11 @@ def uncover_name(agent: str, names: dict[str, str]) -> tuple[QualifiedName, str]
     return qn, names.get(name, name)
 
 
-def uncover_double_agents(graph: ProvDocument, fp: str) -> ProvDocument:
+def merge_double_agents(graph, path_to_mapping):
     log.info(f"resolve aliases in {graph=}")
-    # read mapping & transform
-    names = xform(read(fp))
+    mapping = read_double_agent_mapping(path_to_mapping)
+    names = build_inverse_index(mapping)
+
     # dict to temporarily store agent attributes
     attrs = defaultdict(set)
     # map of old agent identifiers to new agent identifiers

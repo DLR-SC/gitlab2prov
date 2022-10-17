@@ -136,7 +136,7 @@ def do_extract(bus, urls: list[str], token: str):
     bus.handle(commands.Reset())
 
 
-@cli.command("open", short_help="Load provenance files.")
+@cli.command("load", short_help="Load provenance files.")
 @click.option(
     "-i",
     "--input",
@@ -145,7 +145,7 @@ def do_extract(bus, urls: list[str], token: str):
     help="The provenance file to load.",
 )
 @generator
-def do_open(input):
+def load(input):
     """Load one or more provenance graphs."""
     for filepath in input:
         try:
@@ -177,7 +177,7 @@ def do_open(input):
     help="File to write to.",
 )
 @processor
-def do_save(graphs, format, output):
+def save(graphs, format, output):
     """Save all processed provenance graphs to a series of files."""
     for idx, graph in enumerate(graphs, start=1):
         for fmt in format:
@@ -195,7 +195,7 @@ def do_save(graphs, format, output):
 
 @cli.command("pseudonymize")
 @processor
-def do_pseudonymize(graphs):
+def pseudonymize(graphs):
     """Pseudonymize a provenance graph."""
     for graph in graphs:
         try:
@@ -208,7 +208,7 @@ def do_pseudonymize(graphs):
 
 @cli.command("combine")
 @processor
-def do_combine(graphs):
+def combine(graphs):
     """Combine multiple graphs into one."""
     graphs = list(graphs)
     try:
@@ -227,7 +227,7 @@ def do_combine(graphs):
 @click.option("--explain", "show_description", is_flag=True, help="")
 @click.option("--formatter", type=click.Choice(["csv", "table"]), default="table")
 @processor
-def do_stats(graphs, resolution, show_description, formatter):
+def stats(graphs, resolution, show_description, formatter):
     """Count number of elements and relations contained in a provenance graph."""
     for graph in graphs:
         try:
@@ -245,3 +245,17 @@ def do_stats(graphs, resolution, show_description, formatter):
             yield graph
         except Exception as e:
             click.echo(f"Could not display stats for {graph.description}: {e}", err=True)
+
+
+@cli.command()
+@click.option(
+    "-m/--mapping",
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to double agent mapping.",
+)
+@processor
+def merge_double_agents(graphs, mapping):
+    for graph in graphs:
+        graph = operations.merge_double_agents(graph, mapping)
+        graph.description += f""
+        yield graph
