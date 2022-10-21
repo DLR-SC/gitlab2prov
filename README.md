@@ -50,27 +50,19 @@ Or install the latest release from [PyPi](https://pypi.org/project/gitlab2prov/)
 pip install gitlab2prov
 ```
 
-To install `gitlab2prov` with all extra dependencies require the `[dev]` extras while proceeding as before:
+To install `gitlab2prov` with all extra dependencies require the `[dev]` extras:
 ```bash
-pip install .[dev] # clone and invoke pip locally
-pip install gitlab2prov[dev] # install from PyPi
+pip install .[dev]            # clone repo, install with extras
+pip install gitlab2prov[dev]  # PyPi, install with extras
 ```
 
 ## 🚀‍ Usage
 
-`gitlab2prov` can be configured using the command line interface or by providing a config file.
+`gitlab2prov` can be configured using the command line interface or by providing a configuration file in `.yaml` format.
 
 ###  Command Line Usage
 The command line interface consists of multiple commands that can be chained together akin to a unix pipeline.
 The available commands are the following:
-
-* `extract`: Extract provenance information from one or more Gitlab projects.
-* `open`: Open a provenance file.
-* `save`: Save to file.
-* `stats`: Print stats.
-* `pseudonymize`: Pseudonymize provenance graph.
-* `combine`: Combine multiple graphs into one.
-* `merge-double-agents`: Merge double agents based on a name to alias mapping.
 
 ```
 Usage: gitlab2prov [OPTIONS] COMMAND1 [ARGS]... [COMMAND2 [ARGS]...]...
@@ -79,38 +71,53 @@ Usage: gitlab2prov [OPTIONS] COMMAND1 [ARGS]... [COMMAND2 [ARGS]...]...
 
 Options:
   --version        Show the version and exit.
-  --verbose        Enable logging to <stdout>.
-  --config FILE    Execute gitlab2prov run from config file.
+  --verbose        Enable logging to 'gitlab2prov.log'.
+  --config FILE    Read config from file.
   --validate FILE  Validate config file and exit.
   --help           Show this message and exit.
 
 Commands:
-  combine              Combine multiple graphs into one.
-  extract              Extract provenance data for one or multiple gitlab...
-  load                 Load provenance files.
-  merge-double-agents  Merge double agents based on a name to aliases...
-  pseudonymize         Pseudonymize a provenance graph.
-  save                 Save provenance files.
-  stats                Count number of elements and relations contained...
+  combine                  Combine multiple graphs into one.
+  extract                  Extract provenance information for one or more...
+  load                     Load provenance files.
+  merge-duplicated-agents  Merge duplicated agents based on a name to...
+  pseudonymize             Pseudonymize a provenance graph.
+  save                     Save provenance information to a file.
+  stats                    Print statistics such as node counts and...
 ```
-### Config File
-Read config from file.
+Each command has a help page that can be accessed by calling the command with the `--help` flag.
+```
+gitlab2prov {command} --help
+```
+
+### Configuration Files
+`gitlab2prov` supports configuration files in `.yaml` format that are functionally equivalent to command line invocations. 
+
+To read configuration details from a file instead of specifying it with command line flags, use the `--config` option as follows:
 ```ini
 gitlab2prov --config config/example.yaml
 ```
-Only validate config file:
+You can validate your config file using the provided JSON-Schema `gitlab2prov/config/schema.json` that comes packaged with every installation.  
 ```
 gitlab2prov --validate config/example.yaml
 ```
-Config example:
+### Config File Example
+
+The following configuration file specifies a pipeline that extracts provenance information from the projects `example/foo` and `example/bar` hosted on the gitlab instance `gitlab.com`. 
+The pipeline then proceeds to load the provenance information stored in `example.rdf`. 
+At this point the pipeline contains three distinct provenance graphs.
+All three graphs are pseudonymized seperatly in the next step. 
+The pipeline step following the pseudonymization combines the three graphs into a one, which is then saved in `combined.json`, `combined.rdf`, `combined.xml` and `combined.dot`.
+The last pipeline step prints statistics such as element and relation counts to `stdout`.
+
 ```yaml
 - extract:
         url: ["https://gitlab.com/example/foo"]
-        token: mytoken
+        token: tokenA
 - extract:
-        url: ["https://gitlab.com/example/foo"]
-        token: mytoken
-- open:
+        url: ["https://gitlab.com/example/bar"]
+        token: tokenB
+- load:
         input: [example.rdf]
 - pseudonymize:
 - combine:
@@ -122,7 +129,17 @@ Config example:
         explain: true
         formatter: table
 ```
-You can validate your config file using provided JSON-Schema `gitlab2prov/schema.json`.
+
+The configuration file is functionally equivalent to the following command line invocation:
+```
+gitlab2prov extract -u https://gitlab.com/example/foo -t tokenFoo \
+            extract -u https://gitlab.com/example/bar -t tokenBar \
+            load -i example.rdf                                   \
+            pseudonymize                                          \
+            combine                                               \
+            save -o combined -f json -f rdf -f xml -f dot         \
+            stats --fine --explain --formatter table
+```
 
 ### 🎨 Provenance Output Formats
 
