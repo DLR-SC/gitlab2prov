@@ -140,16 +140,16 @@ class TestUncoverDoubleAgents:
         expected_name = (qualified_name("name"), "name")
         assert operations.uncover_name(agent, names) == expected_name
 
-    def test_uncover_double_agents_resolves_agent_alias(self, mocker):
+    def test_uncover_duplicated_agents_resolves_agent_alias(self, mocker):
         d = {"alias1": "name", "alias2": "name"}
-        mocker.patch("gitlab2prov.prov.operations.read_double_agent_mapping")
+        mocker.patch("gitlab2prov.prov.operations.read_duplicated_agent_mapping")
         mocker.patch("gitlab2prov.prov.operations.build_inverse_index", return_value=d)
 
         graph = operations.graph_factory()
         graph.agent("agent1", {"name": "alias2"})
         graph.agent("agent2", {"name": "alias1"})
 
-        graph = operations.merge_double_agents(graph, "")
+        graph = operations.merge_duplicated_agents(graph, "")
 
         agents = list(graph.get_records(ProvAgent))
         assert len(agents) == 1
@@ -157,9 +157,9 @@ class TestUncoverDoubleAgents:
         [(_, name)] = [(k, v) for k, v in agents[0].attributes if k.localpart == "name"]
         assert name == expected_name
 
-    def test_uncover_double_agents_reroutes_relations(self, mocker):
+    def test_uncover_duplicated_agents_reroutes_relations(self, mocker):
         d = {"alias1": "name", "alias2": "name"}
-        mocker.patch("gitlab2prov.prov.operations.read_double_agent_mapping")
+        mocker.patch("gitlab2prov.prov.operations.read_duplicated_agent_mapping")
         mocker.patch("gitlab2prov.prov.operations.build_inverse_index", return_value=d)
 
         graph = operations.graph_factory()
@@ -170,7 +170,7 @@ class TestUncoverDoubleAgents:
         e1.wasAttributedTo(a1)
         e2.wasAttributedTo(a2)
 
-        graph = operations.merge_double_agents(graph, "")
+        graph = operations.merge_duplicated_agents(graph, "")
 
         relations = list(graph.get_records(ProvRelation))
         assert len(relations) == 2

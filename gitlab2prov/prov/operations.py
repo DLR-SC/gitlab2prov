@@ -147,7 +147,7 @@ def read(fp: Path) -> dict[str, list[str]]:
     return d
 
 
-def read_double_agent_mapping(fp: str):
+def read_duplicated_agent_mapping(fp: str):
     """Mapping that maps user names to a list of their aliases."""
     with open(fp, "rt") as f:
         yaml = YAML(type="safe")
@@ -165,9 +165,9 @@ def uncover_name(agent: str, names: dict[str, str]) -> tuple[QualifiedName, str]
     return qn, names.get(name, name)
 
 
-def merge_double_agents(graph, path_to_mapping):
+def merge_duplicated_agents(graph, path_to_mapping):
     log.info(f"resolve aliases in {graph=}")
-    mapping = read_double_agent_mapping(path_to_mapping)
+    mapping = read_duplicated_agent_mapping(path_to_mapping)
     names = build_inverse_index(mapping)
 
     # dict to temporarily store agent attributes
