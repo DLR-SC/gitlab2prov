@@ -89,7 +89,7 @@ Commands:
 
 To read configuration details from a file instead of specifying on the command line, use the `--config` option:
 ```ini
-# run gitlab2prov using a config file
+# initiate a run using a config file
 gitlab2prov --config config/example.yaml
 ```
 You can validate your config file using the provided JSON-Schema `gitlab2prov/config/schema.json` that comes packaged with every installation:
