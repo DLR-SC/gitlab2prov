@@ -37,7 +37,6 @@
 The `gitlab2prov` data model has been designed according to [W3C PROV](https://www.w3.org/TR/prov-overview/) specification.
 The model documentation can be found [here](https://github.com/DLR-SC/gitlab2prov/tree/master/docs).
 
-
 ## ️🏗️ ️Installation
 
 Clone the project and install using `pip`:
@@ -61,8 +60,7 @@ pip install gitlab2prov[dev]  # PyPi, install with extras
 `gitlab2prov` can be configured using the command line interface or by providing a configuration file in `.yaml` format.
 
 ###  Command Line Usage
-The command line interface consists of multiple commands that can be chained together akin to a unix pipeline.
-The available commands are the following:
+The command line interface consists of commands that can be chained together like a unix pipeline.
 
 ```
 Usage: gitlab2prov [OPTIONS] COMMAND1 [ARGS]... [COMMAND2 [ARGS]...]...
@@ -85,30 +83,22 @@ Commands:
   save                     Save provenance information to a file.
   stats                    Print statistics such as node counts and...
 ```
-Each command has a help page that can be accessed by calling the command with the `--help` flag.
-```
-gitlab2prov {command} --help
-```
 
 ### Configuration Files
 `gitlab2prov` supports configuration files in `.yaml` format that are functionally equivalent to command line invocations. 
 
-To read configuration details from a file instead of specifying it with command line flags, use the `--config` option as follows:
+To read configuration details from a file instead of specifying on the command line, use the `--config` option:
 ```ini
+# run gitlab2prov using a config file
 gitlab2prov --config config/example.yaml
 ```
-You can validate your config file using the provided JSON-Schema `gitlab2prov/config/schema.json` that comes packaged with every installation.  
-```
+You can validate your config file using the provided JSON-Schema `gitlab2prov/config/schema.json` that comes packaged with every installation:
+```ini
+# check config file for syntactical errors
 gitlab2prov --validate config/example.yaml
 ```
-### Config File Example
 
-The following configuration file specifies a pipeline that extracts provenance information from the projects `example/foo` and `example/bar` hosted on the gitlab instance `gitlab.com`. 
-The pipeline then proceeds to load the provenance information stored in `example.rdf`. 
-At this point the pipeline contains three distinct provenance graphs.
-All three graphs are pseudonymized seperatly in the next step. 
-The pipeline step following the pseudonymization combines the three graphs into a one, which is then saved in `combined.json`, `combined.rdf`, `combined.xml` and `combined.dot`.
-The last pipeline step prints statistics such as element and relation counts to `stdout`.
+Config file example:
 
 ```yaml
 - extract:
@@ -130,7 +120,8 @@ The last pipeline step prints statistics such as element and relation counts to 
         formatter: table
 ```
 
-The configuration file is functionally equivalent to the following command line invocation:
+The config file example is functionally equivalent to this command line invocation:
+
 ```
 gitlab2prov extract -u https://gitlab.com/example/foo -t tokenFoo \
             extract -u https://gitlab.com/example/bar -t tokenBar \
