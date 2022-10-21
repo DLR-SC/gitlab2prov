@@ -1,11 +1,11 @@
-# yaml-language-server: $schema=../gitlab2prov/schema.json
+# yaml-language-server: $schema=../gitlab2prov/config/schema.json
 - extract:
         url: ["https://gitlab.com/example/foo"]
-        token: mytoken
+        token: tokenFoo
 - extract:
         url: ["https://gitlab.com/example/bar"]
-        token: mytoken
-- open:
+        token: tokenBar
+- load:
         input: [example.rdf]
 - pseudonymize:
 - combine:
