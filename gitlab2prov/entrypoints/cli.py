@@ -75,14 +75,14 @@ def generator(func):
     default=False,
     expose_value=False,
     callback=enable_logging,
-    help="Enable logging to <stdout>.",
+    help="Enable logging to 'gitlab2prov.log'.",
 )
 @click.option(
     "--config",
     type=click.Path(exists=True, dir_okay=False),
     expose_value=False,
     callback=invoke_from_config,
-    help="Execute gitlab2prov run from config file.",
+    help="Read config from file.",
 )
 @click.option(
     "--validate",
@@ -120,12 +120,16 @@ def process_commands(processors, **kwargs):
 
 
 @cli.command("extract")
-@click.option("-u", "--url", "urls", multiple=True, type=str, required=True, help="")
-@click.option("-t", "--token", required=True, type=str, help="")
+@click.option("-u", "--url", "urls", multiple=True, type=str, required=True, help="Project url[s].")
+@click.option("-t", "--token", required=True, type=str, help="Gitlab API token.")
 @click.pass_obj
 @generator
 def do_extract(bus, urls: list[str], token: str):
-    """Extract provenance data for one or multiple gitlab projects."""
+    """Extract provenance information for one or more gitlab projects.
+    
+    This command extracts provenance information from one or multiple gitlab projects.
+    The extracted provenance is returned as a combined provenance graph.
+    """
     for url in urls:
         bus.handle(commands.Fetch(url, token))
 
@@ -142,11 +146,14 @@ def do_extract(bus, urls: list[str], token: str):
     "--input",
     multiple=True,
     type=click.Path(exists=True, dir_okay=False),
-    help="The provenance file to load.",
+    help="Provenance file path (specify '-' to read from <stdin>).",
 )
 @generator
 def load(input):
-    """Load one or more provenance graphs."""
+    """Load provenance information from a file.
+    
+    This command reads one provenance graph from a file or multiple graphs from multiple files.
+    """
     for filepath in input:
         try:
             if filepath == "-":
@@ -161,7 +168,7 @@ def load(input):
             click.echo(f"Could not open '{filepath}': {e}", err=True)
 
 
-@cli.command("save", short_help="Save provenance files.")
+@cli.command("save")
 @click.option(
     "-f",
     "--format",
@@ -174,11 +181,14 @@ def load(input):
     "-o",
     "--output",
     default="gitlab2prov-graph-{:04}",
-    help="File to write to.",
+    help="Output file path.",
 )
 @processor
 def save(graphs, format, output):
-    """Save all processed provenance graphs to a series of files."""
+    """Save provenance information to a file.
+    
+    This command writes each provenance graph that is piped to it to a file.
+    """
     for idx, graph in enumerate(graphs, start=1):
         for fmt in format:
             try:
@@ -196,7 +206,10 @@ def save(graphs, format, output):
 @cli.command("pseudonymize")
 @processor
 def pseudonymize(graphs):
-    """Pseudonymize a provenance graph."""
+    """Pseudonymize a provenance graph.
+    
+    This command pseudonymizes each provenance graph that is piped to it.
+    """
     for graph in graphs:
         try:
             pseud = operations.pseudonymize(graph)
@@ -209,7 +222,10 @@ def pseudonymize(graphs):
 @cli.command("combine")
 @processor
 def combine(graphs):
-    """Combine multiple graphs into one."""
+    """Combine multiple graphs into one.
+    
+    This command combines all graphs that are piped to it into one.
+    """
     graphs = list(graphs)
     try:
         combined = operations.combine(iter(graphs))
@@ -222,13 +238,18 @@ def combine(graphs):
 
 
 @cli.command("stats")
-@click.option("--coarse", "resolution", flag_value="coarse", default=True, help="")
-@click.option("--fine", "resolution", flag_value="fine", help="")
-@click.option("--explain", "show_description", is_flag=True, help="")
+@click.option("--coarse", "resolution", flag_value="coarse", default=True, help="Print the number of PROV elements aswell as the overall number of relations.")
+@click.option("--fine", "resolution", flag_value="fine", help="Print the number of PROV elements aswell as the number of PROV relations for each relation type.")
+@click.option("--explain", "show_description", is_flag=True, help="Print a textual summary of all operations applied to the graphs.")
 @click.option("--formatter", type=click.Choice(["csv", "table"]), default="table")
 @processor
 def stats(graphs, resolution, show_description, formatter):
-    """Count number of elements and relations contained in a provenance graph."""
+    """Print statistics such as node counts and relation counts.
+    
+    This command prints statistics for each processed provenance graph.
+    Statistics include the number of elements for each element type aswell as the number of relations for each relation type.
+    Optionally, a short textual summary of all operations applied to the processed graphs can be printed to stdout.
+    """
     for graph in graphs:
         try:
             if show_description:
@@ -251,12 +272,17 @@ def stats(graphs, resolution, show_description, formatter):
 @click.option(
     "--mapping",
     type=click.Path(exists=True, dir_okay=False),
-    help="Path to double agent mapping.",
+    help="File path to duplicate agent mapping.",
 )
 @processor
-def merge_double_agents(graphs, mapping):
-    """Merge double agents based on a name to aliases mapping."""
+def merge_duplicated_agents(graphs, mapping):
+    """Merge duplicated agents based on a name to aliases mapping.
+    
+    This command solves the problem of duplicated agents that can occur when the same physical user
+    uses different user names and emails for his git and gitlab account.
+    Based on a mapping of names to aliases the duplicated agents can be merged.
+    """
     for graph in graphs:
-        graph = operations.merge_double_agents(graph, mapping)
-        graph.description += f""
+        graph = operations.merge_duplicated_agents(graph, mapping)
+        graph.description += f"merged double agents {graph.description}"
         yield graph
