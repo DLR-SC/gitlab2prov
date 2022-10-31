@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use GitLab2PROV in your research, please cite it using these metadata."
 title: GitLab2PROV
-abstract: "GitLab2PROV is a Python library and command line tool for extracting provenance information from GitLab projects."
+abstract: "gitlab2prov is a Python library and command line tool that extracts provenance information from GitLab projects."
 type: software
 authors: 
   - family-names: "de Boer"
@@ -13,7 +13,7 @@ authors:
     affiliation: "German Aerospace Center (DLR)"
     orcid: "https://orcid.org/0000-0001-5750-5649"
 version: 2.0.0
-date-released: "2022-07-18"
+date-released: "2022-10-31"
 license: MIT
 repository-code: "https://github.com/DLR-SC/gitlab2prov"
 references:
