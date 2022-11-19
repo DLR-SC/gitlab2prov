@@ -37,9 +37,13 @@ class GitFetcher:
             self._tmpdir.cleanup()
 
     def do_clone(self) -> None:
-        url = clone_over_https_url(self.url, self.token)
+        clone_url = ""
+        if "gitlab.com" in self.url:
+            clone_url = clone_over_https_url(self.url, self.token, "gitlab")
+        if "github.com" in self.url:
+            clone_url = clone_over_https_url(self.url, self.token, "github")
         self._repo = Repo.clone_from(
-            url=url,
+            url=clone_url,
             to_path=self._tmpdir.name,
         )
 

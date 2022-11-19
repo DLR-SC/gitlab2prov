@@ -13,7 +13,7 @@ from gitlab.v4.objects import ProjectRelease
 from gitlab.v4.objects import ProjectTag
 
 from gitlab2prov.adapters.fetch.annotations import parse_annotations
-from gitlab2prov.adapters.fetch.utils import gitlab_url
+from gitlab2prov.adapters.fetch.utils import instance_url
 from gitlab2prov.adapters.fetch.utils import project_slug
 from gitlab2prov.domain.constants import ProvRole
 from gitlab2prov.domain.objects import Asset
@@ -36,7 +36,7 @@ class GitlabFetcher:
     _project: Project | None = field(init=False, default=None)
 
     def do_login(self) -> None:
-        gl = Gitlab(url=gitlab_url(self.url), private_token=self.token)
+        gl = Gitlab(url=instance_url(self.url), private_token=self.token)
         self._project = gl.projects.get(project_slug(self.url))
 
     def fetch_gitlab(
