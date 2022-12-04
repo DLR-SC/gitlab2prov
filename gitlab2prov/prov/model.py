@@ -9,8 +9,10 @@ from gitlab2prov.domain.objects import (
     FileRevision,
     GitCommit,
     GitlabCommit,
+    GithubCommit,
     Issue,
     MergeRequest,
+    GithubPullRequest,
     Release,
     Tag,
 )
@@ -172,11 +174,19 @@ def deletion(
 def gitlab_commit_model(resources, graph: ProvDocument = None):
     if graph is None:
         graph = graph_factory()
-    for gitlab_commit in resources.list_all(GitlabCommit):
-        git_commit = resources.get(GitCommit, hexsha=gitlab_commit.hexsha)
-        graph.update(commit_creation(gitlab_commit, git_commit))
-        graph.update(annotation_chain(gitlab_commit))
-        return graph
+
+    github_commits = resources.list_all(GitlabCommit)
+    gitlab_commits = resources.list_all(GithubCommit)
+
+    for commit in {*github_commits, *gitlab_commits}:
+        git_commit = resources.get(GitCommit, hexsha=commit.hexsha)
+
+        creation = commit_creation(commit, git_commit)
+        annotats = annotation_chain(commit)
+
+        graph.update(creation)
+        graph.update(annotats)
+
     return graph
 
 
@@ -192,9 +202,16 @@ def gitlab_issue_model(resources, graph: ProvDocument = None):
 def gitlab_merge_request_model(resources, graph: ProvDocument = None):
     if graph is None:
         graph = graph_factory()
-    for merge_request in resources.list_all(MergeRequest):
-        graph.update(resource_creation(merge_request))
-        graph.update(annotation_chain(merge_request))
+
+    merge_requests = resources.list_all(MergeRequest)
+    pull_requests = resources.list_all(GithubPullRequest)
+
+    for merge_request in {*merge_requests, *pull_requests}:
+        creation = resource_creation(merge_request)
+        annotats = annotation_chain(merge_request)
+
+        graph.update(creation)
+        graph.update(annotats)
     return graph
 
 
@@ -205,6 +222,7 @@ def commit_creation(
 ):
     if graph is None:
         graph = graph_factory()
+
     resource = graph.entity(*gitlab_commit)
     creation = graph.activity(*gitlab_commit.creation)
     first_version = graph.entity(*gitlab_commit.first_version)
