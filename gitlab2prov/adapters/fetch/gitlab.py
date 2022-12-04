@@ -31,13 +31,11 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class GitlabFetcher:
-    url: str
-    token: str
     _project: Project | None = field(init=False, default=None)
 
-    def do_login(self) -> None:
-        gl = Gitlab(url=instance_url(self.url), private_token=self.token)
-        self._project = gl.projects.get(project_slug(self.url))
+    def do_login(self, url, token) -> None:
+        gl = Gitlab(url=instance_url(url), private_token=token)
+        self._project = gl.projects.get(project_slug(url))
 
     def fetch_gitlab(
         self,
