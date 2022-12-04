@@ -61,6 +61,7 @@ pip install gitlab2prov[dev]  # PyPi, install with extras
 
 Use the following guide to obtain a token with the required [scopes](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#personal-access-token-scopes) for yourself:
 - [Create a personal access token (GitLab)](./docs/guides/gitlab-token.md)
+- [Create a personal access token (GitLab)](./docs/guides/github-token.md)
 
 
 ## 🚀‍ Usage
