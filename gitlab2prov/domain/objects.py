@@ -211,6 +211,44 @@ class Issue(ProvMixin, EntityMixin):
 
 
 @dataclass(unsafe_hash=True, kw_only=True)
+class GithubIssue(ProvMixin, EntityMixin):
+    number: str  # id
+    id: str  # analogous to gitlab iid
+    title: str
+    body: str = field(repr=False)
+    url: str = field(repr=False)
+    author: User = field(repr=False, metadata=IS_RELATION)
+    annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)
+    created_at: datetime = field(repr=False)
+    closed_at: datetime | None = field(repr=False, default=None)
+    prov_type: ProvType = field(init=False, repr=False, default=ProvType.ISSUE)
+
+    @property
+    def creation(self) -> Creation:
+        return Creation(
+            creation_id=self.number,
+            prov_start=self.created_at,
+            prov_end=self.closed_at,
+            prov_type=ProvType.ISSUE_CREATION,
+        )
+
+    @property
+    def first_version(self) -> Version:
+        return Version(version_id=self.number, prov_type=ProvType.ISSUE_VERSION)
+
+    @property
+    def annotated_versions(self) -> list[AnnotatedVersion]:
+        return [
+            AnnotatedVersion(
+                version_id=self.number,
+                annotation_id=annotation.id,
+                prov_type=ProvType.ISSUE_VERSION_ANNOTATED,
+            )
+            for annotation in self.annotations
+        ]
+
+
+@dataclass(unsafe_hash=True, kw_only=True)
 class GitlabCommit(ProvMixin, EntityMixin):
     hexsha: str
     url: str = field(repr=False)
@@ -240,6 +278,41 @@ class GitlabCommit(ProvMixin, EntityMixin):
                 version_id=self.hexsha,
                 annotation_id=annotation.id,
                 prov_type=ProvType.GITLAB_COMMIT_VERSION_ANNOTATED,
+            )
+            for annotation in self.annotations
+        ]
+
+
+@dataclass(unsafe_hash=True, kw_only=True)
+class GithubCommit(ProvMixin, EntityMixin):
+    hexsha: str
+    url: str = field(repr=False)
+    author: User = field(repr=False, metadata=IS_RELATION)
+    annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)  # comments ...
+    authored_at: datetime = field(repr=False)
+    committed_at: datetime = field(repr=False)
+    prov_type: ProvType = field(init=False, repr=False, default=ProvType.GITHUB_COMMIT)
+
+    @property
+    def creation(self) -> Creation:
+        return Creation(
+            creation_id=self.sha,
+            prov_start=self.authored_at,
+            prov_end=self.committed_at,
+            prov_type=ProvType.GITHUB_COMMIT_CREATION,
+        )
+
+    @property
+    def first_version(self) -> Version:
+        return Version(version_id=self.hexsha, prov_type=ProvType.GITHUB_COMMIT_VERSION)
+
+    @property
+    def annotated_versions(self) -> list[AnnotatedVersion]:
+        return [
+            AnnotatedVersion(
+                version_id=self.hexsha,
+                annotation_id=annotation.id,
+                prov_type=ProvType.GITHUB_COMMIT_VERSION_ANNOTATED,
             )
             for annotation in self.annotations
         ]
@@ -282,6 +355,47 @@ class MergeRequest(ProvMixin, EntityMixin):
                 version_id=self.id,
                 annotation_id=annotation.id,
                 prov_type=ProvType.MERGE_REQUEST_VERSION_ANNOTATED,
+            )
+            for annotation in self.annotations
+        ]
+
+
+@dataclass(unsafe_hash=True, kw_only=True)
+class GithubPullRequest(ProvMixin, EntityMixin):
+    number: str  # id
+    id: str  # iid
+    title: str
+    body: str = field(repr=False)
+    url: str = field(repr=False)
+    head: str = field(repr=False)  # source_branch
+    base: str = field(repr=False)  # target_branch
+    author: User = field(repr=False, metadata=IS_RELATION)
+    annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)
+    created_at: datetime = field(repr=False)
+    closed_at: datetime | None = field(repr=False, default=None)
+    merged_at: datetime | None = field(repr=False, default=None)  # TODO: is this field necessary?
+    prov_type: ProvType = field(init=False, repr=False, default=ProvType.PULL_REQUEST)
+
+    @property
+    def creation(self) -> Creation:
+        return Creation(
+            creation_id=self.number,
+            prov_start=self.created_at,
+            prov_end=self.closed_at,
+            prov_type=ProvType.PULL_REQUEST_CREATION,
+        )
+
+    @property
+    def first_version(self) -> Version:
+        return Version(version_id=self.number, prov_type=ProvType.PULL_REQUEST_VERSION)
+
+    @property
+    def annotated_versions(self) -> list[AnnotatedVersion]:
+        return [
+            AnnotatedVersion(
+                version_id=self.number,
+                annotation_id=annotation.id,
+                prov_type=ProvType.PULL_REQUEST_VERSION_ANNOTATED,
             )
             for annotation in self.annotations
         ]
