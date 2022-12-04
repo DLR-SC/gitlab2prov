@@ -60,7 +60,7 @@ pip install gitlab2prov[dev]  # PyPi, install with extras
 `gitlab2prov` requires a [personal access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html) to clone git repositories and to authenticate with the GitLab API.
 
 Use the following guide to obtain a token with the required [scopes](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#personal-access-token-scopes) for yourself:
-- [Create a personal access token (GitLab)](./docs/guides/tokens.md)
+- [Create a personal access token (GitLab)](./docs/guides/gitlab-token.md)
 
 
 ## 🚀‍ Usage
