@@ -3,7 +3,7 @@ import logging
 from typing import Type
 
 from gitlab2prov.service_layer import handlers, messagebus, unit_of_work
-from gitlab2prov.adapters.fetch import GitFetcher, GitlabFetcher
+from gitlab2prov.adapters.fetch import GitFetcher, GitlabFetcher, GithubFetcher
 
 
 log = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ def bootstrap(
         "uow": uow,
         "git_fetcher": git_fetcher,
         "gitlab_fetcher": gitlab_fetcher,
+        "github_fetcher": GithubFetcher,
     }
     injected_handlers = {
         command_type: [inject_dependencies(handler, dependencies) for handler in handlers]

@@ -18,9 +18,9 @@ def fetch_git(cmd: commands.Fetch, uow, git_fetcher) -> None:
         uow.commit()
 
 
-def fetch_gitlab(cmd: commands.Fetch, uow, gitlab_fetcher) -> None:
-    fetcher = gitlab_fetcher(cmd.url, cmd.token)
-    fetcher.do_login()
+def fetch_gitlab(cmd: commands.Fetch, uow, gitlab_fetcher, github_fetcher) -> None:
+    fetcher = gitlab_fetcher() if "gitlab" in cmd.url else github_fetcher()
+    fetcher.do_login(cmd.url, cmd.token)
     with uow:
         for resource in fetcher.fetch_gitlab():
             log.info(f"add {resource=}")
