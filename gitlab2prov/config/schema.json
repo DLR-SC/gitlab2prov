@@ -19,6 +19,7 @@
                             "type": "string"
                         }
                     },
+                    "additionalProperties": false,
                     "required": [
                         "url",
                         "token"
@@ -39,6 +40,7 @@
                             }
                         }
                     },
+                    "additionalProperties": false,
                     "required": [
                         "input"
                     ]
@@ -69,6 +71,7 @@
                             }
                         }
                     },
+                    "additionalProperties": false,
                     "required": [
                         "output",
                         "format"
@@ -106,7 +109,8 @@
                                 "csv"
                             ]
                         }
-                    }
+                    },
+                    "additionalProperties": false
                 }
             }
         }
