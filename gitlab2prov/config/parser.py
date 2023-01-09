@@ -2,7 +2,9 @@ import json
 from typing import Any
 
 import jsonschema
-from ruamel.yaml import YAML
+import jsonschema.exceptions
+
+from ruamel.yaml import YAML, constructor
 
 from gitlab2prov.root import get_package_root
 
@@ -21,8 +23,17 @@ def get_schema() -> dict[str, Any]:
 
 class ConfigParser:
     @staticmethod
-    def validate(filepath: str) -> None:
-        jsonschema.validate(read_file(filepath), get_schema())
+    def validate(filepath: str) -> tuple[bool, str]:
+        try:
+            validator = jsonschema.Draft7Validator(get_schema())
+            validator.validate(read_file(filepath))
+        except jsonschema.exceptions.ValidationError as err:
+            return False, err.message
+        except jsonschema.exceptions.SchemaError as err:
+            return False, err.message
+        except constructor.DuplicateKeyError as err:
+            return False, err.problem
+        return True, "Everything is fine!"
 
     def parse(self, filepath: str) -> list[str]:
         content = read_file(filepath)
