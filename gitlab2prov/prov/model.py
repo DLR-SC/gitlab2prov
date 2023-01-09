@@ -1,404 +1,594 @@
-from typing import Optional, Union
+from typing import Optional, Union, Type, Iterable, Callable, Any
+from dataclasses import dataclass, field
+from operator import attrgetter
 
-from prov.model import ProvDocument, PROV_ROLE
+from prov.model import (
+    ProvDocument,
+    ProvDerivation,
+    PROV_ROLE,
+    PROV_ATTR_STARTTIME,
+    ProvInvalidation,
+    ProvMembership,
+    ProvElement,
+    ProvUsage,
+    ProvAssociation,
+    ProvAttribution,
+    ProvGeneration,
+    ProvRelation,
+    ProvSpecialization,
+    ProvCommunication,
+    ProvRelation,
+    ProvRecord,
+)
+from prov.identifier import QualifiedName, Namespace
+from functools import partial
 
-from gitlab2prov.prov.operations import graph_factory
 from gitlab2prov.adapters.repository import AbstractRepository
-from gitlab2prov.domain.constants import ChangeType, ProvRole
+from gitlab2prov.domain.constants import ProvRole
 from gitlab2prov.domain.objects import (
     FileRevision,
     GitCommit,
-    GitlabCommit,
-    GithubCommit,
+    Commit,
     Issue,
     MergeRequest,
-    GithubPullRequest,
     Release,
-    Tag,
+    GitTag,
+    Annotation,
+    Creation,
+    AnnotatedVersion,
 )
 
 
-Resource = Union[GitlabCommit, Issue, MergeRequest]
+AUTHOR_ROLE_MAP = {
+    Commit: ProvRole.COMMIT_AUTHOR,
+    Issue: ProvRole.ISSUE_AUTHOR,
+    MergeRequest: ProvRole.MERGE_REQUEST_AUTHOR,
+}
 
 
-def git_commit_model(resources: AbstractRepository, graph: ProvDocument = None):
-    """Commit model implementation."""
-    if graph is None:
-        graph = graph_factory()
-    for commit in resources.list_all(GitCommit):
-        file_revisions = resources.list_all(FileRevision, committed_in=commit.hexsha)
-        parents = [resources.get(GitCommit, hexsha=hexsha) for hexsha in commit.parents]
-        parents = [parent for parent in parents if parent is not None]
-        for rev in file_revisions:
-            model = choose_rev_model(rev)
-            if model is None:
-                continue
-            graph.update(model(commit, parents, rev))
-    return graph
+HostedResource = Commit | Issue | MergeRequest
+Query = Callable[[AbstractRepository], Iterable[HostedResource]]
+DEFAULT_NAMESPACE = Namespace("ex", "example.org")
 
 
-def choose_rev_model(rev: FileRevision):
-    """Add the file change models based on the change type of each file version."""
-    if rev.change_type == ChangeType.ADDED:
-        return addition
-    if (
-        rev.change_type == ChangeType.MODIFIED
-        or rev.change_type == ChangeType.RENAMED
-        or rev.change_type == ChangeType.COPIED
-        or rev.change_type == ChangeType.CHANGED
+def file_status_query(repository: AbstractRepository, status: str):
+    for revision in repository.list_all(FileRevision, status=status):
+        commit = repository.get(GitCommit, sha=revision.commit)
+        for parent in [repository.get(GitCommit, sha=sha) for sha in commit.parents]:
+            yield commit, parent, revision, revision.previous if status == "modified" else None
+
+
+def hosted_resource_query(repository: AbstractRepository, resource_type: Type[HostedResource]):
+    for resource in repository.list_all(resource_type):
+        if resource_type == Commit:
+            yield (resource, repository.get(GitCommit, sha=resource.sha))
+        yield (resource, None)
+
+
+FileAdditionQuery = partial(file_status_query, status="added")
+FileDeletionQuery = partial(file_status_query, status="deleted")
+FileModificationQuery = partial(file_status_query, status="modified")
+HostedCommitQuery = partial(hosted_resource_query, resource_type=Commit)
+HostedIssueQuery = partial(hosted_resource_query, resource_type=Issue)
+HostedMergeQuery = partial(hosted_resource_query, resource_type=MergeRequest)
+
+
+@dataclass
+class ProvenanceContext:
+    document: ProvDocument
+    namespace: Optional[str] = None
+
+    def add_element(self, dataclass_instance) -> ProvRecord:
+        # Convert the dataclass instance to a ProvElement
+        element = self.convert_to_prov_element(dataclass_instance)
+        # Add the namespace to the element if it is provided
+        if self.namespace:
+            element.add_namespace(self.namespace)
+        # Return the newly added element
+        return self.document.add_record(element)
+
+    def convert_to_prov_element(self, dataclass_instance) -> ProvElement:
+        # Convert the dataclass instance to a ProvElement
+        element = dataclass_instance.to_prov_element()
+        # Add the element to the ProvDocument and return it
+        return self.document.new_record(element._prov_type, element.identifier, element.attributes)
+
+    def add_relation(
+        self,
+        source_dataclass_instance,
+        target_dataclass_instance,
+        relationship_type: Type[ProvRelation],
+        attributes: dict[str, Any] = None,
+    ) -> None:
+        # Initialize attributes if they are not provided
+        if not attributes:
+            attributes = dict()
+        # Make sure that both source and target are part of the document
+        source = self.add_element(source_dataclass_instance)
+        target = self.add_element(target_dataclass_instance)
+        # Create a relationship between the source and target
+        relationship = self.document.new_record(
+            relationship_type._prov_type,
+            QualifiedName(DEFAULT_NAMESPACE, f"relation:{source.identifier}:{target.identifier}"),
+            {
+                relationship_type.FORMAL_ATTRIBUTES[0]: source,
+                relationship_type.FORMAL_ATTRIBUTES[1]: target,
+            },
+        )
+        # Add the remaining attributes to the relationship
+        relationship.add_attributes(attributes)
+        # Add the relationship to the ProvDocument
+        self.document.add_record(relationship)
+
+    def get_document(self):
+        return self.document
+
+
+@dataclass
+class FileAdditionModel:
+    commit: GitCommit
+    parent: GitCommit
+    revisions: FileRevision
+    ctx: ProvenanceContext = field(init=False)
+
+    def __post_init__(self):
+        self.ctx = ProvenanceContext(ProvDocument())
+
+    def build_provenance_model(self) -> ProvDocument:
+        # Add the elements to the context
+        self.ctx.add_element(self.commit)
+        self.ctx.add_element(self.commit.author)
+        self.ctx.add_element(self.commit.committer)
+        self.ctx.add_element(self.revision)
+        self.ctx.add_element(self.revision.file)
+        # Check if parent exists
+        if self.parent:
+            # Add the parent to the context
+            self.ctx.add_element(self.parent)
+            # Add the communication relation (wasInformedBy) between the parent and the commit
+            self.ctx.add_relation(self.commit, self.parent, ProvCommunication, {})
+        # Add the relations to the context
+        self.ctx.add_relation(
+            self.commit,
+            self.commit.author,
+            ProvAssociation,
+            {PROV_ROLE: ProvRole.AUTHOR},
+        )
+        self.ctx.add_relation(
+            self.commit,
+            self.commit.committer,
+            ProvAssociation,
+            {PROV_ROLE: ProvRole.COMMITTER},
+        )
+        self.ctx.add_relation(
+            self.revision,
+            self.commit,
+            ProvGeneration,
+            {
+                PROV_ATTR_STARTTIME: self.commit.start,
+                PROV_ROLE: ProvRole.FILE,
+            },
+        )
+        self.ctx.add_relation(
+            self.revision.file,
+            self.commit,
+            ProvGeneration,
+            {
+                PROV_ATTR_STARTTIME: self.commit.start,
+                PROV_ROLE: ProvRole.ADDED_REVISION,
+            },
+        )
+        self.ctx.add_relation(self.revision.file, self.commit.author, ProvAttribution)
+        self.ctx.add_relation(self.revision, self.revision.file, ProvSpecialization)
+        # Return the document
+        return self.ctx.get_document()
+
+
+@dataclass
+class FileDeletionModel:
+    commit: GitCommit
+    parent: GitCommit
+    revision: FileRevision
+    ctx: ProvenanceContext = field(init=False)
+
+    def __post_init__(self):
+        # Initialize the context
+        self.ctx = ProvenanceContext(ProvDocument())
+
+    def build_provenance_model(self) -> ProvDocument:
+        # Add the elements to the context
+        self.ctx.add_element(self.commit)
+        self.ctx.add_element(self.revision)
+        self.ctx.add_element(self.revision.file)
+        self.ctx.add_element(self.commit.author)
+        self.ctx.add_element(self.commit.committer)
+        # Check if parent exists
+        if self.parent:
+            # Add the parent to the context
+            self.ctx.add_element(self.parent)
+            # Add the communication relation (wasInformedBy) between the parent and the commit
+            self.ctx.add_relation(self.commit, self.parent, ProvCommunication)
+        # Add the relations to the context
+        self.ctx.add_relation(
+            self.commit, self.comitter, ProvAssociation, {PROV_ROLE: ProvRole.COMMITTER}
+        )
+        self.ctx.add_relation(
+            self.commit, self.author, ProvAssociation, {PROV_ROLE: ProvRole.AUTHOR}
+        )
+        self.ctx.add_relation(self.revision, self.revision.file, ProvSpecialization)
+        self.ctx.add_relation(
+            self.revision,
+            self.commit,
+            ProvInvalidation,
+            {PROV_ATTR_STARTTIME: self.commit.start, PROV_ROLE: ProvRole.DELETED_REVISION},
+        )
+        # Return the document
+        return self.ctx.get_document()
+
+
+@dataclass
+class FileModificationModel:
+    commit: GitCommit
+    parent: GitCommit
+    revision: FileRevision
+    previous: FileRevision
+    ctx: ProvenanceContext = field(init=False)
+
+    def __post_init__(self):
+        # Initialize the context
+        self.ctx = ProvenanceContext(ProvDocument())
+
+    def build_provenance_model(self) -> ProvDocument:
+        # Add the elements to the context
+        self.ctx.add_element(self.commit)
+        self.ctx.add_element(self.revision)
+        self.ctx.add_element(self.revision.file)
+        self.ctx.add_element(self.previous)
+        self.ctx.add_element(self.commit.author)
+        self.ctx.add_element(self.commit.committer)
+        # Check if parent exists
+        if self.parent:
+            # Add the parent to the context
+            self.ctx.add_element(self.parent)
+            # Add the communication relation (wasInformedBy) between the parent and the commit
+            self.ctx.add_relation(self.commit, self.parent, ProvCommunication)
+        # Add the relations to the context
+        self.ctx.add_relation(
+            self.commit, self.commit.author, ProvAssociation, {PROV_ROLE: ProvRole.AUTHOR}
+        )
+        self.ctx.add_relation(
+            self.commit, self.commit.committer, ProvAssociation, {PROV_ROLE: ProvRole.COMMITTER}
+        )
+        self.ctx.add_relation(self.revision, self.revision.file, ProvSpecialization)
+        self.ctx.add_relation(
+            self.revision,
+            self.commit,
+            ProvGeneration,
+            {PROV_ATTR_STARTTIME: self.commit.start, PROV_ROLE: ProvRole.MODIFIED_REVISION},
+        )
+        self.ctx.add_relation(self.revision, self.commit.author, ProvAttribution)
+        self.ctx.add_relation(
+            self.revision, self.previous, ProvDerivation
+        )  # TODO: has to be wasRevisionOf record, add asserted type 'Revison'
+        self.ctx.add_relation(
+            self.commit,
+            self.previous,
+            ProvUsage,
+            {PROV_ATTR_STARTTIME: self.commit.start, PROV_ROLE: ProvRole.PREVIOUS_REVISION},
+        )
+        # Return the document
+        return self.ctx.get_document()
+
+
+@dataclass
+class HostedResourceModel:
+    """Model for a hosted resource (e.g., commit, issue, merge request)."""
+
+    resource: Union[Commit, Issue, MergeRequest]
+    commit: Optional[GitCommit] = None
+    ctx: ProvenanceContext = field(init=False)
+
+    def __post_init__(self):
+        # Initialize the context
+        self.ctx = ProvenanceContext(ProvDocument())
+
+    def build_provenance_model(self):
+        # Choose the creation part based on the type of resource
+        if isinstance(self.resource, Commit) and self.commit:
+            self._add_creation_part_for_hosted_commits()
+        else:
+            self._add_creation_part()
+        # Set the previous annotation and version to the creation / original version
+        previous_annotation = self.resource.creation
+        previous_version = self.resource.first_version
+        # For each annotation and version, add the annotation part, sort by time ascending
+        for current_annotation, current_version in zip(
+            sorted(self.resource.annotations, key=attrgetter("start")),
+            sorted(self.resource.annotated_versions, key=attrgetter("start")),
+        ):
+            # Add the annotation chain link
+            self._add_annotation_part(
+                current_annotation,
+                previous_annotation,
+                current_version,
+                previous_version,
+            )
+            # Update the previous annotation and version
+            previous_annotation = current_annotation
+            previous_version = current_version
+
+        return self.ctx.get_document()
+
+    def _add_creation_part_for_hosted_commits(self):
+        # Add the elements to the context
+        self.ctx.add_element(self.resource)
+        self.ctx.add_element(self.resource.creation)
+        self.ctx.add_element(self.resource.first_version)
+        self.ctx.add_element(self.resource.author)
+        self.ctx.add_element(self.commit)
+        self.ctx.add_element(self.commit.committer)
+        # Add the relations to the context
+        self.ctx.add_relation(
+            self.resource.creation,
+            self.resource.author,
+            ProvAssociation,
+            {PROV_ROLE: ProvRole.COMMIT_AUTHOR},
+        )
+        self.ctx.add_relation(self.resource, self.resource.author, ProvAttribution)
+        self.ctx.add_relation(self.resource.first_version, self.resource, ProvSpecialization)
+        self.ctx.add_relation(self.resource.first_version, self.resource.author, ProvAttribution)
+        self.ctx.add_relation(
+            self.resource,
+            self.resource.creation,
+            ProvGeneration,
+            {PROV_ATTR_STARTTIME: self.resource.creation.start, PROV_ROLE: ProvRole.RESOURCE},
+        )
+        self.ctx.add_relation(
+            self.resource.first_version,
+            self.resource.creation,
+            ProvGeneration,
+            {
+                PROV_ATTR_STARTTIME: self.resource.creation.start,
+                PROV_ROLE: ProvRole.FIRST_RESOURCE_VERSION,
+            },
+        )
+        self.ctx.add_relation(self.resource.creation, self.commit, ProvCommunication)
+        self.ctx.add_relation(
+            self.commit, self.commit.committer, ProvAssociation, {PROV_ROLE: ProvRole.COMMIT_AUTHOR}
+        )
+
+    def _add_creation_part(self):
+        self.ctx.add_element(self.resource)
+        self.ctx.add_element(self.resource.creation)
+        self.ctx.add_element(self.resource.first_version)
+        self.ctx.add_element(self.resource.author)
+
+        self.ctx.add_relation(self.resource, self.resource.author, ProvAttribution)
+        self.ctx.add_relation(self.resource.first_version, self.resource, ProvSpecialization)
+        self.ctx.add_relation(self.resource.first_version, self.resource.author, ProvAttribution)
+        self.ctx.add_relation(
+            self.resource.creation,
+            self.resource.author,
+            ProvAssociation,
+            {PROV_ROLE: AUTHOR_ROLE_MAP[type(self.resource)]},
+        )
+        self.ctx.add_relation(
+            self.resource,
+            self.resource.creation,
+            ProvGeneration,
+            {PROV_ATTR_STARTTIME: self.resource.creation.start, PROV_ROLE: ProvRole.RESOURCE},
+        )
+        self.ctx.add_relation(
+            self.resource.first_version,
+            self.resource.creation,
+            ProvGeneration,
+            {
+                PROV_ATTR_STARTTIME: self.resource.creation.start,
+                PROV_ROLE: ProvRole.FIRST_RESOURCE_VERSION,
+            },
+        )
+
+    def _add_annotation_part(
+        self,
+        current_annotation: Annotation,
+        previous_annotation: Union[Annotation, Creation],
+        current_version: AnnotatedVersion,
+        previous_version: AnnotatedVersion,
     ):
-        return modification
-    if rev.change_type == ChangeType.DELETED:
-        return deletion
-    return None
-
-
-def addition(
-    commit: GitCommit,
-    parents: list[GitCommit],
-    rev: FileRevision,
-    graph: ProvDocument = None,
-):
-    """Add model for the addition of a new file in a commit."""
-    if graph is None:
-        graph = graph_factory()
-    c = graph.activity(*commit)
-    at = graph.agent(*commit.author)
-    ct = graph.agent(*commit.committer)
-
-    c.wasAssociatedWith(
-        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
-    )
-    c.wasAssociatedWith(
-        ct, plan=None, attributes=[(PROV_ROLE, list(ct.get_attribute(PROV_ROLE))[0])]
-    )
-
-    for parent in parents:
-        graph.activity(*commit).wasInformedBy(graph.activity(*parent))
-
-    f = graph.entity(*rev.original)
-    f.wasAttributedTo(at)
-    f.wasGeneratedBy(c, time=c.get_startTime(), attributes=[(PROV_ROLE, ProvRole.FILE)])
-
-    rev = graph.entity(*rev)
-    rev.wasAttributedTo(at)
-    rev.specializationOf(f)
-    rev.wasGeneratedBy(
-        c,
-        time=c.get_startTime(),
-        attributes=[(PROV_ROLE, ProvRole.FILE_REVISION_AT_POINT_OF_ADDITION)],
-    )
-    return graph
-
-
-def modification(
-    commit: GitCommit,
-    parents: list[GitCommit],
-    fv: FileRevision,
-    graph: ProvDocument = None,
-):
-    if graph is None:
-        graph = graph_factory()
-    c = graph.activity(*commit)
-    at = graph.agent(*commit.author)
-    ct = graph.agent(*commit.committer)
-
-    c.wasAssociatedWith(
-        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
-    )
-    c.wasAssociatedWith(
-        ct, plan=None, attributes=[(PROV_ROLE, list(ct.get_attribute(PROV_ROLE))[0])]
-    )
-
-    for parent in parents:
-        graph.activity(*commit).wasInformedBy(graph.activity(*parent))
-
-    f = graph.entity(*fv.original)
-    rev = graph.entity(*fv)
-    rev.wasAttributedTo(at)
-    rev.specializationOf(f)
-    rev.wasGeneratedBy(
-        c,
-        time=c.get_startTime(),
-        attributes=[(PROV_ROLE, ProvRole.FILE_REVISION_AFTER_MODIFICATION)],
-    )
-
-    # skip previous revisions if none exist
-    if fv.previous is None:
-        return graph
-
-    prev = graph.entity(*fv.previous)
-    prev.specializationOf(f)
-    graph.wasRevisionOf(rev, prev)  # NOTE: rev.wasRevisionOf(prev) is not impl in prov pkg
-    c.used(
-        prev,
-        c.get_startTime(),
-        [(PROV_ROLE, ProvRole.FILE_REVISION_TO_BE_MODIFIED)],
-    )
-    return graph
-
-
-def deletion(
-    commit: GitCommit,
-    parents: list[GitCommit],
-    fv: FileRevision,
-    graph: ProvDocument = None,
-):
-    if graph is None:
-        graph = graph_factory()
-    c = graph.activity(*commit)
-    at = graph.agent(*commit.author)
-    ct = graph.agent(*commit.committer)
-
-    c.wasAssociatedWith(
-        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
-    )
-    c.wasAssociatedWith(
-        ct, plan=None, attributes=[(PROV_ROLE, list(ct.get_attribute(PROV_ROLE))[0])]
-    )
-
-    for parent in parents:
-        graph.activity(*commit).wasInformedBy(graph.activity(*parent))
-
-    f = graph.entity(*fv.original)
-    rev = graph.entity(*fv)
-    rev.specializationOf(f)
-    rev.wasInvalidatedBy(
-        c,
-        c.get_startTime(),
-        [(PROV_ROLE, ProvRole.FILE_REVISION_AT_POINT_OF_DELETION)],
-    )
-    return graph
-
-
-def gitlab_commit_model(resources, graph: ProvDocument = None):
-    if graph is None:
-        graph = graph_factory()
-
-    github_commits = resources.list_all(GitlabCommit)
-    gitlab_commits = resources.list_all(GithubCommit)
-
-    for commit in {*github_commits, *gitlab_commits}:
-        git_commit = resources.get(GitCommit, hexsha=commit.hexsha)
-
-        creation = commit_creation(commit, git_commit)
-        annotats = annotation_chain(commit)
-
-        graph.update(creation)
-        graph.update(annotats)
-
-    return graph
-
-
-def gitlab_issue_model(resources, graph: ProvDocument = None):
-    if graph is None:
-        graph = graph_factory()
-    for issue in resources.list_all(Issue):
-        graph.update(resource_creation(issue))
-        graph.update(annotation_chain(issue))
-    return graph
-
-
-def gitlab_merge_request_model(resources, graph: ProvDocument = None):
-    if graph is None:
-        graph = graph_factory()
-
-    merge_requests = resources.list_all(MergeRequest)
-    pull_requests = resources.list_all(GithubPullRequest)
-
-    for merge_request in {*merge_requests, *pull_requests}:
-        creation = resource_creation(merge_request)
-        annotats = annotation_chain(merge_request)
-
-        graph.update(creation)
-        graph.update(annotats)
-    return graph
-
-
-def commit_creation(
-    gitlab_commit: GitlabCommit,
-    git_commit: Optional[GitCommit],
-    graph: ProvDocument = None,
-):
-    if graph is None:
-        graph = graph_factory()
-
-    resource = graph.entity(*gitlab_commit)
-    creation = graph.activity(*gitlab_commit.creation)
-    first_version = graph.entity(*gitlab_commit.first_version)
-    author = graph.agent(*gitlab_commit.author)
-
-    resource.wasAttributedTo(author)
-    creation.wasAssociatedWith(
-        author, plan=None, attributes=[(PROV_ROLE, ProvRole.AUTHOR_GITLAB_COMMIT)]
-    )
-    resource.wasGeneratedBy(
-        creation,
-        time=creation.get_startTime(),
-        attributes=[(PROV_ROLE, ProvRole.RESOURCE)],
-    )
-    first_version.wasGeneratedBy(
-        creation,
-        time=creation.get_startTime(),
-        attributes=[(PROV_ROLE, ProvRole.RESOURCE_VERSION_AT_POINT_OF_CREATION)],
-    )
-    first_version.specializationOf(resource)
-    first_version.wasAttributedTo(author)
-
-    if git_commit is None:
-        return graph
-
-    commit = graph.activity(*git_commit)
-    committer = graph.agent(*git_commit.committer)
-    commit.wasAssociatedWith(committer, plan=None, attributes=[(PROV_ROLE, ProvRole.COMMITTER)])
-    creation.wasInformedBy(commit)
-
-    return graph
-
-
-def resource_creation(resource: Resource, graph: ProvDocument = None):
-    if graph is None:
-        graph = graph_factory()
-    r = graph.entity(*resource)
-    c = graph.activity(*resource.creation)
-    rv = graph.entity(*resource.first_version)
-    at = graph.agent(*resource.author)
-
-    c.wasAssociatedWith(
-        at,
-        plan=None,
-        attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])],
-    )
-
-    r.wasAttributedTo(at)
-    rv.wasAttributedTo(at)
-    rv.specializationOf(r)
-    r.wasGeneratedBy(
-        c,
-        time=c.get_startTime(),
-        attributes=[(PROV_ROLE, ProvRole.RESOURCE)],
-    )
-    rv.wasGeneratedBy(
-        c,
-        time=c.get_startTime(),
-        attributes=[(PROV_ROLE, ProvRole.RESOURCE_VERSION_AT_POINT_OF_CREATION)],
-    )
-    return graph
-
-
-def annotation_chain(resource, graph=None):
-    if graph is None:
-        graph = graph_factory()
-    r = graph.entity(*resource)
-    c = graph.activity(*resource.creation)
-    fv = graph.entity(*resource.first_version)
-
-    prev_annot = c
-    prev_annot_ver = fv
-
-    for annotation, annotated_version in zip(resource.annotations, resource.annotated_versions):
-        annot = graph.activity(*annotation)
-        annot_ver = graph.entity(*annotated_version)
-        annotator = graph.agent(*annotation.annotator)
-
-        annot.wasInformedBy(prev_annot)
-        annot_ver.wasDerivedFrom(prev_annot_ver)
-        annot_ver.wasAttributedTo(annotator)
-        annot_ver.specializationOf(r)
-
-        annot.wasAssociatedWith(
-            annotator,
-            plan=None,
-            attributes=[(PROV_ROLE, list(annotator.get_attribute(PROV_ROLE))[0])],
+        # Add the elements to the context
+        self.ctx.add_element(self.resource)
+        self.ctx.add_element(self.resource.creation)
+        self.ctx.add_element(current_annotation)
+        self.ctx.add_element(current_annotation.annotator)
+        self.ctx.add_element(current_version)
+        self.ctx.add_element(previous_annotation)
+        self.ctx.add_element(previous_version)
+        # Add the relations to the context
+        self.ctx.add_relation(current_annotation, previous_annotation, ProvCommunication)
+        self.ctx.add_relation(current_version, previous_version, ProvDerivation)
+        self.ctx.add_relation(current_version, current_annotation.annotator, ProvAttribution)
+        self.ctx.add_relation(
+            current_annotation,
+            current_annotation.annotator,
+            ProvAssociation,
+            {PROV_ROLE: ProvRole.ANNOTATOR},
+        )
+        self.ctx.add_relation(
+            current_annotation,
+            previous_version,
+            ProvUsage,
+            {
+                PROV_ATTR_STARTTIME: current_annotation.start,
+                PROV_ROLE: ProvRole.PRE_ANNOTATION_VERSION,
+            },
+        )
+        self.ctx.add_relation(
+            current_version,
+            current_annotation,
+            ProvGeneration,
+            {
+                PROV_ATTR_STARTTIME: current_annotation.start,
+                PROV_ROLE: ProvRole.POST_ANNOTATION_VERSION,
+            },
         )
 
-        annot.used(
-            prev_annot_ver,
-            annot.get_startTime(),
-            [(PROV_ROLE, list(annotator.get_attribute(PROV_ROLE))[0])],
+
+@dataclass
+class ReleaseModel:
+    release: Release
+    tag: GitTag
+    ctx: ProvenanceContext = field(init=False)
+
+    def __post_init__(self):
+        self.ctx = ProvenanceContext(ProvDocument())
+
+    @staticmethod
+    def query(repository: AbstractRepository) -> Iterable[tuple[Release, GitTag]]:
+        for release in repository.list_all(Release):
+            tag = repository.get(GitTag, sha=release.tag_sha)
+            yield release, tag
+
+    def build_provenance_model(self) -> ProvDocument:
+        # Add the release
+        self.ctx.add_element(self.release)
+        self.ctx.add_element(self.release.author)
+        self.ctx.add_element(self.release.creation)
+        # Add all evidence files
+        for evidence in self.release.evidences:
+            self.ctx.add_element(evidence)
+        # Add all assets
+        for asset in self.release.assets:
+            self.ctx.add_element(asset)
+        # Add the tag
+        self.ctx.add_element(self.tag)
+        self.ctx.add_element(self.tag.creation)
+        self.ctx.add_element(self.tag.author)
+        # Add the release relationships
+        self.ctx.add_relation(self.release, self.release.author, ProvAttribution)
+        self.ctx.add_relation(
+            self.release,
+            self.release.creation,
+            ProvGeneration,
+            {PROV_ATTR_STARTTIME: self.release.creation.start, PROV_ROLE: ProvRole.RELEASE},
         )
-        annot_ver.wasGeneratedBy(
-            annot,
-            time=annot.get_startTime(),
-            attributes=[(PROV_ROLE, ProvRole.RESOURCE_VERSION_AFTER_ANNOTATION)],
+        self.ctx.add_relation(
+            self.release.creation,
+            self.release.author,
+            ProvAssociation,
+            {PROV_ROLE: ProvRole.RELEASE_AUTHOR},
         )
-        prev_annot = annot
-        prev_annot_ver = annot_ver
-    return graph
+        # Add the evidence and asset relationships
+        for evidence in self.release.evidences:
+            self.ctx.add_relation(evidence, self.release, ProvMembership)
+            self.ctx.add_relation(evidence, self.release.creation, ProvGeneration)
+        for asset in self.release.assets:
+            self.ctx.add_relation(asset, self.release, ProvMembership)
+            self.ctx.add_relation(asset, self.release.creation, ProvGeneration)
+        # Add tag relationships
+        self.ctx.add_relation(self.tag, self.release, ProvMembership)
+        self.ctx.add_relation(self.tag, self.tag.author, ProvAttribution)
+        self.ctx.add_relation(
+            self.tag,
+            self.tag.creation,
+            ProvGeneration,
+            {PROV_ATTR_STARTTIME: self.tag.creation.start, PROV_ROLE: ProvRole.TAG},
+        )
+        self.ctx.add_relation(
+            self.tag.creation, self.tag.author, ProvAssociation, {PROV_ROLE: ProvRole.TAG_AUTHOR}
+        )
 
 
-def gitlab_release_tag_model(resources, graph: ProvDocument = None):
-    if graph is None:
-        graph = graph_factory()
-    for tag in resources.list_all(Tag):
-        release = resources.get(Release, tag_name=tag.name)
-        commit = resources.get(GitlabCommit, hexsha=tag.hexsha)
-        graph.update(release_and_tag(release, tag))
-        graph.update(tag_and_commit(tag, commit))
-    return graph
+@dataclass
+class GitTagModel:
+    """Model for a Git tag."""
+
+    tag: GitTag
+    commit: GitCommit
+    ctx: ProvenanceContext = field(init=False)
+
+    def __post_init__(self):
+        self.ctx = ProvenanceContext(ProvDocument())
+
+    @staticmethod
+    def query(repository: AbstractRepository) -> Iterable[tuple[GitTag, GitCommit]]:
+        for tag in repository.list_all(GitTag):
+            commit = repository.get(GitCommit, sha=tag.commit_sha)
+            yield tag, commit
+
+    def build_provenance_model(self) -> ProvDocument:
+        # Add the tag
+        self.ctx.add_element(self.tag)
+        self.ctx.add_element(self.tag.creation)
+        self.ctx.add_element(self.tag.author)
+        # Add the commit
+        self.ctx.add_element(self.commit)
+        self.ctx.add_element(self.commit.creation)
+        self.ctx.add_element(self.commit.author)
+        # Add tag relationships
+        self.ctx.add_relation(
+            self.tag,
+            self.tag.creation,
+            ProvGeneration,
+            {PROV_ATTR_STARTTIME: self.tag.creation.start, PROV_ROLE: ProvRole.TAG},
+        )
+        self.ctx.add_relation(self.tag, self.tag.author, ProvAttribution)
+        self.ctx.add_relation(
+            self.tag.creation, self.tag.author, ProvAssociation, {PROV_ROLE: ProvRole.TAG_AUTHOR}
+        )
+        # Add commit relationships
+        self.ctx.add_relation(self.commit, self.tag, ProvMembership)
+        self.ctx.add_relation(
+            self.commit,
+            self.commit.creation,
+            ProvGeneration,
+            {PROV_ATTR_STARTTIME: self.commit.creation.start, PROV_ROLE: ProvRole.COMMIT},
+        )
+        self.ctx.add_relation(self.commit, self.commit.author, ProvAttribution)
+        self.ctx.add_relation(
+            self.commit.creation,
+            self.commit.author,
+            ProvAssociation,
+            {PROV_ROLE: ProvRole.COMMIT_AUTHOR},
+        )
+        return self.ctx.get_document()
 
 
-def release_and_tag(release: Optional[Release], tag: Tag, graph: ProvDocument = None):
-    if graph is None:
-        graph = graph_factory()
-    t = graph.collection(*tag)
+@dataclass
+class CallableModel:
+    """A model that can be called to build a provenance document."""
 
-    if release is None:
-        return graph
+    model: Type[
+        FileAdditionModel
+        | FileModificationModel
+        | FileDeletionModel
+        | HostedResourceModel
+        | GitTagModel
+        | ReleaseModel
+    ]
+    query: Query
+    document: ProvDocument = field(init=False)
 
-    r = graph.collection(*release)
-    c = graph.activity(*release.creation)
-    t.hadMember(r)
-    r.wasGeneratedBy(c, time=c.get_startTime(), attributes=[(PROV_ROLE, ProvRole.RELEASE)])
-    for asset in release.assets:
-        graph.entity(*asset).hadMember(graph.entity(*release))
-    for evidence in release.evidences:
-        graph.entity(*evidence).hadMember(graph.entity(*release))
+    def __post_init__(self):
+        # Initialize the document
+        self.document = ProvDocument()
 
-    if release.author is None:
-        return graph
-
-    at = graph.agent(*release.author)
-    r.wasAttributedTo(at)
-    c.wasAssociatedWith(
-        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
-    )
-
-    return graph
-
-
-def tag_and_commit(tag: Tag, commit: Optional[GitlabCommit], graph: ProvDocument = None):
-    if graph is None:
-        graph = graph_factory()
-    t = graph.collection(*tag)
-    tc = graph.activity(*tag.creation)
-    at = graph.agent(*tag.author)
-    t.wasAttributedTo(at)
-    t.wasGeneratedBy(tc, time=tc.get_startTime(), attributes=[(PROV_ROLE, ProvRole.TAG)])
-    tc.wasAssociatedWith(
-        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
-    )
-
-    if commit is None:
-        return graph
-
-    cmt = graph.entity(*commit)
-    cc = graph.activity(*commit.creation)
-    at = graph.agent(*commit.author)
-    cmt.hadMember(t)
-    cmt.wasAttributedTo(at)
-    cmt.wasGeneratedBy(cc, time=cc.get_startTime(), attributes=[(PROV_ROLE, ProvRole.GIT_COMMIT)])
-    cc.wasAssociatedWith(
-        at, plan=None, attributes=[(PROV_ROLE, list(at.get_attribute(PROV_ROLE))[0])]
-    )
-
-    return graph
+    def __call__(self, repository: AbstractRepository):
+        # Pass the repository to the query
+        for args in self.query(repository):
+            # Initialize the model
+            m = self.model(*args)
+            # Update the document with the model
+            self.document.update(m.build_provenance_model())
+        return self.document
 
 
 MODELS = [
-    git_commit_model,
-    gitlab_commit_model,
-    gitlab_issue_model,
-    gitlab_merge_request_model,
-    gitlab_release_tag_model,
+    CallableModel(FileAdditionModel, FileAdditionQuery),
+    CallableModel(FileDeletionModel, FileDeletionQuery),
+    CallableModel(FileModificationModel, FileModificationQuery),
+    CallableModel(HostedResourceModel, HostedIssueQuery),
+    CallableModel(HostedResourceModel, HostedCommitQuery),
+    CallableModel(HostedResourceModel, HostedMergeQuery),
+    CallableModel(ReleaseModel, ReleaseModel.query),
+    CallableModel(GitTagModel, GitTagModel.query),
 ]
