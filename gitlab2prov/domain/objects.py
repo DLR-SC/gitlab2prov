@@ -1,465 +1,505 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from dataclasses import Field
 from dataclasses import field
-from dataclasses import fields
 from datetime import datetime
-from itertools import cycle
 from typing import Any
-from urllib.parse import urlencode
 
+from prov.model import (
+    PROV_LABEL,
+    PROV_ROLE,
+    ProvDocument,
+    ProvAgent,
+    ProvActivity,
+    ProvEntity,
+    PROV_TYPE,
+    PROV_ATTR_STARTTIME,
+    PROV_ATTR_ENDTIME,
+)
 from prov.identifier import QualifiedName
-from prov.model import PROV_LABEL
 
-from gitlab2prov.domain.constants import PROV_FIELD_MAP
-from gitlab2prov.domain.constants import ProvRole
 from gitlab2prov.domain.constants import ProvType
 from gitlab2prov.prov.operations import qualified_name
 
 
-# metadata for dataclass attributes that relate objects with one another
-# such attributes will not be included in the list of prov attributes of a dataclass
-IS_RELATION = {"IS_RELATION": True}
-
-
-def is_relation(field: Field):
-    return field.metadata == IS_RELATION
-
-
-class ProvMixin:
-    @property
-    def prov_identifier(self) -> QualifiedName:
-        attrs = urlencode(dict(self._traverse_repr_fields()))
-        label = f"{self._prov_type()}?{attrs}"
-        return qualified_name(label)
-
-    @property
-    def prov_label(self) -> QualifiedName:
-        attrs = urlencode(dict(self._traverse_repr_fields()))
-        label = f"{self._prov_type()}?{attrs}"
-        return qualified_name(label)
-
-    @property
-    def prov_attributes(self) -> list[tuple[str, str | int | datetime | None]]:
-        return list(self._traverse_attributes())
-
-    def _prov_type(self) -> str:
-        match self.prov_type:
-            case list():
-                return self.prov_type[0]
-            case _:
-                return self.prov_type
-
-    def _traverse_repr_fields(self):
-        for f in fields(self):
-            if f.repr:
-                yield f.name, getattr(self, f.name)
-
-    def _traverse_attributes(self):
-        for f in fields(self):
-            if not is_relation(f):
-                yield from self._expand_attribute(f.name, getattr(self, f.name))
-        yield (PROV_LABEL, self.prov_label)
-
-    def _expand_attribute(self, key, val):
-        key = PROV_FIELD_MAP.get(key, key)
-        match val:
-            case list():
-                yield from zip(cycle([key]), val)
-            case dict():
-                yield from val.items()
-            case _:
-                yield key, val
+PLACEHOLDER = ProvDocument()
+PLACEHOLDER.set_default_namespace("http://github.com/dlr-sc/gitlab2prov/")
 
 
 @dataclass
-class AgentMixin:
-    def __iter__(self):
-        yield self.prov_identifier
-        yield self.prov_attributes
-
-
-@dataclass
-class EntityMixin:
-    def __iter__(self):
-        yield self.prov_identifier
-        yield self.prov_attributes
-
-
-@dataclass(kw_only=True)
-class ActivityMixin:
-    def __iter__(self):
-        yield self.prov_identifier
-        yield self.prov_start
-        yield self.prov_end
-        yield self.prov_attributes
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class User(ProvMixin, AgentMixin):
+class User:
     name: str
-    email: str | None = field(default=None)
-    gitlab_username: str | None = field(repr=False, default=None)
-    gitlab_id: str | None = field(repr=False, default=None)
-    prov_role: ProvRole = field(repr=False, default=None)
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.USER)
+    email: str
+    gitlab_username: str | None = None
+    github_username: str | None = None
+    gitlab_id: str | None = None
+    github_id: str | None = None
+    prov_role: str | None = None
 
     def __post_init__(self):
         self.email = self.email.lower() if self.email else None
 
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class File(ProvMixin, EntityMixin):
-    path: str
-    committed_in: str
-    prov_type: str = field(init=False, repr=False, default=ProvType.FILE)
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class FileRevision(ProvMixin, EntityMixin):
-    path: str
-    committed_in: str
-    change_type: str
-    original: File = field(repr=False, metadata=IS_RELATION)
-    previous: FileRevision | None = field(repr=False, default=None, metadata=IS_RELATION)
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.FILE_REVISION)
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class Annotation(ProvMixin, ActivityMixin):
-    id: str
-    type: str
-    body: str = field(repr=False)
-    kwargs: dict[str, Any] = field(repr=False, default_factory=dict)
-    annotator: User = field(repr=False, metadata=IS_RELATION)
-    prov_start: datetime = field(repr=False)
-    prov_end: datetime = field(repr=False)
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.ANNOTATION)
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class Version(ProvMixin, EntityMixin):
-    version_id: str
-    prov_type: ProvType = field(repr=False)
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class AnnotatedVersion(ProvMixin, EntityMixin):
-    version_id: str
-    annotation_id: str
-    prov_type: ProvType = field(repr=False)
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class Creation(ProvMixin, ActivityMixin):
-    creation_id: str
-    prov_start: datetime = field(repr=False)
-    prov_end: datetime = field(repr=False)
-    prov_type: ProvType = field(repr=False)
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class GitCommit(ProvMixin, ActivityMixin):
-    hexsha: str
-    message: str = field(repr=False)
-    title: str = field(repr=False)
-    author: User = field(repr=False, metadata=IS_RELATION)
-    committer: User = field(repr=False, metadata=IS_RELATION)
-    parents: list[str] = field(repr=False, metadata=IS_RELATION)
-    prov_start: datetime = field(repr=False)
-    prov_end: datetime = field(repr=False)
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.GIT_COMMIT)
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class Issue(ProvMixin, EntityMixin):
-    id: str
-    iid: str
-    title: str
-    description: str = field(repr=False)
-    url: str = field(repr=False)
-    author: User = field(repr=False, metadata=IS_RELATION)
-    annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)
-    created_at: datetime = field(repr=False)
-    closed_at: datetime | None = field(repr=False, default=None)
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.ISSUE)
-
     @property
-    def creation(self) -> Creation:
-        return Creation(
-            creation_id=self.id,
-            prov_start=self.created_at,
-            prov_end=self.closed_at,
-            prov_type=ProvType.ISSUE_CREATION,
-        )
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"User?{self.name=}&{self.email=}")
 
-    @property
-    def first_version(self) -> Version:
-        return Version(version_id=self.id, prov_type=ProvType.ISSUE_VERSION)
-
-    @property
-    def annotated_versions(self) -> list[AnnotatedVersion]:
-        return [
-            AnnotatedVersion(
-                version_id=self.id,
-                annotation_id=annotation.id,
-                prov_type=ProvType.ISSUE_VERSION_ANNOTATED,
-            )
-            for annotation in self.annotations
+    def to_prov_element(self) -> ProvAgent:
+        attributes = [
+            ("name", self.name),
+            ("email", self.email),
+            (PROV_ROLE, self.prov_role),
+            (PROV_TYPE, ProvType.USER),
         ]
+        if self.gitlab_username:
+            attributes.append(("gitlab_username", self.gitlab_username))
+        if self.github_username:
+            attributes.append(("github_username", self.github_username))
+        if self.gitlab_id:
+            attributes.append(("gitlab_id", self.gitlab_id))
+        if self.github_id:
+            attributes.append(("github_id", self.github_id))
+        return ProvAgent(PLACEHOLDER, self.identifier, attributes)
 
 
-@dataclass(unsafe_hash=True, kw_only=True)
-class GithubIssue(ProvMixin, EntityMixin):
-    number: str  # id
-    id: str  # analogous to gitlab iid
-    title: str
-    body: str = field(repr=False)
-    url: str = field(repr=False)
-    author: User = field(repr=False, metadata=IS_RELATION)
-    annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)
-    created_at: datetime = field(repr=False)
-    closed_at: datetime | None = field(repr=False, default=None)
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.ISSUE)
-
-    @property
-    def creation(self) -> Creation:
-        return Creation(
-            creation_id=self.number,
-            prov_start=self.created_at,
-            prov_end=self.closed_at,
-            prov_type=ProvType.ISSUE_CREATION,
-        )
-
-    @property
-    def first_version(self) -> Version:
-        return Version(version_id=self.number, prov_type=ProvType.ISSUE_VERSION)
-
-    @property
-    def annotated_versions(self) -> list[AnnotatedVersion]:
-        return [
-            AnnotatedVersion(
-                version_id=self.number,
-                annotation_id=annotation.id,
-                prov_type=ProvType.ISSUE_VERSION_ANNOTATED,
-            )
-            for annotation in self.annotations
-        ]
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class GitlabCommit(ProvMixin, EntityMixin):
-    hexsha: str
-    url: str = field(repr=False)
-    author: User = field(repr=False, metadata=IS_RELATION)
-    annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)
-    authored_at: datetime = field(repr=False)
-    committed_at: datetime = field(repr=False)
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.GITLAB_COMMIT)
-
-    @property
-    def creation(self) -> Creation:
-        return Creation(
-            creation_id=self.hexsha,
-            prov_start=self.authored_at,
-            prov_end=self.committed_at,
-            prov_type=ProvType.GITLAB_COMMIT_CREATION,
-        )
-
-    @property
-    def first_version(self) -> Version:
-        return Version(version_id=self.hexsha, prov_type=ProvType.GITLAB_COMMIT_VERSION)
-
-    @property
-    def annotated_versions(self) -> list[AnnotatedVersion]:
-        return [
-            AnnotatedVersion(
-                version_id=self.hexsha,
-                annotation_id=annotation.id,
-                prov_type=ProvType.GITLAB_COMMIT_VERSION_ANNOTATED,
-            )
-            for annotation in self.annotations
-        ]
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class GithubCommit(ProvMixin, EntityMixin):
-    hexsha: str
-    url: str = field(repr=False)
-    author: User = field(repr=False, metadata=IS_RELATION)
-    annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)  # comments ...
-    authored_at: datetime = field(repr=False)
-    committed_at: datetime = field(repr=False)
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.GITHUB_COMMIT)
-
-    @property
-    def creation(self) -> Creation:
-        return Creation(
-            creation_id=self.sha,
-            prov_start=self.authored_at,
-            prov_end=self.committed_at,
-            prov_type=ProvType.GITHUB_COMMIT_CREATION,
-        )
-
-    @property
-    def first_version(self) -> Version:
-        return Version(version_id=self.hexsha, prov_type=ProvType.GITHUB_COMMIT_VERSION)
-
-    @property
-    def annotated_versions(self) -> list[AnnotatedVersion]:
-        return [
-            AnnotatedVersion(
-                version_id=self.hexsha,
-                annotation_id=annotation.id,
-                prov_type=ProvType.GITHUB_COMMIT_VERSION_ANNOTATED,
-            )
-            for annotation in self.annotations
-        ]
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class MergeRequest(ProvMixin, EntityMixin):
-    id: str
-    iid: str
-    title: str
-    description: str = field(repr=False)
-    url: str = field(repr=False)
-    source_branch: str = field(repr=False)
-    target_branch: str = field(repr=False)
-    author: User = field(repr=False, metadata=IS_RELATION)
-    annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)
-    created_at: datetime = field(repr=False)
-    closed_at: datetime | None = field(repr=False, default=None)
-    merged_at: datetime | None = field(repr=False, default=None)
-    first_deployed_to_production_at: datetime | None = field(repr=False, default=None)
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.MERGE_REQUEST)
-
-    @property
-    def creation(self) -> Creation:
-        return Creation(
-            creation_id=self.id,
-            prov_start=self.created_at,
-            prov_end=self.closed_at,
-            prov_type=ProvType.MERGE_REQUEST_CREATION,
-        )
-
-    @property
-    def first_version(self) -> Version:
-        return Version(version_id=self.id, prov_type=ProvType.MERGE_REQUEST_VERSION)
-
-    @property
-    def annotated_versions(self) -> list[AnnotatedVersion]:
-        return [
-            AnnotatedVersion(
-                version_id=self.id,
-                annotation_id=annotation.id,
-                prov_type=ProvType.MERGE_REQUEST_VERSION_ANNOTATED,
-            )
-            for annotation in self.annotations
-        ]
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class GithubPullRequest(ProvMixin, EntityMixin):
-    number: str  # id
-    id: str  # iid
-    title: str
-    body: str = field(repr=False)
-    url: str = field(repr=False)
-    head: str = field(repr=False)  # source_branch
-    base: str = field(repr=False)  # target_branch
-    author: User = field(repr=False, metadata=IS_RELATION)
-    annotations: list[Annotation] = field(repr=False, metadata=IS_RELATION)
-    created_at: datetime = field(repr=False)
-    closed_at: datetime | None = field(repr=False, default=None)
-    merged_at: datetime | None = field(repr=False, default=None)  # TODO: is this field necessary?
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.PULL_REQUEST)
-
-    @property
-    def creation(self) -> Creation:
-        return Creation(
-            creation_id=self.number,
-            prov_start=self.created_at,
-            prov_end=self.closed_at,
-            prov_type=ProvType.PULL_REQUEST_CREATION,
-        )
-
-    @property
-    def first_version(self) -> Version:
-        return Version(version_id=self.number, prov_type=ProvType.PULL_REQUEST_VERSION)
-
-    @property
-    def annotated_versions(self) -> list[AnnotatedVersion]:
-        return [
-            AnnotatedVersion(
-                version_id=self.number,
-                annotation_id=annotation.id,
-                prov_type=ProvType.PULL_REQUEST_VERSION_ANNOTATED,
-            )
-            for annotation in self.annotations
-        ]
-
-
-@dataclass(unsafe_hash=True, kw_only=True)
-class Tag(ProvMixin, EntityMixin):
+@dataclass
+class File:
     name: str
-    hexsha: str
-    message: str | None = field(repr=False)
-    author: User = field(repr=False, metadata=IS_RELATION)
-    created_at: datetime = field(repr=False)
-    prov_type: list[ProvType] = field(
-        init=False,
-        repr=False,
-        default_factory=lambda: [ProvType.TAG, ProvType.COLLECTION],
-    )
+    path: str
+    commit: str
 
     @property
-    def creation(self) -> Creation:
-        return Creation(
-            creation_id=self.name,
-            prov_start=self.created_at,
-            prov_end=self.created_at,
-            prov_type=ProvType.TAG_CREATION,
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"File?{self.name=}&{self.path=}&{self.commit=}")
+
+    def to_prov_element(self) -> ProvEntity:
+        attributes = [("name", self.name), ("path", self.path), (PROV_TYPE, ProvType.FILE)]
+        return ProvEntity(
+            PLACEHOLDER,
+            self.identifier,
+            attributes,
         )
 
 
-@dataclass(unsafe_hash=True, kw_only=True)
-class Asset(ProvMixin, EntityMixin):
+@dataclass
+class FileRevision(File):
+    status: str
+    file: File | None = None
+    previous: FileRevision | None = None
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(
+            f"FileRevision?{self.name=}&{self.path=}&{self.commit=}&{self.status=}"
+        )
+
+    def to_prov_element(self) -> ProvEntity:
+        attributes = [
+            ("name", self.name),
+            ("path", self.path),
+            ("status", self.status),
+            (PROV_TYPE, ProvType.FILE_REVISION),
+        ]
+        return ProvEntity(
+            PLACEHOLDER,
+            self.identifier,
+            attributes,
+        )
+
+
+@dataclass
+class Annotation:
+    uid: str
+    name: str
+    body: str
+    start: datetime
+    end: datetime
+    annotator: User
+    captured_kwargs: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"Annotation?{self.uid=}&{self.name=}")
+
+    def to_prov_element(self) -> ProvActivity:
+        attributes = [
+            ("uid", self.uid),
+            ("name", self.name),
+            ("body", self.body),
+            (PROV_ATTR_STARTTIME, self.start),
+            (PROV_ATTR_ENDTIME, self.end),
+            (PROV_TYPE, ProvType.ANNOTATION),
+            *(("captured_" + k, v) for k, v in self.captured_kwargs.items()),
+        ]
+        return ProvActivity(PLACEHOLDER, self.identifier, attributes)
+
+
+@dataclass
+class Version:
+    uid: str
+    resource: str
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"{self.resource}Version?{self.uid=}")
+
+    @classmethod
+    def from_commit(cls, commit: Commit):
+        return cls(uid=commit.sha, resource=ProvType.COMMIT)
+
+    @classmethod
+    def from_issue(cls, issue: Issue):
+        return cls(uid=issue.id, resource=ProvType.ISSUE)
+
+    @classmethod
+    def from_merge_request(cls, merge_request: MergeRequest):
+        return cls(uid=merge_request.id, resource=ProvType.MERGE_REQUEST)
+
+    def to_prov_element(self) -> ProvEntity:
+        attributes = [("uid", self.uid), (PROV_TYPE, f"{self.resource}Version")]
+        return ProvEntity(PLACEHOLDER, self.identifier, attributes)
+
+
+@dataclass
+class AnnotatedVersion:
+    uid: str
+    aid: str
+    resource: str
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"Annotated{self.resource}Version?{self.uid=}&{self.aid=}")
+
+    @classmethod
+    def from_commit(cls, commit: Commit, annotation: Annotation):
+        return cls(uid=commit.sha, aid=annotation.uid, resource=ProvType.COMMIT)
+
+    @classmethod
+    def from_issue(cls, issue: Issue, annotation: Annotation):
+        return cls(uid=issue.id, aid=annotation.uid, resource=ProvType.ISSUE)
+
+    @classmethod
+    def from_merge_request(cls, merge_request: MergeRequest, annotation: Annotation):
+        return cls(uid=merge_request.id, aid=annotation.uid, resource=ProvType.MERGE_REQUEST)
+
+    def to_prov_element(self) -> ProvEntity:
+        attributes = [("uid", self.uid), (PROV_TYPE, f"Annotated{self.resource}Version")]
+        return ProvEntity(
+            PLACEHOLDER,
+            self.identifier,
+            attributes,
+        )
+
+
+@dataclass
+class Creation:
+    uid: str
+    resource: str
+    start: datetime
+    end: datetime
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"Creation?{self.uid=}&{self.resource=}")
+
+    @classmethod
+    def from_tag(cls, tag: GitTag):
+        return cls(uid=tag.name, resource=ProvType.TAG, start=tag.start, end=tag.end)
+
+    @classmethod
+    def from_commit(cls, commit: Commit):
+        return cls(
+            uid=commit.sha,
+            resource=ProvType.COMMIT,
+            start=commit.authored_at,
+            end=commit.committed_at,
+        )
+
+    @classmethod
+    def from_issue(cls, issue: Issue):
+        return cls(
+            uid=issue.id, resource=ProvType.ISSUE, start=issue.created_at, end=issue.closed_at
+        )
+
+    @classmethod
+    def from_merge_request(cls, merge_request: MergeRequest):
+        return cls(
+            uid=merge_request.id,
+            resource=ProvType.MERGE_REQUEST,
+            start=merge_request.created_at,
+            end=merge_request.closed_at,
+        )
+
+    def to_prov_element(self) -> ProvActivity:
+        attributes = [
+            ("uid", self.uid),
+            (PROV_ATTR_STARTTIME, self.start),
+            (PROV_ATTR_ENDTIME, self.end),
+            (PROV_TYPE, ProvType.CREATION),
+        ]
+        return ProvActivity(PLACEHOLDER, self.identifier, attributes)
+
+
+@dataclass
+class GitCommit:
+    sha: str
+    title: str
+    message: str
+    author: User
+    committer: User
+    parents: list[str]
+    start: datetime  # authored date
+    end: datetime  # committed date
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"GitCommit?{self.sha=}")
+
+    def to_prov_element(self) -> ProvActivity:
+        attributes = [
+            ("sha", self.sha),
+            ("title", self.title),
+            ("message", self.message),
+            ("authored_at", self.start),
+            ("committed_at", self.end),
+            (PROV_ATTR_STARTTIME, self.start),
+            (PROV_ATTR_ENDTIME, self.end),
+            (PROV_TYPE, ProvType.GIT_COMMIT),
+        ]
+        return ProvActivity(PLACEHOLDER, self.identifier, attributes)
+
+
+@dataclass
+class Issue:
+    id: str
+    iid: str
+    platform: str
+    title: str
+    body: str
+    url: str
+    author: User
+    annotations: list[Annotation]
+    created_at: datetime = field(repr=False)
+    closed_at: datetime | None = field(repr=False, default=None)
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"Issue?{self.id=}")
+
+    @property
+    def creation(self) -> Creation:
+        return Creation.from_issue(self)
+
+    @property
+    def first_version(self) -> Version:
+        return Version.from_issue(self)
+
+    @property
+    def annotated_versions(self) -> list[AnnotatedVersion]:
+        return [AnnotatedVersion.from_issue(self, annotation) for annotation in self.annotations]
+
+    def to_prov_element(self) -> ProvActivity:
+        attributes = [
+            ("id", self.id),
+            ("iid", self.iid),
+            ("platform", self.platform),
+            ("title", self.title),
+            ("body", self.body),
+            ("url", self.url),
+            ("platform", self.platform),
+            (PROV_ATTR_STARTTIME, self.created_at),
+            (PROV_ATTR_ENDTIME, self.closed_at),
+            (PROV_TYPE, ProvType.ISSUE),
+        ]
+        return ProvActivity(PLACEHOLDER, self.identifier, attributes)
+
+
+@dataclass
+class Commit:
+    sha: str
+    url: str
+    author: User
+    platform: str
+    annotations: list[Annotation]
+    authored_at: datetime
+    committed_at: datetime
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"Commit?{self.sha=}")
+
+    @property
+    def creation(self) -> Creation:
+        return Creation.from_commit(self)
+
+    @property
+    def first_version(self) -> Version:
+        return Version.from_commit(self)
+
+    @property
+    def annotated_versions(self) -> list[AnnotatedVersion]:
+        return [AnnotatedVersion.from_commit(self, annotation) for annotation in self.annotations]
+
+    def to_prov_element(self) -> ProvActivity:
+        attributes = [
+            ("sha", self.sha),
+            ("url", self.url),
+            ("platform", self.platform),
+            (PROV_ATTR_STARTTIME, self.authored_at),
+            (PROV_ATTR_ENDTIME, self.committed_at),
+            (PROV_TYPE, ProvType.COMMIT),
+        ]
+        return ProvActivity(PLACEHOLDER, self.identifier, attributes)
+
+
+@dataclass
+class MergeRequest:
+    id: str
+    iid: str
+    title: str
+    body: str
+    url: str
+    platform: str
+    source_branch: str  # base for github
+    target_branch: str  # head for github
+    author: User
+    annotations: list[Annotation]
+    created_at: datetime
+    closed_at: datetime | None = None
+    merged_at: datetime | None = None
+    first_deployed_to_production_at: datetime | None = None
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"MergeRequest?{self.id=}")
+
+    @property
+    def creation(self) -> Creation:
+        return Creation.from_merge_request(self)
+
+    @property
+    def first_version(self) -> Version:
+        return Version.from_merge_request(self)
+
+    @property
+    def annotated_versions(self) -> list[AnnotatedVersion]:
+        return [
+            AnnotatedVersion.from_merge_request(self, annotation)
+            for annotation in self.annotations
+        ]
+
+    def to_prov_element(self) -> ProvActivity:
+        attributes = [
+            ("id", self.id),
+            ("iid", self.iid),
+            ("title", self.title),
+            ("body", self.body),
+            ("url", self.url),
+            ("platform", self.platform),
+            ("source_branch", self.source_branch),
+            ("target_branch", self.target_branch),
+            (PROV_ATTR_STARTTIME, self.created_at),
+            (PROV_ATTR_ENDTIME, self.closed_at),
+            (PROV_TYPE, ProvType.MERGE_REQUEST),
+        ]
+        return ProvActivity(PLACEHOLDER, self.identifier, attributes)
+
+
+@dataclass
+class GitTag:
+    name: str
+    sha: str
+    message: str | None
+    author: User
+    created_at: datetime
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"GitTag?{self.name=}")
+
+    @property
+    def creation(self) -> Creation:
+        return Creation.from_tag(self)
+
+    def to_prov_element(self) -> ProvEntity:
+        attributes = [
+            ("name", self.name),
+            ("sha", self.sha),
+            ("message", self.message),
+            (PROV_ATTR_STARTTIME, self.created_at),
+            (PROV_ATTR_ENDTIME, self.created_at),
+            (PROV_TYPE, ProvType.TAG),
+            (PROV_TYPE, ProvType.COLLECTION),
+        ]
+        return ProvEntity(PLACEHOLDER, self.identifier, attributes)
+
+
+@dataclass
+class Asset:
     url: str
     format: str
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.ASSET)
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"Asset?{self.url=}")
+
+    def to_prov_element(self) -> ProvEntity:
+        attributes = [
+            ("url", self.url),
+            ("format", self.format),
+            (PROV_TYPE, ProvType.ASSET),
+        ]
+        return ProvEntity(PLACEHOLDER, self.identifier, attributes)
 
 
-@dataclass(unsafe_hash=True, kw_only=True)
-class Evidence(ProvMixin, EntityMixin):
-    hexsha: str
+@dataclass
+class Evidence:
+    sha: str
     url: str
     collected_at: datetime
-    prov_type: ProvType = field(init=False, repr=False, default=ProvType.EVIDENCE)
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"Evidence?{self.sha=}")
+
+    def to_prov_element(self) -> ProvEntity:
+        attributes = [
+            ("sha", self.sha),
+            ("url", self.url),
+            ("collected_at", self.collected_at),
+            (PROV_TYPE, ProvType.EVIDENCE),
+        ]
+        return ProvEntity(PLACEHOLDER, self.identifier, attributes)
 
 
-@dataclass(unsafe_hash=True, kw_only=True)
-class Release(ProvMixin, EntityMixin):
+@dataclass
+class Release:
     name: str
-    description: str = field(repr=False)
-    tag_name: str = field(repr=False)
-    author: User | None = field(repr=False, metadata=IS_RELATION)
-    assets: list[Asset] = field(repr=False, metadata=IS_RELATION)
-    evidences: list[Evidence] = field(repr=False, metadata=IS_RELATION)
-    created_at: datetime = field(repr=False)
-    released_at: datetime = field(repr=False)
-    prov_type: list[ProvType] = field(
-        init=False,
-        repr=False,
-        default_factory=lambda: [ProvType.RELEASE, ProvType.COLLECTION],
-    )
+    body: str
+    tag_name: str
+    platform: str
+    author: User | None
+    assets: list[Asset]
+    evidences: list[Evidence]
+    created_at: datetime
+    released_at: datetime
+
+    @property
+    def identifier(self) -> QualifiedName:
+        return qualified_name(f"Release?{self.name=}")
 
     @property
     def creation(self) -> Creation:
-        return Creation(
-            creation_id=self.name,
-            prov_start=self.created_at,
-            prov_end=self.released_at,
-            prov_type=ProvType.RELEASE_CREATION,
-        )
+        return Creation.from_release(self)
+
+    def to_prov_element(self) -> ProvEntity:
+        attributes = [
+            ("name", self.name),
+            ("body", self.body),
+            ("tag_name", self.tag_name),
+            ("platform", self.platform),
+            ("created_at", self.created_at),
+            ("released_at", self.released_at),
+            (PROV_TYPE, ProvType.RELEASE),
+            (PROV_TYPE, ProvType.COLLECTION),
+        ]
+        return ProvEntity(PLACEHOLDER, self.identifier, attributes)
