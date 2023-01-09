@@ -74,13 +74,13 @@ def parse_system_note(note: Note) -> Annotation:
     )
     annotation_type, kwargs = classify_system_note(note.body)
     return Annotation(
-        id=note.id,
-        type=annotation_type,
+        uid=note.id,
+        name=annotation_type,
         body=note.body,
-        kwargs=kwargs,
+        start=note.created_at,
+        end=note.created_at,
+        captured_kwargs=kwargs,
         annotator=annotator,
-        prov_start=note.created_at,
-        prov_end=note.created_at,
     )
 
 
@@ -93,12 +93,12 @@ def parse_comment(comment: Comment) -> Annotation:
         prov_role=ProvRole.ANNOTATOR,
     )
     return Annotation(
-        id=f"{uuid.uuid4()}{annotator.gitlab_id}{abs(hash(comment.note))}",
-        type="add_comment",
+        uid=f"{uuid.uuid4()}{annotator.gitlab_id}{abs(hash(comment.note))}",
+        name="add_comment",
         body=comment.note,
+        start=comment.created_at,
+        end=comment.created_at,
         annotator=annotator,
-        prov_start=comment.created_at,
-        prov_end=comment.created_at,
     )
 
 
@@ -111,12 +111,12 @@ def parse_note(note: Note) -> Annotation:
         prov_role=ProvRole.ANNOTATOR,
     )
     return Annotation(
-        id=note.id,
-        type="add_note",
+        uid=note.id,
+        name="add_note",
         body=note.body,
         annotator=annotator,
-        prov_start=note.created_at,
-        prov_end=note.created_at,
+        start=note.created_at,
+        end=note.created_at,
     )
 
 
@@ -129,12 +129,12 @@ def parse_award(award: AwardEmoji) -> Annotation:
         prov_role=ProvRole.ANNOTATOR,
     )
     return Annotation(
-        id=award.id,
-        type="award_emoji",
+        uid=award.id,
+        name="award_emoji",
         body=award.name,
         annotator=annotator,
-        prov_start=award.created_at,
-        prov_end=award.created_at,
+        start=award.created_at,
+        end=award.created_at,
     )
 
 
@@ -147,12 +147,12 @@ def parse_label(label: Label) -> Annotation:
         prov_role=ProvRole.ANNOTATOR,
     )
     return Annotation(
-        id=label.id,
-        type=f"{label.action}_label",
+        uid=label.id,
+        name=f"{label.action}_label",
         body=label.action,
         annotator=annotator,
-        prov_start=label.created_at,
-        prov_end=label.created_at,
+        start=label.created_at,
+        end=label.created_at,
     )
 
 
@@ -182,4 +182,4 @@ def parse_annotations(
     for parseable in parseables:
         if parser := choose_parser(parseable):
             annotations.append(parser(parseable))
-    return sorted(annotations, key=operator.attrgetter("prov_start"))
+    return sorted(annotations, key=operator.attrgetter("start"))
