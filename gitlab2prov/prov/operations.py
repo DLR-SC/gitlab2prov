@@ -92,12 +92,9 @@ def graph_factory(records: Optional[Sequence[ProvRecord]] = None) -> ProvDocumen
     return graph
 
 
-def combine(graphs: Iterable[ProvDocument]) -> ProvDocument:
-    log.info(f"combine graphs {graphs}")
-    try:
-        acc = next(graphs)
-    except StopIteration:
-        return graph_factory()
+def combine(*graphs: ProvDocument) -> ProvDocument:
+    log.info(f"combine graphs {graphs=}")
+    acc = graphs[0]
     for graph in graphs:
         acc.update(graph)
     return dedupe(acc)
