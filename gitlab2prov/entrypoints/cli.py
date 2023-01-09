@@ -30,12 +30,13 @@ def invoke_from_config(ctx: click.Context, _, filepath: str):
 def validate_config(ctx: click.Context, _, filepath: str):
     """Callback that validates config file using gitlab2prov/config/schema.json."""
     if filepath:
-        try:
-            ConfigParser().validate(filepath)
-            print(ConfigParser().parse(filepath))
-        except Exception as err:
-            ctx.fail(f"validation failed: {err}")
-        click.echo(f"-- OK --")
+        ok, err = ConfigParser().validate(filepath)
+        if ok:
+            config = ConfigParser().parse(filepath)
+            click.echo("Validation successful, the following command would be executed:\n")
+            click.echo(f"gitlab2prov {' '.join(config)}")
+        else:
+            ctx.fail(f"Validation failed: {err}")
         ctx.exit()
 
 
@@ -120,13 +121,15 @@ def process_commands(processors, **kwargs):
 
 
 @cli.command("extract")
-@click.option("-u", "--url", "urls", multiple=True, type=str, required=True, help="Project url[s].")
+@click.option(
+    "-u", "--url", "urls", multiple=True, type=str, required=True, help="Project url[s]."
+)
 @click.option("-t", "--token", required=True, type=str, help="Gitlab API token.")
 @click.pass_obj
 @generator
 def do_extract(bus, urls: list[str], token: str):
     """Extract provenance information for one or more gitlab projects.
-    
+
     This command extracts provenance information from one or multiple gitlab projects.
     The extracted provenance is returned as a combined provenance graph.
     """
@@ -151,7 +154,7 @@ def do_extract(bus, urls: list[str], token: str):
 @generator
 def load(input):
     """Load provenance information from a file.
-    
+
     This command reads one provenance graph from a file or multiple graphs from multiple files.
     """
     for filepath in input:
@@ -186,7 +189,7 @@ def load(input):
 @processor
 def save(graphs, format, output):
     """Save provenance information to a file.
-    
+
     This command writes each provenance graph that is piped to it to a file.
     """
     for idx, graph in enumerate(graphs, start=1):
@@ -207,7 +210,7 @@ def save(graphs, format, output):
 @processor
 def pseudonymize(graphs):
     """Pseudonymize a provenance graph.
-    
+
     This command pseudonymizes each provenance graph that is piped to it.
     """
     for graph in graphs:
@@ -223,7 +226,7 @@ def pseudonymize(graphs):
 @processor
 def combine(graphs):
     """Combine multiple graphs into one.
-    
+
     This command combines all graphs that are piped to it into one.
     """
     graphs = list(graphs)
@@ -238,14 +241,30 @@ def combine(graphs):
 
 
 @cli.command("stats")
-@click.option("--coarse", "resolution", flag_value="coarse", default=True, help="Print the number of PROV elements aswell as the overall number of relations.")
-@click.option("--fine", "resolution", flag_value="fine", help="Print the number of PROV elements aswell as the number of PROV relations for each relation type.")
-@click.option("--explain", "show_description", is_flag=True, help="Print a textual summary of all operations applied to the graphs.")
+@click.option(
+    "--coarse",
+    "resolution",
+    flag_value="coarse",
+    default=True,
+    help="Print the number of PROV elements aswell as the overall number of relations.",
+)
+@click.option(
+    "--fine",
+    "resolution",
+    flag_value="fine",
+    help="Print the number of PROV elements aswell as the number of PROV relations for each relation type.",
+)
+@click.option(
+    "--explain",
+    "show_description",
+    is_flag=True,
+    help="Print a textual summary of all operations applied to the graphs.",
+)
 @click.option("--formatter", type=click.Choice(["csv", "table"]), default="table")
 @processor
 def stats(graphs, resolution, show_description, formatter):
     """Print statistics such as node counts and relation counts.
-    
+
     This command prints statistics for each processed provenance graph.
     Statistics include the number of elements for each element type aswell as the number of relations for each relation type.
     Optionally, a short textual summary of all operations applied to the processed graphs can be printed to stdout.
@@ -277,7 +296,7 @@ def stats(graphs, resolution, show_description, formatter):
 @processor
 def merge_duplicated_agents(graphs, mapping):
     """Merge duplicated agents based on a name to aliases mapping.
-    
+
     This command solves the problem of duplicated agents that can occur when the same physical user
     uses different user names and emails for his git and gitlab account.
     Based on a mapping of names to aliases the duplicated agents can be merged.
