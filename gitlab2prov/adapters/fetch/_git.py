@@ -2,6 +2,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from itertools import zip_longest
 from tempfile import TemporaryDirectory
+from pathlib import Path
 
 from git import Commit
 from git import Repo
@@ -38,10 +39,11 @@ class GitFetcher:
 
     def do_clone(self) -> None:
         clone_url = ""
-        if "gitlab.com" in self.url:
+        if "gitlab" in self.url:
             clone_url = clone_over_https_url(self.url, self.token, "gitlab")
-        if "github.com" in self.url:
+        if "github" in self.url:
             clone_url = clone_over_https_url(self.url, self.token, "github")
+        
         self._repo = Repo.clone_from(
             url=clone_url,
             to_path=self._tmpdir.name,
@@ -100,14 +102,14 @@ def parse_log(log: str):
 def extract_commits(repo: Repo) -> Iterator[GitCommit]:
     for commit in repo.iter_commits("--all"):
         yield GitCommit(
-            hexsha=commit.hexsha,
-            message=commit.message,
+            sha=commit.hexsha,
             title=commit.summary,
+            message=commit.message,
             author=get_author(commit),
             committer=get_committer(commit),
             parents=[parent.hexsha for parent in commit.parents],
-            prov_start=commit.authored_datetime,
-            prov_end=commit.committed_datetime,
+            start=commit.authored_datetime,
+            end=commit.committed_datetime,
         )
 
 
@@ -122,7 +124,7 @@ def extract_files(repo: Repo) -> Iterator[File]:
         # disregard modifications and deletions
         for diff_item in diff.iter_change_type(ChangeType.ADDED):
             # path for new files is stored in diff b_path
-            yield File(path=diff_item.b_path, committed_in=commit.hexsha)
+            yield File(name=Path(diff_item.b_path).name, path=diff_item.b_path, commit=commit.hexsha)
 
 
 def extract_revisions(repo: Repo) -> Iterator[FileRevision]:
@@ -140,7 +142,7 @@ def extract_revisions(repo: Repo) -> Iterator[FileRevision]:
             )
         ):
             revs.append(
-                FileRevision(path=path, committed_in=hexsha, change_type=status, original=file)
+                FileRevision(name=Path(path).name, path=path, commit=hexsha, status=status, file=file)
             )
         # revisions remeber their predecessor (previous revision)
         for rev, prev in zip_longest(revs, revs[1:]):
