@@ -1,7 +1,7 @@
 import json
 import logging
 import hashlib
-from typing import Iterable, NamedTuple, Type
+from typing import NamedTuple, Type
 
 from collections import defaultdict, Counter
 from pathlib import Path
@@ -34,23 +34,27 @@ SERIALIZATION_FORMATS = ["json", "xml", "rdf", "provn", "dot"]
 DESERIALIZATION_FORMATS = ["rdf", "xml", "json"]
 
 
-def serialize_graph(
-    graph: ProvDocument, format: str = "json", destination=None, encoding="utf-8"
-) -> str | None:
+def serialize(document: ProvDocument, destination=None, format: str = "json") -> str | None:
+    """Serialize a ProvDocument to a file or string."""
     if format not in SERIALIZATION_FORMATS:
         raise ValueError("Unsupported serialization format.")
-    if format == "dot":
-        return prov_to_dot(graph).to_string().encode(encoding)
-    return graph.serialize(format=format, destination=destination)
+    if format != "dot":
+        return document.serialize(format=format, destination=destination)
+    string = prov_to_dot(document).to_string()
+    if not destination:
+        return string
+    with open(destination, "w") as f:
+        f.write(string)
 
 
-def deserialize_graph(source: str = None, content: str = None):
+def deserialize(source: str = None, content: str = None, format: str = None):
+    """Deserialize a ProvDocument from a file or string."""
     for format in DESERIALIZATION_FORMATS:
         try:
             return ProvDocument.deserialize(source=source, content=content, format=format)
-        except:
+        except Exception:
             continue
-    raise Exception
+    raise Exception(f"Deseialization failed for {source=}, {content=}, {format=}")
 
 
 def format_stats_as_ascii_table(stats: dict[str, int]) -> str:
@@ -61,13 +65,18 @@ def format_stats_as_ascii_table(stats: dict[str, int]) -> str:
 
 
 def format_stats_as_csv(stats: dict[str, int]) -> str:
-    csv = f"Record Type, Count\n"
+    csv = "Record Type, Count\n"
     for record_type, count in stats.items():
         csv += f"{record_type}, {count}\n"
     return csv
 
 
-def stats(graph: ProvDocument, resolution: str, formatter=format_stats_as_ascii_table) -> str:
+def stats(graph: ProvDocument, resolution: str, format: str = "table") -> str:
+    if format == "csv":
+        formatter = format_stats_as_csv
+    if format == "table":
+        formatter = format_stats_as_ascii_table
+
     elements = Counter(e.get_type().localpart for e in graph.get_records(ProvElement))
     relations = Counter(r.get_type().localpart for r in graph.get_records(ProvRelation))
 
@@ -92,11 +101,11 @@ def graph_factory(records: Optional[Sequence[ProvRecord]] = None) -> ProvDocumen
     return graph
 
 
-def combine(*graphs: ProvDocument) -> ProvDocument:
-    log.info(f"combine graphs {graphs=}")
-    acc = graphs[0]
-    for graph in graphs:
-        acc.update(graph)
+def combine(*documents: ProvDocument) -> ProvDocument:
+    log.info(f"combine {documents=}")
+    acc = documents[0]
+    for document in documents[1:]:
+        acc.update(document)
     return dedupe(acc)
 
 
@@ -139,7 +148,7 @@ def read(fp: Path) -> dict[str, list[str]]:
         data = f.read()
         d = json.loads(data)
     if not d:
-        log.info(f"empty agent mapping")
+        log.info("empty agent mapping")
         return dict()
     return d
 
