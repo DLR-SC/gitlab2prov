@@ -164,6 +164,7 @@ class AnnotatedVersion:
     uid: str
     aid: str
     resource: str
+    start: datetime
 
     @property
     def identifier(self) -> QualifiedName:
@@ -171,15 +172,15 @@ class AnnotatedVersion:
 
     @classmethod
     def from_commit(cls, commit: Commit, annotation: Annotation):
-        return cls(uid=commit.sha, aid=annotation.uid, resource=ProvType.COMMIT)
+        return cls(uid=commit.sha, aid=annotation.uid, resource=ProvType.COMMIT, start=annotation.start)
 
     @classmethod
     def from_issue(cls, issue: Issue, annotation: Annotation):
-        return cls(uid=issue.id, aid=annotation.uid, resource=ProvType.ISSUE)
+        return cls(uid=issue.id, aid=annotation.uid, resource=ProvType.ISSUE, start=annotation.start)
 
     @classmethod
     def from_merge_request(cls, merge_request: MergeRequest, annotation: Annotation):
-        return cls(uid=merge_request.id, aid=annotation.uid, resource=ProvType.MERGE_REQUEST)
+        return cls(uid=merge_request.id, aid=annotation.uid, resource=ProvType.MERGE_REQUEST, start=annotation.start)
 
     def to_prov_element(self) -> ProvEntity:
         attributes = [("uid", self.uid), (PROV_TYPE, f"Annotated{self.resource}Version")]
@@ -203,7 +204,7 @@ class Creation:
 
     @classmethod
     def from_tag(cls, tag: GitTag):
-        return cls(uid=tag.name, resource=ProvType.TAG, start=tag.start, end=tag.end)
+        return cls(uid=tag.name, resource=ProvType.TAG, start=tag.created_at, end=tag.created_at)
 
     @classmethod
     def from_commit(cls, commit: Commit):
