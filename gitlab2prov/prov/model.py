@@ -23,7 +23,7 @@ from prov.model import (
 from prov.identifier import QualifiedName, Namespace
 from functools import partial
 
-from gitlab2prov.adapters.repository import AbstractRepository
+from gitlab2prov.adapters.repository import Repository
 from gitlab2prov.domain.constants import ProvRole
 from gitlab2prov.domain.objects import (
     FileRevision,
@@ -47,18 +47,18 @@ AUTHOR_ROLE_MAP = {
 
 
 HostedResource = Commit | Issue | MergeRequest
-Query = Callable[[AbstractRepository], Iterable[HostedResource]]
+Query = Callable[[Repository], Iterable[HostedResource]]
 DEFAULT_NAMESPACE = Namespace("ex", "example.org")
 
 
-def file_status_query(repository: AbstractRepository, status: str):
+def file_status_query(repository: Repository, status: str):
     for revision in repository.list_all(FileRevision, status=status):
         commit = repository.get(GitCommit, sha=revision.commit)
         for parent in [repository.get(GitCommit, sha=sha) for sha in commit.parents]:
             yield commit, parent, revision, revision.previous if status == "modified" else None
 
 
-def hosted_resource_query(repository: AbstractRepository, resource_type: Type[HostedResource]):
+def hosted_resource_query(repository: Repository, resource_type: Type[HostedResource]):
     for resource in repository.list_all(resource_type):
         if resource_type == Commit:
             yield (resource, repository.get(GitCommit, sha=resource.sha))
@@ -354,7 +354,10 @@ class HostedResourceModel:
         )
         self.ctx.add_relation(self.resource.creation, self.commit, ProvCommunication)
         self.ctx.add_relation(
-            self.commit, self.commit.committer, ProvAssociation, {PROV_ROLE: ProvRole.COMMIT_AUTHOR}
+            self.commit,
+            self.commit.committer,
+            ProvAssociation,
+            {PROV_ROLE: ProvRole.COMMIT_AUTHOR},
         )
 
     def _add_creation_part(self):
@@ -443,7 +446,7 @@ class ReleaseModel:
         self.ctx = ProvenanceContext(ProvDocument())
 
     @staticmethod
-    def query(repository: AbstractRepository) -> Iterable[tuple[Release, GitTag]]:
+    def query(repository: Repository) -> Iterable[tuple[Release, GitTag]]:
         for release in repository.list_all(Release):
             tag = repository.get(GitTag, sha=release.tag_sha)
             yield release, tag
@@ -503,16 +506,16 @@ class GitTagModel:
     """Model for a Git tag."""
 
     tag: GitTag
-    commit: GitCommit
+    commit: Commit | None = None
     ctx: ProvenanceContext = field(init=False)
 
     def __post_init__(self):
         self.ctx = ProvenanceContext(ProvDocument())
 
     @staticmethod
-    def query(repository: AbstractRepository) -> Iterable[tuple[GitTag, GitCommit]]:
+    def query(repository: Repository) -> Iterable[tuple[GitTag, Commit]]:
         for tag in repository.list_all(GitTag):
-            commit = repository.get(GitCommit, sha=tag.commit_sha)
+            commit = repository.get(Commit, sha=tag.sha)
             yield tag, commit
 
     def build_provenance_model(self) -> ProvDocument:
@@ -521,9 +524,10 @@ class GitTagModel:
         self.ctx.add_element(self.tag.creation)
         self.ctx.add_element(self.tag.author)
         # Add the commit
-        self.ctx.add_element(self.commit)
-        self.ctx.add_element(self.commit.creation)
-        self.ctx.add_element(self.commit.author)
+        if self.commit:
+            self.ctx.add_element(self.commit)
+            self.ctx.add_element(self.commit.creation)
+            self.ctx.add_element(self.commit.author)
         # Add tag relationships
         self.ctx.add_relation(
             self.tag,
@@ -536,20 +540,21 @@ class GitTagModel:
             self.tag.creation, self.tag.author, ProvAssociation, {PROV_ROLE: ProvRole.TAG_AUTHOR}
         )
         # Add commit relationships
-        self.ctx.add_relation(self.commit, self.tag, ProvMembership)
-        self.ctx.add_relation(
-            self.commit,
-            self.commit.creation,
-            ProvGeneration,
-            {PROV_ATTR_STARTTIME: self.commit.creation.start, PROV_ROLE: ProvRole.COMMIT},
-        )
-        self.ctx.add_relation(self.commit, self.commit.author, ProvAttribution)
-        self.ctx.add_relation(
-            self.commit.creation,
-            self.commit.author,
-            ProvAssociation,
-            {PROV_ROLE: ProvRole.COMMIT_AUTHOR},
-        )
+        if self.commit:
+            self.ctx.add_relation(self.commit, self.tag, ProvMembership)
+            self.ctx.add_relation(
+                self.commit,
+                self.commit.creation,
+                ProvGeneration,
+                {PROV_ATTR_STARTTIME: self.commit.creation.start, PROV_ROLE: ProvRole.COMMIT},
+            )
+            self.ctx.add_relation(self.commit, self.commit.author, ProvAttribution)
+            self.ctx.add_relation(
+                self.commit.creation,
+                self.commit.author,
+                ProvAssociation,
+                {PROV_ROLE: ProvRole.COMMIT_AUTHOR},
+            )
         return self.ctx.get_document()
 
 
@@ -572,7 +577,7 @@ class CallableModel:
         # Initialize the document
         self.document = ProvDocument()
 
-    def __call__(self, repository: AbstractRepository):
+    def __call__(self, repository: Repository):
         # Pass the repository to the query
         for args in self.query(repository):
             # Initialize the model
