@@ -1,8 +1,30 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema",
     "type": "array",
-    "items": [
-        {
+    "items": {
+        "oneOf": [
+            {
+                "$ref": "#/definitions/extract"
+            },
+            {
+                "$ref": "#/definitions/load"
+            },
+            {
+                "$ref": "#/definitions/combine"
+            },
+            {
+                "$ref": "#/definitions/save"
+            },
+            {
+                "$ref": "#/definitions/pseudonymize"
+            },
+            {
+                "$ref": "#/definitions/stats"
+            }
+        ]
+    },
+    "definitions": {
+        "extract": {
             "type": "object",
             "properties": {
                 "extract": {
@@ -25,12 +47,16 @@
                         "token"
                     ]
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "extract"
+            ]
         },
-        {
+        "load": {
             "type": "object",
             "properties": {
-                "open": {
+                "load": {
                     "type": "object",
                     "properties": {
                         "input": {
@@ -45,17 +71,37 @@
                         "input"
                     ]
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "load"
+            ]
         },
-        {
+        "combine": {
             "type": "object",
             "properties": {
                 "combine": {
                     "type": "null"
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "combine"
+            ]
         },
-        {
+        "pseudonymize": {
+            "type": "object",
+            "properties": {
+                "pseudonymize": {
+                    "type": "null"
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "pseudonymize"
+            ]
+        },
+        "save": {
             "type": "object",
             "properties": {
                 "save": {
@@ -67,7 +113,8 @@
                         "format": {
                             "type": "array",
                             "items": {
-                                "type": "string"
+                                "type": "string",
+                                "enum": ["json", "rdf", "provn", "dot", "xml"]
                             }
                         }
                     },
@@ -77,17 +124,13 @@
                         "format"
                     ]
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "save"
+            ]
         },
-        {
-            "type": "object",
-            "properties": {
-                "pseudonymize": {
-                    "type": "null"
-                }
-            }
-        },
-        {
+        "stats": {
             "type": "object",
             "properties": {
                 "stats": {
@@ -112,7 +155,11 @@
                     },
                     "additionalProperties": false
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "stats"
+            ]
         }
-    ]
+    }
 }
