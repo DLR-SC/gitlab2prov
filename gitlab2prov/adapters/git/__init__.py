@@ -1,0 +1,1 @@
+from gitlab2prov.adapters.git.fetcher import GitFetcher
