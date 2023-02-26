@@ -7,19 +7,19 @@
                 "$ref": "#/definitions/extract"
             },
             {
-                "$ref": "#/definitions/load"
+                "$ref": "#/definitions/read"
             },
             {
                 "$ref": "#/definitions/combine"
             },
             {
-                "$ref": "#/definitions/save"
-            },
-            {
-                "$ref": "#/definitions/pseudonymize"
+                "$ref": "#/definitions/write"
             },
             {
                 "$ref": "#/definitions/stats"
+            },
+            {
+                "$ref": "#/definitions/transform"
             }
         ]
     },
@@ -53,10 +53,10 @@
                 "extract"
             ]
         },
-        "load": {
+        "read": {
             "type": "object",
             "properties": {
-                "load": {
+                "read": {
                     "type": "object",
                     "properties": {
                         "input": {
@@ -74,7 +74,7 @@
             },
             "additionalProperties": false,
             "required": [
-                "load"
+                "read"
             ]
         },
         "combine": {
@@ -89,22 +89,10 @@
                 "combine"
             ]
         },
-        "pseudonymize": {
+        "write": {
             "type": "object",
             "properties": {
-                "pseudonymize": {
-                    "type": "null"
-                }
-            },
-            "additionalProperties": false,
-            "required": [
-                "pseudonymize"
-            ]
-        },
-        "save": {
-            "type": "object",
-            "properties": {
-                "save": {
+                "write": {
                     "type": "object",
                     "properties": {
                         "output": {
@@ -114,7 +102,13 @@
                             "type": "array",
                             "items": {
                                 "type": "string",
-                                "enum": ["json", "rdf", "provn", "dot", "xml"]
+                                "enum": [
+                                    "json",
+                                    "rdf",
+                                    "provn",
+                                    "dot",
+                                    "xml"
+                                ]
                             }
                         }
                     },
@@ -127,7 +121,7 @@
             },
             "additionalProperties": false,
             "required": [
-                "save"
+                "write"
             ]
         },
         "stats": {
@@ -159,6 +153,30 @@
             "additionalProperties": false,
             "required": [
                 "stats"
+            ]
+        },
+        "transform": {
+            "type": "object",
+            "properties": {
+                "transform": {
+                    "type": "object",
+                    "properties": {
+                        "use_pseudonyms": {
+                            "type": "boolean"
+                        },
+                        "remove_duplicates": {
+                            "type": "boolean"
+                        },
+                        "merge_aliased_agents": {
+                            "type": "boolean"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "transform"
             ]
         }
     }
