@@ -193,7 +193,7 @@ def extract(bus, urls: list[str], token: str):
 @click.command()
 @click.option(
     "-i",
-    "--from",
+    "--input",
     "filenames",
     default=["-"],
     multiple=True,
@@ -229,7 +229,7 @@ def read(bus, filenames: list[str]):
 )
 @click.option(
     "-o",
-    "--to",
+    "--output",
     "destination",
     default="-",
     help="Output file path.",
