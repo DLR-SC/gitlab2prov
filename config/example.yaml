@@ -5,11 +5,13 @@
 - extract:
         url: ["https://gitlab.com/example/bar"]
         token: tokenBar
-- load:
+- read:
         input: [example.rdf]
-- pseudonymize:
 - combine:
-- save:
+- transform:
+        use_pseudonyms: true
+        remove_duplicates: true
+- write:
         output: combined
         format: [json, rdf, xml, dot]
 - stats:
