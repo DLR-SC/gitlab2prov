@@ -1,4 +1,3 @@
-import sys
 from functools import partial
 from functools import update_wrapper
 from functools import wraps
@@ -50,7 +49,8 @@ def validate_config(ctx: click.Context, _, filepath: str):
 def processor(func, wrapped=None):
     """Decorator that turns a function into a processor.
 
-    A processor is a function that takes a stream of values, applies an operation to each value and returns a new stream of values.
+    A processor is a function that takes a stream of values, applies an operation
+    to each value and returns a new stream of values.
     A processor therefore transforms a stream of values into a new stream of values.
     """
 
@@ -68,7 +68,8 @@ def generator(func):
     """Decorator that turns a function into a generator.
 
     A generator is a special case of a processor.
-    A generator is a processor that doesn't apply any operation to the values but adds new values to the stream.
+    A generator is a processor that doesn't apply any operation
+    to the values but adds new values to the stream.
     """
 
     @partial(processor, wrapped=func)
@@ -146,8 +147,9 @@ def process_commands(processors, **kwargs):
     """Execute the chain of commands.
 
     This function is called after all subcommands have been chained together.
-    It executes the chain of commands by piping the output of one command into the input of the next command.
-    Subcommands can be processors that transform the stream of values or generators that add new values to the stream.
+    It executes the chain of commands by piping the output of one command
+    into the input of the next command. Subcommands can be processors that transform
+    the stream of values or generators that add new values to the stream.
     """
     # Start with an empty iterable.
     stream = ()
@@ -161,7 +163,7 @@ def process_commands(processors, **kwargs):
         pass
 
 
-@click.command("extract")
+@click.command()
 @click.option(
     "-u", "--url", "urls", multiple=True, type=str, required=True, help="Project url[s]."
 )
@@ -179,7 +181,7 @@ def extract(bus, urls: list[str], token: str):
     for url in urls:
         doc = bus.handle(commands.Fetch(url, token))
         doc = bus.handle(commands.Serialize(url))
-        doc = bus.handle(commands.Normalize(doc))
+        doc = bus.handle(commands.Transform(doc))
         if not document:
             document = doc
         document.update(doc)
@@ -188,33 +190,34 @@ def extract(bus, urls: list[str], token: str):
     yield document
 
 
-@click.command("load", short_help="Load provenance files.")
+@click.command()
 @click.option(
     "-i",
-    "--input",
-    "sources",
+    "--from",
+    "filenames",
+    default=["-"],
     multiple=True,
     type=click.Path(dir_okay=False),
     help="Provenance file path (specify '-' to read from <stdin>).",
 )
 @click.pass_obj
 @generator
-def load(bus, sources: list[str]):
-    """Load provenance information from a file.
+def read(bus, filenames: list[str]):
+    """Read provenance information from file[s].
 
-    This command reads one provenance graph from a file or multiple graphs from multiple files.
+    This command reads one provenance graph from a file/stdin or
+    multiple graphs from multiple files.
     """
-    for filepath in sources:
+    for filename in filenames:
         try:
-            filename = sys.stdin if filepath == "-" else filepath
-            document = bus.handle(commands.File2Document(filename))
-            document.description = "'<stdin>'" if filepath == "-" else f"'{filepath}'"
+            document = bus.handle(commands.Read(filename=filename))
+            document.description = "'<stdin>'" if filename == "-" else f"'{filename}'"
             yield document
         except Exception as e:
-            click.echo(f"Could not open '{filepath}': {e}", err=True)
+            click.echo(f"Could not open '{filename}': {e}", err=True)
 
 
-@click.command("save")
+@click.command()
 @click.option(
     "-f",
     "--format",
@@ -226,16 +229,15 @@ def load(bus, sources: list[str]):
 )
 @click.option(
     "-o",
-    "--output",
+    "--to",
     "destination",
     default="-",
-    # TODO: think of a better default
     help="Output file path.",
 )
 @processor
 @click.pass_obj
-def save(bus, documents, formats, destination):
-    """Save one or multiple provenance documents to a file.
+def write(bus, documents, formats, destination):
+    """Write provenance information to file[s].
 
     This command saves one or multiple provenance documents to a file.
 
@@ -243,42 +245,50 @@ def save(bus, documents, formats, destination):
     The serialization format can be specified using the '-f' option.
     """
     documents = list(documents)
-    
+
     for i, document in enumerate(documents, start=1):
-        
+
         for fmt in formats:
             filename = f"{destination}{'-' + str(i) if len(documents) > 1 else ''}.{fmt}"
             try:
-                bus.handle(commands.Document2File(document, filename, fmt))
+                bus.handle(commands.Write(document, filename, fmt))
             except Exception as exc:
                 click.echo(f"Could not save {document.description}: {exc}", err=True)
 
             yield document
 
 
-@click.command("pseudonymize")
+@click.command()
+@click.option("--use-pseudonyms", is_flag=True, help="Use pseudonyms.")
+@click.option("--remove-duplicates", is_flag=True, help="Remove duplicate statements.")
+@click.option(
+    "--merge-aliased-agents",
+    type=click.Path(exists=True),
+    default="",
+    help="Merge aliased agents.",
+)
 @processor
 @click.pass_obj
-def pseudonymize(bus, documents: Iterator[ProvDocument]):
-    """Pseudonymize a provenance document.
+def transform(
+    bus,
+    documents: Iterator[ProvDocument],
+    use_pseudonyms: bool = False,
+    remove_duplicates: bool = False,
+    merge_aliased_agents: str = "",
+):
+    """Apply a set of transformations to provenance documents.
 
-    This command pseudonymizes one or multiple provenance documents.
-
-    Pseudonymization is done by hashing attributes that contain personal information.
-    Pseudonymization only affects agents and their attributes.
+    This command applies a set of transformations to one or multiple provenance documents.
     """
     for document in documents:
-
-        try:
-            document = bus.handle(commands.Normalize(document, use_pseudonyms=True))
-            document.description = f"pseudonymized {document.description}"
-            yield document
-
-        except Exception as exc:
-            click.echo(f"Could not pseudonymize {document.description}: {exc}", err=True)
+        transformed = bus.handle(
+            commands.Transform(document, use_pseudonyms, remove_duplicates, merge_aliased_agents)
+        )
+        transformed.description = f"normalized {document.description}"
+        yield transformed
 
 
-@click.command("combine")
+@click.command()
 @processor
 @click.pass_obj
 def combine(bus, documents: Iterator[ProvDocument]):
@@ -291,7 +301,7 @@ def combine(bus, documents: Iterator[ProvDocument]):
 
     try:
         document = bus.handle(commands.Combine(documents))
-        document = bus.handle(commands.Normalize(document))
+        document = bus.handle(commands.Transform(document))
         document.description = f"combination of {', '.join(descriptions)}"
         yield document
 
@@ -299,30 +309,32 @@ def combine(bus, documents: Iterator[ProvDocument]):
         click.echo(f"Could not combine {', '.join(descriptions)}: {exc}", err=True)
 
 
-@click.command("stats")
+@click.command()
 @click.option(
     "--coarse",
     "resolution",
     flag_value="coarse",
     default=True,
-    help="Print the number of PROV elements aswell as the overall number of relations.",
+    help="Print the number of PROV elements for each element type.",
 )
 @click.option(
     "--fine",
     "resolution",
     flag_value="fine",
-    help="Print the number of PROV elements aswell as the number of PROV relations for each relation type.",
+    help="Print the number of PROV elements for each element type and each relation type.",
 )
 @click.option("--format", type=click.Choice(["csv", "table"]), default="table")
 @click.option(
-    "--explain",
+    "--verbose",
     is_flag=True,
     help="Print a textual summary of all operations applied to the graphs.",
 )
 @processor
 @click.pass_obj
-def stats(bus, documents: Iterator[ProvDocument], resolution: str, format: str, explain: bool):
-    """Print statistics such as node counts and relation counts.
+def statistics(
+    bus, documents: Iterator[ProvDocument], resolution: str, format: str, verbose: bool
+):
+    """Print statistics for one or more provenance documents.
 
     This command prints statistics for each processed provenance graph.
     Statistics include the number of elements for each element type aswell as the number of relations for each relation type.
@@ -331,48 +343,26 @@ def stats(bus, documents: Iterator[ProvDocument], resolution: str, format: str, 
     for document in documents:
         try:
             statistics = bus.handle(commands.Statistics(document, resolution, format))
-            if explain:
+            if verbose:
                 statistics = f"{document.description}\n\n{statistics}"
                 click.echo(statistics)
-        except:
+        except Exception:
             click.echo("Could not compute statistics for {document.description}.", err=True)
         yield document
 
 
-@click.command()
-@click.option(
-    "--mapping",
-    "path_to_agent_map",
-    type=click.Path(exists=True, dir_okay=False),
-    help="File path to duplicate agent mapping.",
-)
-@processor
-@click.pass_obj
-def merge_duplicated_agents(bus, documents: Iterator[ProvDocument], path_to_agent_map: str):
-    """Merge duplicated agents based on a name to aliases mapping.
-
-    This command solves the problem of duplicated agents that can occur when the same physical user
-    uses different user names and emails for his git and gitlab account.
-    Based on a mapping of names to aliases the duplicated agents can be merged.
-    """
-    for document in documents:
-        document = bus.handle(commands.Normalize(document, agent_mapping=path_to_agent_map))
-        document.description += f"merged double agents {document.description}"
-        yield document
-
-
+# CLI group for gitlab commands
 gitlab_cli.add_command(extract)
-gitlab_cli.add_command(stats)
+gitlab_cli.add_command(read)
+gitlab_cli.add_command(write)
 gitlab_cli.add_command(combine)
-gitlab_cli.add_command(pseudonymize)
-gitlab_cli.add_command(save)
-gitlab_cli.add_command(load)
-gitlab_cli.add_command(merge_duplicated_agents)
+gitlab_cli.add_command(transform)
+gitlab_cli.add_command(statistics)
 
+# CLI group for github commands
 github_cli.add_command(extract)
-github_cli.add_command(stats)
+github_cli.add_command(read)
+github_cli.add_command(write)
 github_cli.add_command(combine)
-github_cli.add_command(pseudonymize)
-github_cli.add_command(save)
-github_cli.add_command(load)
-github_cli.add_command(merge_duplicated_agents)
+github_cli.add_command(transform)
+github_cli.add_command(statistics)
