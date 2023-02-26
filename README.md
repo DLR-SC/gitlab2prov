@@ -84,13 +84,12 @@ Options:
   --help           Show this message and exit.
 
 Commands:
-  combine                  Combine multiple graphs into one.
-  extract                  Extract provenance information for one or more...
-  load                     Load provenance files.
-  merge-duplicated-agents  Merge duplicated agents based on a name to...
-  pseudonymize             Pseudonymize a provenance graph.
-  save                     Save provenance information to a file.
-  stats                    Print statistics such as node counts and...
+  combine     Combine one or more provenance documents.
+  extract     Extract provenance information for one or more gitlab...
+  read        Read provenance information from file[s].
+  stats  Print statistics for one or more provenance documents.
+  transform   Apply a set of transformations to provenance documents.
+  write       Write provenance information to file[s].
 ```
 
 ### Configuration Files
@@ -118,8 +117,10 @@ Config file example:
         token: tokenB
 - load:
         input: [example.rdf]
-- pseudonymize:
 - combine:
+- transform:
+        use_pseudonyms: true
+        remove_duplicates: true
 - save:
         output: combined
         format: [json, rdf, xml, dot]
@@ -135,9 +136,9 @@ The config file example is functionally equivalent to this command line invocati
 gitlab2prov extract -u https://gitlab.com/example/foo -t tokenFoo \
             extract -u https://gitlab.com/example/bar -t tokenBar \
             load -i example.rdf                                   \
-            pseudonymize                                          \
             combine                                               \
-            save -o combined -f json -f rdf -f xml -f dot         \
+            transform --use-pseudonyms --remove_duplicates        \
+            write -o combined -f json -f rdf -f xml -f dot        \
             stats --fine --explain --formatter table
 ```
 
