@@ -14,7 +14,6 @@ from prov.model import (
     ProvAssociation,
     ProvAttribution,
     ProvGeneration,
-    ProvRelation,
     ProvSpecialization,
     ProvCommunication,
     ProvRelation,
@@ -55,7 +54,10 @@ def file_status_query(repository: Repository, status: str):
     for revision in repository.list_all(FileRevision, status=status):
         commit = repository.get(GitCommit, sha=revision.commit)
         for parent in [repository.get(GitCommit, sha=sha) for sha in commit.parents]:
-            yield commit, parent, revision, revision.previous if status == "modified" else None
+            if status == "modified":
+                yield commit, parent, revision, revision.previous
+            else:
+                yield commit, parent, revision
 
 
 def hosted_resource_query(repository: Repository, resource_type: Type[HostedResource]):
@@ -128,7 +130,7 @@ class ProvenanceContext:
 class FileAdditionModel:
     commit: GitCommit
     parent: GitCommit
-    revisions: FileRevision
+    revision: FileRevision
     ctx: ProvenanceContext = field(init=False)
 
     def __post_init__(self):
@@ -210,10 +212,10 @@ class FileDeletionModel:
             self.ctx.add_relation(self.commit, self.parent, ProvCommunication)
         # Add the relations to the context
         self.ctx.add_relation(
-            self.commit, self.comitter, ProvAssociation, {PROV_ROLE: ProvRole.COMMITTER}
+            self.commit, self.commit.committer, ProvAssociation, {PROV_ROLE: ProvRole.COMMITTER}
         )
         self.ctx.add_relation(
-            self.commit, self.author, ProvAssociation, {PROV_ROLE: ProvRole.AUTHOR}
+            self.commit, self.commit.author, ProvAssociation, {PROV_ROLE: ProvRole.AUTHOR}
         )
         self.ctx.add_relation(self.revision, self.revision.file, ProvSpecialization)
         self.ctx.add_relation(
