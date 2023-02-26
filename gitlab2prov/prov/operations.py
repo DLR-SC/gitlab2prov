@@ -1,4 +1,5 @@
 import json
+import sys
 import logging
 import hashlib
 from typing import NamedTuple, Type
@@ -34,27 +35,44 @@ SERIALIZATION_FORMATS = ["json", "xml", "rdf", "provn", "dot"]
 DESERIALIZATION_FORMATS = ["rdf", "xml", "json"]
 
 
-def serialize(document: ProvDocument, destination=None, format: str = "json") -> str | None:
-    """Serialize a ProvDocument to a file or string."""
+def read_provenance_file(filename: str) -> ProvDocument:
+    """Read provenance document from file or sys.stdin."""
+    if filename == "-":
+        content = sys.stdin.read()
+    else:
+        with open(filename, "r") as f:
+            content = f.read()
+    return deserialize_string(content=content)
+
+
+def deserialize_string(content: str, format: str = None):
+    """Deserialize a ProvDocument from a string."""
+    for format in DESERIALIZATION_FORMATS:
+        try:
+            doc = ProvDocument.deserialize(content=content, format=format)
+            return doc
+        except Exception:
+            pass
+    raise Exception(f"Deserialization failed for {content=}, {format=}")
+
+
+def write_provenance_file(
+    document: ProvDocument, filename: str, format: str = "json", overwrite: bool = True
+):
+    """Write provenance document to file."""
+    if Path(filename).exists() and not overwrite:
+        raise FileExistsError(f"File {filename} already exists.")
+    with open(filename, "w") as f:
+        f.write(serialize_string(document, format=format))
+
+
+def serialize_string(document: ProvDocument, format: str = "json") -> str:
+    """Serialize a ProvDocument to a string."""
     if format not in SERIALIZATION_FORMATS:
         raise ValueError("Unsupported serialization format.")
     if format != "dot":
-        return document.serialize(format=format, destination=destination)
-    string = prov_to_dot(document).to_string()
-    if not destination:
-        return string
-    with open(destination, "w") as f:
-        f.write(string)
-
-
-def deserialize(source: str = None, content: str = None, format: str = None):
-    """Deserialize a ProvDocument from a file or string."""
-    for format in DESERIALIZATION_FORMATS:
-        try:
-            return ProvDocument.deserialize(source=source, content=content, format=format)
-        except Exception:
-            continue
-    raise Exception(f"Deseialization failed for {source=}, {content=}, {format=}")
+        return document.serialize(format=format)
+    return prov_to_dot(document).to_string()
 
 
 def format_stats_as_ascii_table(stats: dict[str, int]) -> str:
