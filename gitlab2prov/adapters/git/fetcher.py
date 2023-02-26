@@ -133,6 +133,7 @@ def extract_revisions(repo: Repo) -> Iterator[FileRevision]:
                 file.path,
             )
         ):
+            status = {"A": "added", "M": "modified", "D": "deleted"}.get(status, "modified")
             revs.append(
                 FileRevision(
                     name=Path(path).name, path=path, commit=hexsha, status=status, file=file
