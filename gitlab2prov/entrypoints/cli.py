@@ -309,7 +309,7 @@ def combine(bus, documents: Iterator[ProvDocument]):
         click.echo(f"Could not combine {', '.join(descriptions)}: {exc}", err=True)
 
 
-@click.command()
+@click.command("stats")
 @click.option(
     "--coarse",
     "resolution",
