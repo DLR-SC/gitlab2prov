@@ -39,6 +39,8 @@ The model documentation can be found [here](https://github.com/DLR-SC/gitlab2pro
 
 ## ️🏗️ ️Installation
 
+Please note that this tool requires Git to be installed on your machine.
+
 Clone the project and install using `pip`:
 ```bash
 pip install .
