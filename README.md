@@ -197,6 +197,19 @@ You can also cite specific releases published on Zenodo: [![DOI](https://zenodo.
 
 * Andreas Schreiber (2020). [Visualization of contributions to open-source projects](https://doi.org/10.1145/3430036.3430057). In *Proceedings of the 13th International Symposium on Visual Information Communication and Interaction*. ACM, USA.
 
+## 📜 Dependencies 
+`gitlab2prov` depends on several open source packages that are made freely available under their respective licenses.
+
+| Package                                                         | License              |
+| --------------------------------------------------------------- | -------------------- |
+| [prov](https://pypi.org/project/prov/)                          | MIT License          |
+| [GitPython](https://github.com/gitpython-developers/GitPython)  | BSD 3-Clause License |
+| [python-gitlab](https://github.com/python-gitlab/python-gitlab) | LGPL-3.0 License     |
+| [jsonschema](https://github.com/python-jsonschema/jsonschema)   | MIT License          |
+| [ruamel.yaml](https://pypi.org/project/ruamel.yaml/)            | MIT License          |
+| [pydot](https://github.com/pydot/pydot)                         | MIT License          |
+| [click](https://github.com/pallets/click)                       | BSD 3-Clause License |
+
 ## 📝 License
 This project is [MIT](https://github.com/dlr-sc/gitlab2prov/blob/master/LICENSE) licensed.  
 Copyright © 2019 German Aerospace Center (DLR) and individual contributors.
