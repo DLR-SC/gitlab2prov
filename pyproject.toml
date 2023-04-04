@@ -1,5 +1,8 @@
 [build-system]
-requires = ["setuptools>=65.0", "wheel"]
+requires = [
+    "setuptools>=65.0", # MIT License
+    "wheel",            # MIT License
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,7 +15,15 @@ authors = [{ name = "Claas de Boer", email = "claas.deboer@dlr.de" }]
 maintainers = [
     { name = "Andreas Schreiber", email = "andreas.schreiber@dlr.de" },
 ]
-dependencies = ["prov>=2.0.0", "git-python", "python-gitlab", "jsonschema", "ruamel.yaml", "pydot>=1.2.0", "click"]
+dependencies = [
+    "prov>=2.0.0",   # MIT License
+    "git-python",    # BSD 3-Clause License
+    "python-gitlab", # LGPL-3.0 License
+    "jsonschema",    # MIT License
+    "ruamel.yaml",   # MIt License
+    "pydot>=1.2.0",  # MIT License
+    "click",         # BSD 3-Clause License
+]
 keywords = [
     "prov",
     "gitlab",
@@ -36,7 +47,13 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-mock", "black", "isort", "bump2version"]
+dev = [
+    "pytest",       # MIT License
+    "pytest-mock",  # MIT License
+    "black",        # MIT License
+    "isort",        # MIT License
+    "bump2version", # MIT License
+]
 
 [project.scripts]
 gitlab2prov = "gitlab2prov.entrypoints.cli:cli"
