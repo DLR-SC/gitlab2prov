@@ -200,15 +200,15 @@ You can also cite specific releases published on Zenodo: [![DOI](https://zenodo.
 ## 📜 Dependencies 
 `gitlab2prov` depends on several open source packages that are made freely available under their respective licenses.
 
-| Package                                                         | License              |
-| --------------------------------------------------------------- | -------------------- |
-| [prov](https://pypi.org/project/prov/)                          | MIT License          |
-| [GitPython](https://github.com/gitpython-developers/GitPython)  | BSD 3-Clause License |
-| [python-gitlab](https://github.com/python-gitlab/python-gitlab) | LGPL-3.0 License     |
-| [jsonschema](https://github.com/python-jsonschema/jsonschema)   | MIT License          |
-| [ruamel.yaml](https://pypi.org/project/ruamel.yaml/)            | MIT License          |
-| [pydot](https://github.com/pydot/pydot)                         | MIT License          |
-| [click](https://github.com/pallets/click)                       | BSD 3-Clause License |
+| Package                                                         | License                                                                                                                   |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| [GitPython](https://github.com/gitpython-developers/GitPython)  | [![License](https://img.shields.io/badge/License-BSD_3--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause) |
+| [click](https://github.com/pallets/click)                       | [![License](https://img.shields.io/badge/License-BSD_3--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause) |
+| [python-gitlab](https://github.com/python-gitlab/python-gitlab) | [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)       |
+| [prov](https://pypi.org/project/prov/)                          | [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)               |
+| [jsonschema](https://github.com/python-jsonschema/jsonschema)   | [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)               |
+| [ruamel.yaml](https://pypi.org/project/ruamel.yaml/)            | [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)               |
+| [pydot](https://github.com/pydot/pydot)                         | [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)               |
 
 ## 📝 License
 This project is [MIT](https://github.com/dlr-sc/gitlab2prov/blob/master/LICENSE) licensed.  
