@@ -146,7 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2] - 2020-08-01
 
 ### Changed
-- Project status marked for `gitlab2prov` usage in @cdboer 's bachelor thesis.
+- Project status marked for `gitlab2prov` usage in [@cdboer's](https://github.com/cdboer) bachelor thesis.
 
 ## [0.1] - 2020-01-22
 
