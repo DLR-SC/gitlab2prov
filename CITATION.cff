@@ -13,7 +13,7 @@ authors:
     affiliation: "German Aerospace Center (DLR)"
     orcid: "https://orcid.org/0000-0001-5750-5649"
 version: 2.0.0
-date-released: "2022-10-31"
+date-released: "2023-04-17"
 license: MIT
 repository-code: "https://github.com/DLR-SC/gitlab2prov"
 references:
