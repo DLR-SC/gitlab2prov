@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
-## [2.0.1] - 2023-04-17
+## [2.1.0] - 2023-04-17
 
 ### Added
 - CHANGELOG.md file to document all notable changes to this project.
@@ -174,8 +174,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preset queries tailored for use on the property graphs produced by the tool, implemented in Neo4j.
 - `requirements.txt` file specifying the list of dependencies required to run the tool.
 
-[unreleased]: https://github.com/dlr-sc/gitlab2prov/compare/v2.0.1...HEAD
-[2.0.1]: https://github.com/dlr-sc/gitlab2prov/compare/v2.0.0...v2.0.1
+[unreleased]: https://github.com/dlr-sc/gitlab2prov/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/dlr-sc/gitlab2prov/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/dlr-sc/gitlab2prov/compare/v1.1.4...v2.0.0
 [1.1.4]: https://github.com/dlr-sc/gitlab2prov/compare/v1.1.3...v1.1.4
 [1.1.3]: https://github.com/dlr-sc/gitlab2prov/compare/v1.1.2...v1.1.3
