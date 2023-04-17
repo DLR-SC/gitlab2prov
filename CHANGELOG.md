@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [2.0.1] - 2023-04-17
+
+### Added
+- CHANGELOG.md file to document all notable changes to this project.
+- README.md section on how to get started with gitlab2prov.
+- README.md note that gitlab2prov requires a git installation.
+- README.md section on dependencies and their respective licenses. See #91 for more details.
+- pyproject.toml comments documenting the license information of all dependencies. See #91 for more details.
+- Project documentation on how to obtain a GitLab API token.
+
+### Changed
+- Tool will check for a git installation and exit with an error message if none is found. See #93 for more details.
+
+### Fixed
+- Click package is now listed as a dependency in pyproject.toml. Thank you [@daniel-mohr](https://github.com/daniel-mohr) for reporting this oversight.
+
+
 ## [2.0.0] - 2022-10-31
 ### Added
 - New command line interface composed of multiple subcommands that can be chained together to build any desired gitlab2prov pipeline.
@@ -156,7 +174,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preset queries tailored for use on the property graphs produced by the tool, implemented in Neo4j.
 - `requirements.txt` file specifying the list of dependencies required to run the tool.
 
-[unreleased]: https://github.com/dlr-sc/gitlab2prov/compare/v2.0.0...HEAD
+[unreleased]: https://github.com/dlr-sc/gitlab2prov/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/dlr-sc/gitlab2prov/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/dlr-sc/gitlab2prov/compare/v1.1.4...v2.0.0
 [1.1.4]: https://github.com/dlr-sc/gitlab2prov/compare/v1.1.3...v1.1.4
 [1.1.3]: https://github.com/dlr-sc/gitlab2prov/compare/v1.1.2...v1.1.3
