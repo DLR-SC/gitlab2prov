@@ -1,5 +1,6 @@
 import random
 import string
+import pytest
 
 from gitlab2prov.domain.objects import User
 
@@ -21,7 +22,15 @@ def generate_random_user():
         github_id=github_id,
         prov_role=prov_role,
     )
+    
+
+@pytest.fixture
+def random_user() -> User:
+    return generate_random_user()
 
 
-def generate_random_users(num_users: int) -> list[User]:
-    return [generate_random_user() for _ in range(num_users)]
+@pytest.fixture
+def n_random_users(request) -> list[User]:
+    marker = request.node.get_closest_marker("fixt_data")
+    n = 10 if marker is None else marker.args[0]
+    return [generate_random_user() for _ in range(n)]
