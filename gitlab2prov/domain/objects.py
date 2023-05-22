@@ -28,6 +28,7 @@ PLACEHOLDER.set_default_namespace("http://github.com/dlr-sc/gitlab2prov/")
 
 @dataclass
 class User:
+    # TODO: github_email, gitlab_email
     name: str
     email: str
     gitlab_username: str | None = None
@@ -83,6 +84,10 @@ class File:
 @dataclass
 class FileRevision(File):
     status: str
+    inserted: int
+    deleted: int
+    lines: int
+    score: float
     file: File | None = None
     previous: FileRevision | None = None
 
@@ -97,6 +102,10 @@ class FileRevision(File):
             ("name", self.name),
             ("path", self.path),
             ("status", self.status),
+            ("inserted", self.inserted),
+            ("deleted", self.deleted),
+            ("lines", self.lines),
+            ("score", self.score),
             (PROV_TYPE, ProvType.FILE_REVISION),
         ]
         return ProvEntity(
@@ -108,7 +117,7 @@ class FileRevision(File):
 
 @dataclass
 class Annotation:
-    uid: str
+    id: str
     name: str
     body: str
     start: datetime
@@ -118,11 +127,11 @@ class Annotation:
 
     @property
     def identifier(self) -> QualifiedName:
-        return qualified_name(f"Annotation?{self.uid=}&{self.name=}")
+        return qualified_name(f"Annotation?{self.id=}&{self.name=}")
 
     def to_prov_element(self) -> ProvActivity:
         attributes = [
-            ("uid", self.uid),
+            ("id", self.id),
             ("name", self.name),
             ("body", self.body),
             (PROV_ATTR_STARTTIME, self.start),
@@ -135,12 +144,12 @@ class Annotation:
 
 @dataclass
 class Version:
-    uid: str
-    resource: str
+    id: str
+    resource: str  # ProvType
 
     @property
     def identifier(self) -> QualifiedName:
-        return qualified_name(f"{self.resource}Version?{self.uid=}")
+        return qualified_name(f"{self.resource}Version?{self.id=}")
 
     @classmethod
     def from_commit(cls, commit: Commit):
@@ -155,35 +164,47 @@ class Version:
         return cls(uid=merge_request.id, resource=ProvType.MERGE_REQUEST)
 
     def to_prov_element(self) -> ProvEntity:
-        attributes = [("uid", self.uid), (PROV_TYPE, f"{self.resource}Version")]
+        attributes = [("id", self.id), (PROV_TYPE, f"{self.resource}Version")]
         return ProvEntity(PLACEHOLDER, self.identifier, attributes)
 
 
 @dataclass
 class AnnotatedVersion:
-    uid: str
-    aid: str
-    resource: str
+    id: str
+    annotation: str  # Annotation.id
+    resource: str  # ProvType
     start: datetime
 
     @property
     def identifier(self) -> QualifiedName:
-        return qualified_name(f"Annotated{self.resource}Version?{self.uid=}&{self.aid=}")
+        return qualified_name(f"Annotated{self.resource}Version?{self.id=}&{self.annotation=}")
 
     @classmethod
     def from_commit(cls, commit: Commit, annotation: Annotation):
-        return cls(uid=commit.sha, aid=annotation.uid, resource=ProvType.COMMIT, start=annotation.start)
+        return cls(
+            id=commit.sha,
+            annotation=annotation.id,
+            resource=ProvType.COMMIT,
+            start=annotation.start,
+        )
 
     @classmethod
     def from_issue(cls, issue: Issue, annotation: Annotation):
-        return cls(uid=issue.id, aid=annotation.uid, resource=ProvType.ISSUE, start=annotation.start)
+        return cls(
+            id=issue.id, annotation=annotation.id, resource=ProvType.ISSUE, start=annotation.start
+        )
 
     @classmethod
     def from_merge_request(cls, merge_request: MergeRequest, annotation: Annotation):
-        return cls(uid=merge_request.id, aid=annotation.uid, resource=ProvType.MERGE_REQUEST, start=annotation.start)
+        return cls(
+            id=merge_request.id,
+            annotation=annotation.id,
+            resource=ProvType.MERGE_REQUEST,
+            start=annotation.start,
+        )
 
     def to_prov_element(self) -> ProvEntity:
-        attributes = [("uid", self.uid), (PROV_TYPE, f"Annotated{self.resource}Version")]
+        attributes = [("id", self.id), (PROV_TYPE, f"Annotated{self.resource}Version")]
         return ProvEntity(
             PLACEHOLDER,
             self.identifier,
@@ -193,23 +214,23 @@ class AnnotatedVersion:
 
 @dataclass
 class Creation:
-    uid: str
+    id: str
     resource: str
     start: datetime
     end: datetime
 
     @property
     def identifier(self) -> QualifiedName:
-        return qualified_name(f"Creation?{self.uid=}&{self.resource=}")
+        return qualified_name(f"Creation?{self.id=}&{self.resource=}")
 
     @classmethod
     def from_tag(cls, tag: GitTag):
-        return cls(uid=tag.name, resource=ProvType.TAG, start=tag.created_at, end=tag.created_at)
+        return cls(id=tag.name, resource=ProvType.TAG, start=tag.created_at, end=tag.created_at)
 
     @classmethod
     def from_commit(cls, commit: Commit):
         return cls(
-            uid=commit.sha,
+            id=commit.sha,
             resource=ProvType.COMMIT,
             start=commit.authored_at,
             end=commit.committed_at,
@@ -218,13 +239,13 @@ class Creation:
     @classmethod
     def from_issue(cls, issue: Issue):
         return cls(
-            uid=issue.id, resource=ProvType.ISSUE, start=issue.created_at, end=issue.closed_at
+            id=issue.id, resource=ProvType.ISSUE, start=issue.created_at, end=issue.closed_at
         )
 
     @classmethod
     def from_merge_request(cls, merge_request: MergeRequest):
         return cls(
-            uid=merge_request.id,
+            id=merge_request.id,
             resource=ProvType.MERGE_REQUEST,
             start=merge_request.created_at,
             end=merge_request.closed_at,
@@ -232,7 +253,7 @@ class Creation:
 
     def to_prov_element(self) -> ProvActivity:
         attributes = [
-            ("uid", self.uid),
+            ("id", self.id),
             (PROV_ATTR_STARTTIME, self.start),
             (PROV_ATTR_ENDTIME, self.end),
             (PROV_TYPE, ProvType.CREATION),
@@ -242,12 +263,17 @@ class Creation:
 
 @dataclass
 class GitCommit:
-    sha: str
-    title: str
-    message: str
-    author: User
-    committer: User
-    parents: list[str]
+    sha: str  # commit sha
+    title: str  # commit title
+    message: str  # commit message
+    author: User  # author: User
+    committer: User  # committer: User
+    deletions: int  # number of lines deleted
+    insertions: int  # number of lines inserted
+    lines: int  # number of lines changed
+    files: int  # number of files changed
+    file_paths: list[str]  # list of file paths of changed files
+    parents: list[str]  # list of parent commit shas
     start: datetime  # authored date
     end: datetime  # committed date
 
@@ -260,6 +286,10 @@ class GitCommit:
             ("sha", self.sha),
             ("title", self.title),
             ("message", self.message),
+            ("deleted", self.deleted),
+            ("inserted", self.inserted),
+            ("lines", self.lines),
+            ("files", self.files),
             ("authored_at", self.start),
             ("committed_at", self.end),
             (PROV_ATTR_STARTTIME, self.start),
@@ -302,11 +332,10 @@ class Issue:
         attributes = [
             ("id", self.id),
             ("iid", self.iid),
-            ("platform", self.platform),
             ("title", self.title),
             ("body", self.body),
-            ("url", self.url),
             ("platform", self.platform),
+            ("url", self.url),
             (PROV_ATTR_STARTTIME, self.created_at),
             (PROV_ATTR_ENDTIME, self.closed_at),
             (PROV_TYPE, ProvType.ISSUE),
@@ -398,6 +427,10 @@ class MergeRequest:
             ("platform", self.platform),
             ("source_branch", self.source_branch),
             ("target_branch", self.target_branch),
+            ("created_at", self.created_at),
+            ("closed_at", self.closed_at),
+            ("merged_at", self.merged_at),
+            ("first_deployed_to_production_at", self.first_deployed_to_production_at),
             (PROV_ATTR_STARTTIME, self.created_at),
             (PROV_ATTR_ENDTIME, self.closed_at),
             (PROV_TYPE, ProvType.MERGE_REQUEST),
@@ -426,6 +459,7 @@ class GitTag:
             ("name", self.name),
             ("sha", self.sha),
             ("message", self.message),
+            ("created_at", self.created_at),
             (PROV_ATTR_STARTTIME, self.created_at),
             (PROV_ATTR_ENDTIME, self.created_at),
             (PROV_TYPE, ProvType.TAG),
