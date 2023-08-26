@@ -52,7 +52,7 @@ dev = [
     "pytest-mock",  # MIT License
     "black",        # MIT License
     "isort",        # MIT License
-    "bump2version", # MIT License
+    "bump-my-version", # MIT License
 ]
 
 [project.scripts]
@@ -76,3 +76,25 @@ py_version = 310
 [tool.black]
 line-length = 99
 target-version = ['py310']
+
+[tool.bumpversion]
+current_version = "2.1.0"
+commit = true
+tag = true
+tag_name = "{new_version}"
+message = "Bump version: {current_version} → {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "gitlab2prov/__init__.py"
+search = '__version__ = "{current_version}"'
+replace = '__version__ = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "CITATION.cff"
+search = 'version: "{current_version}"'
+replace = 'version: "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "CITATION.cff"
+search = 'date-released: "\d{{4}}-\d{{2}}-\d{{2}}"'
+replace = 'date-released: "{now:%Y-%m-%d}"'
