@@ -139,7 +139,7 @@
                         "coarse": {
                             "type": "boolean"
                         },
-                        "formatter": {
+                        "format": {
                             "type": "string",
                             "enum": [
                                 "table",
