@@ -79,7 +79,7 @@ HostedMergeQuery = partial(hosted_resource_query, resource_type=MergeRequest)
 class ProvenanceContext:
     document: ProvDocument
     namespace: Optional[str] = None
-
+    
     def add_element(self, dataclass_instance) -> ProvRecord:
         # Convert the dataclass instance to a ProvElement
         element = self.convert_to_prov_element(dataclass_instance)
@@ -121,10 +121,7 @@ class ProvenanceContext:
         relationship.add_attributes(attributes)
         # Add the relationship to the ProvDocument
         self.document.add_record(relationship)
-
-    def get_document(self):
-        return self.document
-
+   
 
 @dataclass
 class FileAdditionModel:
@@ -167,8 +164,12 @@ class FileAdditionModel:
             self.commit,
             ProvGeneration,
             {
-                PROV_ATTR_STARTTIME: self.commit.start,
+                PROV_ATTR_STARTTIME: self.commit.authored_at,
                 PROV_ROLE: ProvRole.FILE,
+                "insertions": self.revision.insertions,
+                "deletions": self.revision.deletions,
+                "lines": self.revision.lines,
+                "score": self.revision.score,
             },
         )
         self.ctx.add_relation(
@@ -176,14 +177,15 @@ class FileAdditionModel:
             self.commit,
             ProvGeneration,
             {
-                PROV_ATTR_STARTTIME: self.commit.start,
+                PROV_ATTR_STARTTIME: self.commit.authored_at,
                 PROV_ROLE: ProvRole.ADDED_REVISION,
             },
         )
         self.ctx.add_relation(self.revision.file, self.commit.author, ProvAttribution)
         self.ctx.add_relation(self.revision, self.revision.file, ProvSpecialization)
         # Return the document
-        return self.ctx.get_document()
+        return self.ctx.document
+ 
 
 
 @dataclass
@@ -222,10 +224,10 @@ class FileDeletionModel:
             self.revision,
             self.commit,
             ProvInvalidation,
-            {PROV_ATTR_STARTTIME: self.commit.start, PROV_ROLE: ProvRole.DELETED_REVISION},
+            {PROV_ATTR_STARTTIME: self.commit.authored_at, PROV_ROLE: ProvRole.DELETED_REVISION},
         )
         # Return the document
-        return self.ctx.get_document()
+        return self.ctx.document
 
 
 @dataclass
@@ -266,7 +268,7 @@ class FileModificationModel:
             self.revision,
             self.commit,
             ProvGeneration,
-            {PROV_ATTR_STARTTIME: self.commit.start, PROV_ROLE: ProvRole.MODIFIED_REVISION},
+            {PROV_ATTR_STARTTIME: self.commit.authored_at, PROV_ROLE: ProvRole.MODIFIED_REVISION},
         )
         self.ctx.add_relation(self.revision, self.commit.author, ProvAttribution)
         self.ctx.add_relation(
@@ -276,10 +278,10 @@ class FileModificationModel:
             self.commit,
             self.previous,
             ProvUsage,
-            {PROV_ATTR_STARTTIME: self.commit.start, PROV_ROLE: ProvRole.PREVIOUS_REVISION},
+            {PROV_ATTR_STARTTIME: self.commit.authored_at, PROV_ROLE: ProvRole.PREVIOUS_REVISION},
         )
         # Return the document
-        return self.ctx.get_document()
+        return self.ctx.document
 
 
 @dataclass
@@ -319,7 +321,7 @@ class HostedResourceModel:
             previous_annotation = current_annotation
             previous_version = current_version
 
-        return self.ctx.get_document()
+        return self.ctx.document
 
     def _add_creation_part_for_hosted_commits(self):
         # Add the elements to the context
@@ -557,7 +559,7 @@ class GitTagModel:
                 ProvAssociation,
                 {PROV_ROLE: ProvRole.COMMIT_AUTHOR},
             )
-        return self.ctx.get_document()
+        return self.ctx.document
 
 
 @dataclass
