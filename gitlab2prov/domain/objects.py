@@ -84,8 +84,8 @@ class File:
 @dataclass
 class FileRevision(File):
     status: str
-    inserted: int
-    deleted: int
+    insertions: int
+    deletions: int
     lines: int
     score: float
     file: File | None = None
@@ -102,8 +102,8 @@ class FileRevision(File):
             ("name", self.name),
             ("path", self.path),
             ("status", self.status),
-            ("inserted", self.inserted),
-            ("deleted", self.deleted),
+            ("insertions", self.insertions),
+            ("deletions", self.deletions),
             ("lines", self.lines),
             ("score", self.score),
             (PROV_TYPE, ProvType.FILE_REVISION),
@@ -153,15 +153,15 @@ class Version:
 
     @classmethod
     def from_commit(cls, commit: Commit):
-        return cls(uid=commit.sha, resource=ProvType.COMMIT)
+        return cls(id=commit.sha, resource=ProvType.COMMIT)
 
     @classmethod
     def from_issue(cls, issue: Issue):
-        return cls(uid=issue.id, resource=ProvType.ISSUE)
+        return cls(id=issue.id, resource=ProvType.ISSUE)
 
     @classmethod
     def from_merge_request(cls, merge_request: MergeRequest):
-        return cls(uid=merge_request.id, resource=ProvType.MERGE_REQUEST)
+        return cls(id=merge_request.id, resource=ProvType.MERGE_REQUEST)
 
     def to_prov_element(self) -> ProvEntity:
         attributes = [("id", self.id), (PROV_TYPE, f"{self.resource}Version")]
@@ -271,11 +271,10 @@ class GitCommit:
     deletions: int  # number of lines deleted
     insertions: int  # number of lines inserted
     lines: int  # number of lines changed
-    files: int  # number of files changed
-    file_paths: list[str]  # list of file paths of changed files
+    files_changed: int  # number of files changed
     parents: list[str]  # list of parent commit shas
-    start: datetime  # authored date
-    end: datetime  # committed date
+    authored_at: datetime  # authored date
+    committed_at: datetime  # committed date
 
     @property
     def identifier(self) -> QualifiedName:
@@ -286,14 +285,14 @@ class GitCommit:
             ("sha", self.sha),
             ("title", self.title),
             ("message", self.message),
-            ("deleted", self.deleted),
-            ("inserted", self.inserted),
+            ("deletions", self.deletions),
+            ("insertions", self.insertions),
             ("lines", self.lines),
-            ("files", self.files),
-            ("authored_at", self.start),
-            ("committed_at", self.end),
-            (PROV_ATTR_STARTTIME, self.start),
-            (PROV_ATTR_ENDTIME, self.end),
+            ("files_changed", self.files_changed),
+            ("authored_at", self.authored_at),
+            ("committed_at", self.committed_at),
+            (PROV_ATTR_STARTTIME, self.authored_at),
+            (PROV_ATTR_ENDTIME, self.committed_at),
             (PROV_TYPE, ProvType.GIT_COMMIT),
         ]
         return ProvActivity(PLACEHOLDER, self.identifier, attributes)
