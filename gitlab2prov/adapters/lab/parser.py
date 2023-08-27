@@ -67,7 +67,7 @@ class GitlabAnnotationParser:
         )
         annotation_name, key_value_pairs = self.classifier.classify(note.body)
         return Annotation(
-            uid=note.id,
+            id=note.id,
             name=annotation_name,
             body=note.body,
             start=note.created_at,
@@ -85,7 +85,7 @@ class GitlabAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=f"{uuid.uuid4()}{annotator.gitlab_id}{abs(hash(comment.note))}",
+            id=f"{uuid.uuid4()}{annotator.gitlab_id}{abs(hash(comment.note))}",
             name="add_comment",
             body=comment.note,
             start=comment.created_at,
@@ -102,7 +102,7 @@ class GitlabAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=note.id,
+            id=note.id,
             name="add_note",
             body=note.body,
             annotator=annotator,
@@ -125,7 +125,7 @@ class GitlabAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=award.id,
+            id=award.id,
             name="add_award",
             body=award.name,
             annotator=annotator,
@@ -144,7 +144,7 @@ class GitlabAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=label.id,
+            id=label.id,
             name=f"{label.action}_label",
             body=label.action,
             annotator=annotator,
