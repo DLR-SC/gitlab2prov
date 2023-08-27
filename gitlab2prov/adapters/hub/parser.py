@@ -46,12 +46,20 @@ class GithubAnnotationParser:
             case _:
                 log.warning(f"no parser found for {raw_annotation=}")
 
+    @staticmethod
+    def filter_valid(annotations):
+        return [
+            annot
+            for annot in annotations
+            if annot.annotator is not None and annot.start is not None
+        ]
+
     def parse(self, annotations: list[A]) -> list[Annotation]:
         parsed_annotations = []
         for annotation in annotations:
             if parser := self.choose_parser(annotation):
                 parsed_annotations.append(parser(annotation))
-        return self.sort_by_date(parsed_annotations)
+        return self.filter_valid(self.sort_by_date(parsed_annotations))
 
     def parse_commit_comment(self, comment: CommitComment) -> Annotation:
         annotator = User(
@@ -62,7 +70,7 @@ class GithubAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=comment.id,
+            id=comment.id,
             name="add_comment",
             body=comment.body,
             start=comment.created_at,
@@ -79,7 +87,7 @@ class GithubAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=status.id,
+            id=status.id,
             name="add_commit_status",
             body=status.description,
             start=status.created_at,
@@ -96,14 +104,13 @@ class GithubAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=reaction.id,
+            id=reaction.id,
             name="add_award",
             body=reaction.content,
             start=reaction.created_at,
             end=reaction.created_at,
             annotator=annotator,
         )
-            
 
     def parse_issue_comment(self, comment: IssueComment) -> Annotation:
         annotator = User(
@@ -114,7 +121,7 @@ class GithubAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=comment.id,
+            id=comment.id,
             name="add_comment",
             body=comment.body,
             start=comment.created_at,
@@ -131,7 +138,7 @@ class GithubAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=event.id,
+            id=event.id,
             name=event.event,
             body=event.event,
             start=event.created_at,
@@ -140,20 +147,21 @@ class GithubAnnotationParser:
         )
 
     def parse_timeline_event(self, event: TimelineEvent) -> Annotation:
-        annotator = User(
-            name=event.actor.name,
-            email=event.actor.email,
-            github_username=event.actor.login,
-            github_id=event.actor.id,
-            prov_role=ProvRole.ANNOTATOR,
-        )
         return Annotation(
-            uid=event.id,
+            id=event.id,
             name=event.event,
             body=event.event,
             start=event.created_at,
             end=event.created_at,
-            annotator=annotator,
+            annotator=User(
+                name=event.actor.name,
+                email=event.actor.email,
+                github_username=event.actor.login,
+                github_id=event.actor.id,
+                prov_role=ProvRole.ANNOTATOR,
+            )
+            if event.actor
+            else None,
         )
 
     def parse_pull_request_review(self, review: PullRequestReview) -> Annotation:
@@ -165,7 +173,7 @@ class GithubAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=review.id,
+            id=review.id,
             name="add_review",
             body=review.body,
             start=review.submitted_at,
@@ -182,7 +190,7 @@ class GithubAnnotationParser:
             prov_role=ProvRole.ANNOTATOR,
         )
         return Annotation(
-            uid=comment.id,
+            id=comment.id,
             name="add_comment",
             body=comment.body,
             start=comment.created_at,
