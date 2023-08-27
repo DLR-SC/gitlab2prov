@@ -1,5 +1,8 @@
 [build-system]
-requires = ["setuptools>=65.0", "wheel"]
+requires = [
+    "setuptools>=65.0", # MIT License
+    "wheel",            # MIT License
+]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -13,14 +16,14 @@ maintainers = [
     { name = "Andreas Schreiber", email = "andreas.schreiber@dlr.de" },
 ]
 dependencies = [
-    "prov>=2.0.0",
-    "git-python",
-    "python-gitlab",
-    "jsonschema",
-    "ruamel.yaml",
-    "pydot>=1.2.0",
-    "PyGithub",
-    "click",
+    "prov>=2.0.0",   # MIT License
+    "git-python",    # BSD 3-Clause License
+    "python-gitlab", # LGPL-3.0 License
+    "jsonschema",    # MIT License
+    "ruamel.yaml",   # MIt License
+    "pydot>=1.2.0",  # MIT License
+    "PyGithub",      # LGPL-3.0 License
+    "click",         # BSD 3-Clause License
 ]
 keywords = [
     "prov",
@@ -45,7 +48,13 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-mock", "black", "isort", "bump2version"]
+dev = [
+    "pytest",       # MIT License
+    "pytest-mock",  # MIT License
+    "black",        # MIT License
+    "isort",        # MIT License
+    "bump-my-version", # MIT License
+]
 
 [project.scripts]
 gitlab2prov = "gitlab2prov.entrypoints.cli:gitlab2prov"
@@ -72,3 +81,25 @@ py_version = 310
 [tool.black]
 line-length = 99
 target-version = ['py310']
+
+[tool.bumpversion]
+current_version = "2.1.0"
+commit = true
+tag = true
+tag_name = "{new_version}"
+message = "Bump version: {current_version} → {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "gitlab2prov/__init__.py"
+search = '__version__ = "{current_version}"'
+replace = '__version__ = "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "CITATION.cff"
+search = 'version: "{current_version}"'
+replace = 'version: "{new_version}"'
+
+[[tool.bumpversion.files]]
+filename = "CITATION.cff"
+search = 'date-released: "\d{{4}}-\d{{2}}-\d{{2}}"'
+replace = 'date-released: "{now:%Y-%m-%d}"'

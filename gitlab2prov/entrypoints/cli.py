@@ -5,6 +5,7 @@ from typing import Iterator
 from prov.model import ProvDocument
 
 import click
+import git
 
 from gitlab2prov import __version__
 from gitlab2prov import bootstrap
@@ -12,6 +13,24 @@ from gitlab2prov.config import Config
 from gitlab2prov.domain import commands
 from gitlab2prov.log import create_logger
 from gitlab2prov.prov import operations
+
+
+def is_git_available():
+    """Check whether git is installed using the GitPython package."""
+    try:
+        git.Git().execute(["git", "--version"])
+        return True
+    except git.exc.GitCommandNotFound:
+        return False
+
+
+def is_git_available():
+    """Check whether git is installed using the GitPython package."""
+    try:
+        git.Git().execute(["git", "--version"])
+        return True
+    except git.exc.GitCommandNotFound:
+        return False
 
 
 def enable_logging(ctx: click.Context, param: str, enable: bool):
@@ -116,6 +135,8 @@ def gitlab2prov(ctx):
     """
     Extract provenance information from GitLab projects.
     """
+    if not is_git_available():
+        ctx.fail("Could not find git. Please install git.")
     ctx.obj = bootstrap.bootstrap("gitlab")
 
 
