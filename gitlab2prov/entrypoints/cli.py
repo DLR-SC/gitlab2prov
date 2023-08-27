@@ -14,33 +14,40 @@ from gitlab2prov.log import create_logger
 from gitlab2prov.prov import operations
 
 
-def enable_logging(ctx: click.Context, _, enable: bool):
+def enable_logging(ctx: click.Context, param: str, enable: bool):
     """Callback that optionally enables logging."""
     if enable:
         create_logger()
 
 
-def invoke_command_line_from_config(ctx: click.Context, _, filepath: str):
-    """Callback that executes a gitlab2prov run from a config file."""
+def load_and_validate_config(ctx: click.Context, filepath: str) -> Config:
+    """Load configuration from file and validate it. Returns the config if successful, otherwise fails the context."""
     if not filepath:
-        return
+        return None
     config = Config.read(filepath)
-    ok, err = config.validate()
-    if not ok:
-        ctx.fail(f"Validation failed: {err}")
+    is_valid, error_message = config.validate()
+    if not is_valid:
+        ctx.fail(f"Validation failed: {error_message}")
+    return config
+
+
+def execute_command_from_config(ctx: click.Context, param: str, filepath: str):
+    """Callback that executes a gitlab2prov run from a config file."""
+    config = load_and_validate_config(ctx, filepath)
+    if not config:
+        return
+
     context = ctx.command.make_context(ctx.command.name, args=config.parse(), parent=ctx)
     ctx.command.invoke(context)
     ctx.exit()
 
 
-def validate_config(ctx: click.Context, _, filepath: str):
+def validate_config(ctx: click.Context, param: str, filepath: str):
     """Callback that validates config file using gitlab2prov/config/schema.json."""
-    if not filepath:
+    config = load_and_validate_config(ctx, filepath)
+    if not config:
         return
-    config = Config.read(filepath)
-    ok, err = config.validate()
-    if not ok:
-        ctx.fail(f"Validation failed: {err}")
+
     click.echo("Validation successful, the following command would be executed:\n")
     click.echo(f"gitlab2prov {' '.join(config.parse())}")
     ctx.exit()
@@ -94,7 +101,7 @@ def generator(func):
     "--config",
     type=click.Path(exists=True, dir_okay=False),
     expose_value=False,
-    callback=invoke_command_line_from_config,
+    callback=execute_command_from_config,
     help="Read config from file.",
 )
 @click.option(
@@ -105,7 +112,7 @@ def generator(func):
     help="Validate config file and exit.",
 )
 @click.pass_context
-def gitlab_cli(ctx):
+def gitlab2prov(ctx):
     """
     Extract provenance information from GitLab projects.
     """
@@ -126,7 +133,7 @@ def gitlab_cli(ctx):
     "--config",
     type=click.Path(exists=True, dir_okay=False),
     expose_value=False,
-    callback=invoke_command_line_from_config,
+    callback=execute_command_from_config,
     help="Read config from file.",
 )
 @click.option(
@@ -137,12 +144,12 @@ def gitlab_cli(ctx):
     help="Validate config file and exit.",
 )
 @click.pass_context
-def github_cli(ctx):
+def github2prov(ctx):
     ctx.obj = bootstrap.bootstrap("github")
 
 
-@github_cli.result_callback()
-@gitlab_cli.result_callback()
+@github2prov.result_callback()
+@gitlab2prov.result_callback()
 def process_commands(processors, **kwargs):
     """Execute the chain of commands.
 
@@ -247,7 +254,6 @@ def write(bus, documents, formats, destination):
     documents = list(documents)
 
     for i, document in enumerate(documents, start=1):
-
         for fmt in formats:
             filename = f"{destination}{'-' + str(i) if len(documents) > 1 else ''}.{fmt}"
             try:
@@ -325,14 +331,14 @@ def combine(bus, documents: Iterator[ProvDocument]):
 )
 @click.option("--format", type=click.Choice(["csv", "table"]), default="table")
 @click.option(
-    "--verbose",
+    "--explain",
     is_flag=True,
     help="Print a textual summary of all operations applied to the graphs.",
 )
 @processor
 @click.pass_obj
 def statistics(
-    bus, documents: Iterator[ProvDocument], resolution: str, format: str, verbose: bool
+    bus, documents: Iterator[ProvDocument], resolution: str, format: str, explain: bool
 ):
     """Print statistics for one or more provenance documents.
 
@@ -343,7 +349,7 @@ def statistics(
     for document in documents:
         try:
             statistics = bus.handle(commands.Statistics(document, resolution, format))
-            if verbose:
+            if explain:
                 statistics = f"{document.description}\n\n{statistics}"
                 click.echo(statistics)
         except Exception:
@@ -352,17 +358,17 @@ def statistics(
 
 
 # CLI group for gitlab commands
-gitlab_cli.add_command(extract)
-gitlab_cli.add_command(read)
-gitlab_cli.add_command(write)
-gitlab_cli.add_command(combine)
-gitlab_cli.add_command(transform)
-gitlab_cli.add_command(statistics)
+gitlab2prov.add_command(extract)
+gitlab2prov.add_command(read)
+gitlab2prov.add_command(write)
+gitlab2prov.add_command(combine)
+gitlab2prov.add_command(transform)
+gitlab2prov.add_command(statistics)
 
 # CLI group for github commands
-github_cli.add_command(extract)
-github_cli.add_command(read)
-github_cli.add_command(write)
-github_cli.add_command(combine)
-github_cli.add_command(transform)
-github_cli.add_command(statistics)
+github2prov.add_command(extract)
+github2prov.add_command(read)
+github2prov.add_command(write)
+github2prov.add_command(combine)
+github2prov.add_command(transform)
+github2prov.add_command(statistics)
