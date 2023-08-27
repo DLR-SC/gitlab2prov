@@ -20,6 +20,7 @@ dependencies = [
     "ruamel.yaml",
     "pydot>=1.2.0",
     "PyGithub",
+    "click",
 ]
 keywords = [
     "prov",
@@ -47,8 +48,8 @@ dynamic = ["version"]
 dev = ["pytest", "pytest-mock", "black", "isort", "bump2version"]
 
 [project.scripts]
-gitlab2prov = "gitlab2prov.entrypoints.cli:gitlab_cli"
-github2prov = "gitlab2prov.entrypoints.cli:github_cli"
+gitlab2prov = "gitlab2prov.entrypoints.cli:gitlab2prov"
+github2prov = "gitlab2prov.entrypoints.cli:github2prov"
 
 [project.urls]
 Twitter = "https://twitter.com/dlr_software"
@@ -60,6 +61,9 @@ version = { attr = "gitlab2prov.__version__" }
 
 [tool.setuptools.packages.find]
 exclude = ["tests*", "docs*"]
+
+[tool.setuptools.package-data]
+"gitlab2prov.config" = ["schema.json"]
 
 [tool.isort]
 profile = "black"
