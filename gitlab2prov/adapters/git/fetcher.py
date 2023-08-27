@@ -97,9 +97,13 @@ def extract_commits(repo: Repo) -> Iterator[GitCommit]:
             message=commit.message,
             author=get_author(commit),
             committer=get_committer(commit),
+            deletions=commit.stats.total["deletions"],
+            insertions=commit.stats.total["insertions"],
+            lines=commit.stats.total["lines"],
+            files_changed=commit.stats.total["files"],
             parents=[parent.hexsha for parent in commit.parents],
-            start=commit.authored_datetime,
-            end=commit.committed_datetime,
+            authored_at=commit.authored_datetime,
+            committed_at=commit.committed_datetime,
         )
 
 
@@ -136,10 +140,18 @@ def extract_revisions(repo: Repo) -> Iterator[FileRevision]:
             status = {"A": "added", "M": "modified", "D": "deleted"}.get(status, "modified")
             revs.append(
                 FileRevision(
-                    name=Path(path).name, path=path, commit=hexsha, status=status, file=file
+                    name=Path(path).name,
+                    path=path,
+                    commit=hexsha,
+                    status=status,
+                    insertions=0,
+                    deletions=0,
+                    lines=0,
+                    score=0,
+                    file=file,
                 )
             )
-        # revisions remeber their predecessor (previous revision)
+        # revisions remember their predecessor (previous revision)
         for rev, prev in zip_longest(revs, revs[1:]):
             rev.previous = prev
             yield rev
