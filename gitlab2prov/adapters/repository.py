@@ -6,7 +6,7 @@ from typing import Type, TypeVar, Optional, Any
 R = TypeVar("R")
 
 
-class AbstractRepository(abc.ABC):
+class Repository(abc.ABC):
     def add(self, resource: R) -> None:
         self._add(resource)
 
@@ -31,10 +31,8 @@ class AbstractRepository(abc.ABC):
         raise NotImplementedError
 
 
-class InMemoryRepository(AbstractRepository):
-    # not super efficient
-    # should be fast enough for 1.0
-    # snychronous get requests are the main culprit in slowing runtime
+class InMemoryRepository(Repository):
+    # TODO: speed up retrieval
     def __init__(self):
         super().__init__()
         self.repo = defaultdict(list)

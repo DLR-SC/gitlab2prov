@@ -1,1 +1,1 @@
-from gitlab2prov.config.parser import ConfigParser
+from gitlab2prov.config.config import Config

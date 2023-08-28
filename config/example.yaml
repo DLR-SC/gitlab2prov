@@ -1,18 +1,27 @@
 # yaml-language-server: $schema=../gitlab2prov/config/schema.json
 - extract:
-        url: ["https://gitlab.com/example/foo"]
-        token: tokenFoo
+    url:
+      - "https://gitlab.com/aristotle/nicomachean-ethics"
+      - "https://gitlab.com/aristotle/poetics"
+    token: golden_mean_and_drama_token
 - extract:
-        url: ["https://gitlab.com/example/bar"]
-        token: tokenBar
-- load:
-        input: [example.rdf]
-- pseudonymize:
+    url:
+      - "https://gitlab.com/plato/the-republic"
+      - "https://gitlab.com/plato/phaedrus"
+    token: ideal_forms_and_speech_token
+- extract:
+    url: ["https://gitlab.com/socrates/apology"]
+    token: know_thyself_token
+- read:
+    input: [aristotelian_logic.rdf]
 - combine:
-- save:
-        output: combined
-        format: [json, rdf, xml, dot]
+- transform:
+    use_pseudonyms: true
+    remove_duplicates: true
+- write:
+    output: philosopher_outputs
+    format: [json, rdf, xml, dot]
 - stats:
-        fine: true
-        explain: true
-        formatter: table
+    fine: true
+    explain: true
+    format: table

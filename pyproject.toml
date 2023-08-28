@@ -22,6 +22,7 @@ dependencies = [
     "jsonschema",    # MIT License
     "ruamel.yaml",   # MIt License
     "pydot>=1.2.0",  # MIT License
+    "PyGithub",      # LGPL-3.0 License
     "click",         # BSD 3-Clause License
 ]
 keywords = [
@@ -56,7 +57,8 @@ dev = [
 ]
 
 [project.scripts]
-gitlab2prov = "gitlab2prov.entrypoints.cli:cli"
+gitlab2prov = "gitlab2prov.entrypoints.cli:gitlab2prov"
+github2prov = "gitlab2prov.entrypoints.cli:github2prov"
 
 [project.urls]
 Twitter = "https://twitter.com/dlr_software"
@@ -68,6 +70,9 @@ version = { attr = "gitlab2prov.__version__" }
 
 [tool.setuptools.packages.find]
 exclude = ["tests*", "docs*"]
+
+[tool.setuptools.package-data]
+"gitlab2prov.config" = ["schema.json"]
 
 [tool.isort]
 profile = "black"

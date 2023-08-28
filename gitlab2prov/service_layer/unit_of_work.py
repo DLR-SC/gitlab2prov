@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import abc
+from collections import defaultdict
 
 from gitlab2prov.adapters import repository
 
 
-class AbstractUnitOfWork(abc.ABC):
-    def __enter__(self) -> AbstractUnitOfWork:
+class UnitOfWork(abc.ABC):
+    def __enter__(self) -> UnitOfWork:
         return self
 
     def __exit__(self, *args):
@@ -31,9 +32,10 @@ class AbstractUnitOfWork(abc.ABC):
         raise NotImplementedError
 
 
-class InMemoryUnitOfWork(AbstractUnitOfWork):
+class InMemoryUnitOfWork(UnitOfWork):
     def __init__(self):
-        self.resources = repository.InMemoryRepository()
+        # self.resources = repository.InMemoryRepository()
+        self.resources = defaultdict(repository.InMemoryRepository)
 
     def __enter__(self):
         return super().__enter__()

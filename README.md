@@ -1,4 +1,4 @@
-<h1 align="center">Welcome to <code>gitlab2prov</code>! 👋</h1>
+<h1 align="center"> <code>gitlab2prov</code>, <code>github2prov</code>: (🦊|🐈‍⬛) → 📄  </h1>
 <p align="center">
   <a href="https://github.com/dlr-sc/gitlab2prov/blob/master/LICENSE">
     <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-yellow.svg" target="_blank" />
@@ -30,12 +30,12 @@
 </p>
 
 
-> `gitlab2prov` is a Python library and command line tool that extracts provenance information from GitLab projects.
+> `gitlab2prov` is a Python library and command line tool that extracts provenance information from GitLab projects. GitHub support is provided by the `github2prov` command line tool contained in this package.
 
 ---
 
-The `gitlab2prov` data model has been designed according to [W3C PROV](https://www.w3.org/TR/prov-overview/) specification.
-The model documentation can be found [here](https://github.com/DLR-SC/gitlab2prov/tree/master/docs).
+The data model underlying `gitlab2prov` & `github2prov` has been designed according to [W3C PROV](https://www.w3.org/TR/prov-overview/) specification.
+The model documentation can be found [here](/docs/README.md).
 
 ## ️🏗️ ️Installation
 
@@ -57,13 +57,26 @@ pip install .[dev]            # clone repo, install with extras
 pip install gitlab2prov[dev]  # PyPi, install with extras
 ```
 
+That's it! You can now use `gitlab2prov` and `github2prov` from the command line.
+
+```bash
+gitlab2prov --version  # show version
+github2prov --version  # show version
+```
+
+
 ## ⚡ Getting started
 
-`gitlab2prov` needs a [personal access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html) to clone git repositories and to authenticate with the GitLab API.
-Follow [this guide](./docs/guides/tokens.md) to create an access token with the required [scopes](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#personal-access-token-scopes).
+`gitlab2prov` & `github2prov` require a [personal access token](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html) to clone git repositories and to authenticate with the GitLab/GitHub API.
+
+Use the following guides to obtain a token with the required [scopes](https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html#personal-access-token-scopes) for yourself:
+- [Create a personal access token (GitLab)](./docs/guides/gitlab-token.md)
+- [Create a personal access token (GitHub)](./docs/guides/github-token.md)
 
 
 ## 🚀‍ Usage
+
+The usage of `gitlab2prov` and `github2prov` is identical. The only difference being that `github2prov` only supports GitHub projects whereas `gitlab2prov` supports only GitLab projects. We will use `gitlab2prov` in the following examples.
 
 `gitlab2prov` can be configured using the command line interface or by providing a configuration file in `.yaml` format.
 
@@ -83,66 +96,85 @@ Options:
   --help           Show this message and exit.
 
 Commands:
-  combine                  Combine multiple graphs into one.
-  extract                  Extract provenance information for one or more...
-  load                     Load provenance files.
-  merge-duplicated-agents  Merge duplicated agents based on a name to...
-  pseudonymize             Pseudonymize a provenance graph.
-  save                     Save provenance information to a file.
-  stats                    Print statistics such as node counts and...
+  combine    Combine one or more provenance documents.
+  extract    Extract provenance information for one or more gitlab projects.
+  read       Read provenance information from file[s].
+  stats      Print statistics for one or more provenance documents.
+  transform  Apply a set of transformations to provenance documents.
+  write      Write provenance information to file[s].
 ```
 
 ### Configuration Files
 `gitlab2prov` supports configuration files in `.yaml` format that are functionally equivalent to command line invocations. 
 
-To read configuration details from a file instead of specifying on the command line, use the `--config` option:
+To envoke a run using a config file, use the `--config` option:
 ```ini
-# initiate a run using a config file
+# run gitlab2prov using the config file 'config/example.yaml'
 gitlab2prov --config config/example.yaml
 ```
-You can validate your config file using the provided JSON-Schema `gitlab2prov/config/schema.json` that comes packaged with every installation:
+You can validate your config file using the provided [JSON Schema file](gitlab2prov/config/schema.json) that comes packaged with every installation:
 ```ini
-# check config file for syntactical errors
+# validate config file 'config/example.yaml' against the JSON Schema
 gitlab2prov --validate config/example.yaml
 ```
 
-Config file example:
+Here is an example config file that extracts provenance information from three GitLab projects, reads a serialized provenance document from a file, combines the resulting provenance documents, transforms the combined document and writes it to files in different formats. Finally, statistics about the generated output are printed to the console:
 
 ```yaml
 - extract:
-        url: ["https://gitlab.com/example/foo"]
-        token: tokenA
+    url:
+      - "https://gitlab.com/aristotle/nicomachean-ethics"
+      - "https://gitlab.com/aristotle/poetics"
+    token: golden_mean_and_drama_token
 - extract:
-        url: ["https://gitlab.com/example/bar"]
-        token: tokenB
-- load:
-        input: [example.rdf]
-- pseudonymize:
+    url:
+      - "https://gitlab.com/plato/the-republic"
+      - "https://gitlab.com/plato/phaedrus"
+    token: ideal_forms_and_speech_token
+- extract:
+    url: ["https://gitlab.com/socrates/apology"]
+    token: know_thyself_token
+- read:
+    input: [aristotelian_logic.rdf]
 - combine:
-- save:
-        output: combined
-        format: [json, rdf, xml, dot]
+- transform:
+    use_pseudonyms: true
+    remove_duplicates: true
+- write:
+    output: philosopher_outputs
+    format: [json, rdf, xml, dot]
 - stats:
-        fine: true
-        explain: true
-        formatter: table
+    fine: true
+    explain: true
+    format: table
 ```
 
 The config file example is functionally equivalent to this command line invocation:
 
 ```
-gitlab2prov extract -u https://gitlab.com/example/foo -t tokenFoo \
-            extract -u https://gitlab.com/example/bar -t tokenBar \
-            load -i example.rdf                                   \
-            pseudonymize                                          \
-            combine                                               \
-            save -o combined -f json -f rdf -f xml -f dot         \
-            stats --fine --explain --formatter table
+gitlab2prov                                                              \
+  extract                                                                \
+    --url https://gitlab.com/aristotle/nicomachean-ethics                \
+    --url https://gitlab.com/aristotle/poetics                           \
+    --token golden_mean_and_drama_token                                  \
+  extract                                                                \
+    --url https://gitlab.com/plato/the-republic                          \
+    --url https://gitlab.com/plato/phaedrus                              \
+    --token ideal_forms_and_speech_token                                 \
+  extract                                                                \
+    --url https://gitlab.com/socrates/apology --token know_thyself_token \
+  read --input aristotelian_logic.rdf                                    \
+  combine                                                                \
+  transform --use_pseudonyms --remove_duplicates                         \
+  write --output philosopher_outputs                                     \
+    --format json --format rdf --format xml --format dot                 \
+  stats --fine --explain --format table
+
 ```
 
 ### 🎨 Provenance Output Formats
 
-`gitlab2prov` supports output formats that the [`prov`](https://github.com/trungdong/prov) library provides:
+`gitlab2prov` & `github2prov` support all output formats that the [`prov`](https://github.com/trungdong/prov) library provides:
 * [PROV-N](http://www.w3.org/TR/prov-n/)
 * [PROV-O](http://www.w3.org/TR/prov-o/) (RDF)
 * [PROV-XML](http://www.w3.org/TR/prov-xml/)
@@ -201,7 +233,7 @@ You can also cite specific releases published on Zenodo: [![DOI](https://zenodo.
 `gitlab2prov` depends on several open source packages that are made freely available under their respective licenses.
 
 | Package                                                         | License                                                                                                                   |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+|-----------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
 | [GitPython](https://github.com/gitpython-developers/GitPython)  | [![License](https://img.shields.io/badge/License-BSD_3--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause) |
 | [click](https://github.com/pallets/click)                       | [![License](https://img.shields.io/badge/License-BSD_3--Clause-orange.svg)](https://opensource.org/licenses/BSD-3-Clause) |
 | [python-gitlab](https://github.com/python-gitlab/python-gitlab) | [![License: LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)       |

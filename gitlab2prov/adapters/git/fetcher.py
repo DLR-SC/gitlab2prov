@@ -2,11 +2,12 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from itertools import zip_longest
 from tempfile import TemporaryDirectory
+from pathlib import Path
 
 from git import Commit
 from git import Repo
 
-from gitlab2prov.adapters.fetch.utils import clone_over_https_url
+from gitlab2prov.adapters.project_url import ProjectUrl
 from gitlab2prov.domain.constants import ChangeType
 from gitlab2prov.domain.constants import ProvRole
 from gitlab2prov.domain.objects import File
@@ -20,33 +21,28 @@ EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 @dataclass
 class GitFetcher:
-    url: str
-    token: str
-
-    _repo: Repo | None = None
-    _tmpdir: TemporaryDirectory | None = None
+    project_url: type[ProjectUrl]
+    repo: Repo | None = None
+    tmpdir: TemporaryDirectory | None = None
 
     def __enter__(self):
-        self._tmpdir = TemporaryDirectory(ignore_cleanup_errors=True)
+        self.tmpdir = TemporaryDirectory(ignore_cleanup_errors=True)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._repo:
-            self._repo.close()
-        if self._tmpdir:
-            self._tmpdir.cleanup()
+        if self.repo:
+            self.repo.close()
+        if self.tmpdir:
+            self.tmpdir.cleanup()
 
-    def do_clone(self) -> None:
-        url = clone_over_https_url(self.url, self.token)
-        self._repo = Repo.clone_from(
-            url=url,
-            to_path=self._tmpdir.name,
-        )
+    def do_clone(self, url: str, token: str) -> None:
+        clone_url = self.project_url(url).clone_url(token)
+        self.repo = Repo.clone_from(clone_url, self.tmpdir.name)
 
-    def fetch_git(self) -> Iterator[GitCommit | File | FileRevision]:
-        yield from extract_commits(self._repo)
-        yield from extract_files(self._repo)
-        yield from extract_revisions(self._repo)
+    def fetch_all(self) -> Iterator[GitCommit | File | FileRevision]:
+        yield from extract_commits(self.repo)
+        yield from extract_files(self.repo)
+        yield from extract_revisions(self.repo)
 
 
 def get_author(commit: Commit) -> User:
@@ -96,14 +92,18 @@ def parse_log(log: str):
 def extract_commits(repo: Repo) -> Iterator[GitCommit]:
     for commit in repo.iter_commits("--all"):
         yield GitCommit(
-            hexsha=commit.hexsha,
-            message=commit.message,
+            sha=commit.hexsha,
             title=commit.summary,
+            message=commit.message,
             author=get_author(commit),
             committer=get_committer(commit),
+            deletions=commit.stats.total["deletions"],
+            insertions=commit.stats.total["insertions"],
+            lines=commit.stats.total["lines"],
+            files_changed=commit.stats.total["files"],
             parents=[parent.hexsha for parent in commit.parents],
-            prov_start=commit.authored_datetime,
-            prov_end=commit.committed_datetime,
+            authored_at=commit.authored_datetime,
+            committed_at=commit.committed_datetime,
         )
 
 
@@ -118,7 +118,9 @@ def extract_files(repo: Repo) -> Iterator[File]:
         # disregard modifications and deletions
         for diff_item in diff.iter_change_type(ChangeType.ADDED):
             # path for new files is stored in diff b_path
-            yield File(path=diff_item.b_path, committed_in=commit.hexsha)
+            yield File(
+                name=Path(diff_item.b_path).name, path=diff_item.b_path, commit=commit.hexsha
+            )
 
 
 def extract_revisions(repo: Repo) -> Iterator[FileRevision]:
@@ -135,10 +137,21 @@ def extract_revisions(repo: Repo) -> Iterator[FileRevision]:
                 file.path,
             )
         ):
+            status = {"A": "added", "M": "modified", "D": "deleted"}.get(status, "modified")
             revs.append(
-                FileRevision(path=path, committed_in=hexsha, change_type=status, original=file)
+                FileRevision(
+                    name=Path(path).name,
+                    path=path,
+                    commit=hexsha,
+                    status=status,
+                    insertions=0,
+                    deletions=0,
+                    lines=0,
+                    score=0,
+                    file=file,
+                )
             )
-        # revisions remeber their predecessor (previous revision)
+        # revisions remember their predecessor (previous revision)
         for rev, prev in zip_longest(revs, revs[1:]):
             rev.previous = prev
             yield rev

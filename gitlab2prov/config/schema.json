@@ -1,8 +1,30 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema",
     "type": "array",
-    "items": [
-        {
+    "items": {
+        "oneOf": [
+            {
+                "$ref": "#/definitions/extract"
+            },
+            {
+                "$ref": "#/definitions/read"
+            },
+            {
+                "$ref": "#/definitions/combine"
+            },
+            {
+                "$ref": "#/definitions/write"
+            },
+            {
+                "$ref": "#/definitions/stats"
+            },
+            {
+                "$ref": "#/definitions/transform"
+            }
+        ]
+    },
+    "definitions": {
+        "extract": {
             "type": "object",
             "properties": {
                 "extract": {
@@ -19,17 +41,22 @@
                             "type": "string"
                         }
                     },
+                    "additionalProperties": false,
                     "required": [
                         "url",
                         "token"
                     ]
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "extract"
+            ]
         },
-        {
+        "read": {
             "type": "object",
             "properties": {
-                "open": {
+                "read": {
                     "type": "object",
                     "properties": {
                         "input": {
@@ -39,24 +66,33 @@
                             }
                         }
                     },
+                    "additionalProperties": false,
                     "required": [
                         "input"
                     ]
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "read"
+            ]
         },
-        {
+        "combine": {
             "type": "object",
             "properties": {
                 "combine": {
                     "type": "null"
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "combine"
+            ]
         },
-        {
+        "write": {
             "type": "object",
             "properties": {
-                "save": {
+                "write": {
                     "type": "object",
                     "properties": {
                         "output": {
@@ -65,26 +101,30 @@
                         "format": {
                             "type": "array",
                             "items": {
-                                "type": "string"
+                                "type": "string",
+                                "enum": [
+                                    "json",
+                                    "rdf",
+                                    "provn",
+                                    "dot",
+                                    "xml"
+                                ]
                             }
                         }
                     },
+                    "additionalProperties": false,
                     "required": [
                         "output",
                         "format"
                     ]
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "write"
+            ]
         },
-        {
-            "type": "object",
-            "properties": {
-                "pseudonymize": {
-                    "type": "null"
-                }
-            }
-        },
-        {
+        "stats": {
             "type": "object",
             "properties": {
                 "stats": {
@@ -99,16 +139,45 @@
                         "coarse": {
                             "type": "boolean"
                         },
-                        "formatter": {
+                        "format": {
                             "type": "string",
                             "enum": [
                                 "table",
                                 "csv"
                             ]
                         }
-                    }
+                    },
+                    "additionalProperties": false
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "stats"
+            ]
+        },
+        "transform": {
+            "type": "object",
+            "properties": {
+                "transform": {
+                    "type": "object",
+                    "properties": {
+                        "use_pseudonyms": {
+                            "type": "boolean"
+                        },
+                        "remove_duplicates": {
+                            "type": "boolean"
+                        },
+                        "merge_aliased_agents": {
+                            "type": "boolean"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "transform"
+            ]
         }
-    ]
+    }
 }

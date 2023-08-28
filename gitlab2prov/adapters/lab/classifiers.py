@@ -9,12 +9,6 @@ from typing import Any
 log = logging.getLogger(__name__)
 
 
-def match_length(match: re.Match) -> int:
-    if match is None:
-        raise TypeError(f"Expected argument of type re.Match, got {type(match)}.")
-    return match.end() - match.start()
-
-
 @dataclass(kw_only=True)
 class Classifier:
     patterns: InitVar[list[str]]
@@ -24,9 +18,15 @@ class Classifier:
     def __post_init__(self, regexps: list[str]):
         self.compiled = [re.compile(regex, re.IGNORECASE) for regex in regexps]
 
+    @staticmethod
+    def match_length(match: re.Match) -> int:
+        if match is None:
+            raise TypeError(f"Expected argument of type re.Match, got {type(match)}.")
+        return match.end() - match.start()
+
     def matches(self, string: str) -> bool:
         matches = [match for pt in self.compiled if (match := re.search(pt, string))]
-        self.match = max(matches, key=match_length, default=None)
+        self.match = max(matches, key=self.match_length, default=None)
         return self.match is not None
 
     def groupdict(self) -> dict[str, Any]:
@@ -37,7 +37,7 @@ class Classifier:
     def __len__(self) -> int:
         if not self.match:
             return 0
-        return match_length(self.match)
+        return self.match_length(self.match)
 
 
 @dataclass(kw_only=True)
@@ -443,3 +443,30 @@ IMPORT_STATEMENT = ImportStatement(
         r"\*by (?P<pre_import_author>.+) on \d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\sUTC \(imported from gitlab project\)\*",
     ],
 )
+
+
+@dataclass
+class SystemNoteClassifier:
+    @staticmethod
+    def normalize(note: str) -> str:
+        return note.strip().lower()
+
+    def longest_matching_classifier(self, note: str) -> AnnotationClassifier:
+        matching = (classifier for classifier in CLASSIFIERS if classifier.matches(note))
+        return max(matching, key=len, default=None)
+
+    def classify(self, note: str) -> tuple[str, dict[str, str]]:
+        # 1. normalize the note
+        key_value_pairs = {}
+        normalized_note = self.normalize(note)
+        # 2. remove import statements, if any and extract the key-value pairs
+        if IMPORT_STATEMENT.matches(normalized_note):
+            normalized_note = IMPORT_STATEMENT.replace(normalized_note)
+            key_value_pairs.update(IMPORT_STATEMENT.groupdict())
+        # 3. find the longest matching classifier
+        if classifier := self.longest_matching_classifier(normalized_note):
+            key_value_pairs.update(classifier.groupdict())
+            # 4. return the classifier name and the matched groups
+            return classifier.name, key_value_pairs
+        # 5. if no classifier matches, return "unknown" and an empty dict
+        return "unknown", key_value_pairs
