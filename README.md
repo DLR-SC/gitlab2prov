@@ -1,4 +1,4 @@
-<h1 align="center"> <code>gitlab2prov</code> 🦊🐈‍⬛ <code>github2prov</code> :octocat: </h1>
+<h1 align="center"> <code>gitlab2prov</code>, <code>github2prov: (🦊|🐈‍⬛) → 📄</code>  </h1>
 <p align="center">
   <a href="https://github.com/dlr-sc/gitlab2prov/blob/master/LICENSE">
     <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-yellow.svg" target="_blank" />
