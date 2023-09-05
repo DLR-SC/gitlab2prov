@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2023-09-05
+### Changed
+- Switched from `bump2version` to the maintained fork `bump-my-version`. See #95 for more details. Thanks to [@MattF-NSIDC](https://github.com/MattF-NSIDC) for the suggestion!
+
+### Removed
+- Removed .bumpversion.cfg in favor of configuring `bump-my-version` in `pyproject.toml`. See #95 for more details.
+
+### Fixed
+- Fixed a bug in the file version history parser that would lead to a `IndexError` when multiple changes were made to files in a single commit. See #102 for more details.
 
 ## [2.1.0] - 2023-04-17
 
@@ -174,7 +183,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preset queries tailored for use on the property graphs produced by the tool, implemented in Neo4j.
 - `requirements.txt` file specifying the list of dependencies required to run the tool.
 
-[unreleased]: https://github.com/dlr-sc/gitlab2prov/compare/v2.1.0...HEAD
+[unreleased]: https://github.com/dlr-sc/gitlab2prov/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/dlr-sc/gitlab2prov/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/dlr-sc/gitlab2prov/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/dlr-sc/gitlab2prov/compare/v1.1.4...v2.0.0
 [1.1.4]: https://github.com/dlr-sc/gitlab2prov/compare/v1.1.3...v1.1.4
